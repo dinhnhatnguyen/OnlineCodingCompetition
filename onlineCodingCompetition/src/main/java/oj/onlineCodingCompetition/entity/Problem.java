@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import oj.onlineCodingCompetition.security.entity.User;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;

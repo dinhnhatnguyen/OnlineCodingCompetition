@@ -1,6 +1,6 @@
 package oj.onlineCodingCompetition.repository;
 
-import oj.onlineCodingCompetition.entity.User;
+import oj.onlineCodingCompetition.security.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

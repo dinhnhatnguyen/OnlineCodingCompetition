@@ -1,13 +1,13 @@
-package oj.onlineCodingCompetition.auth.service;
+package oj.onlineCodingCompetition.security.service;
 
-import oj.onlineCodingCompetition.entity.User;
+import jakarta.transaction.Transactional;
+import oj.onlineCodingCompetition.security.entity.User;
 import oj.onlineCodingCompetition.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {

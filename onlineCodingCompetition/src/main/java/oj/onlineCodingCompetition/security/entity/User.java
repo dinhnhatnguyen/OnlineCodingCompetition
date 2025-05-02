@@ -1,13 +1,14 @@
-package oj.onlineCodingCompetition.entity;
+package oj.onlineCodingCompetition.security.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import oj.onlineCodingCompetition.entity.ContestRegistration;
+import oj.onlineCodingCompetition.entity.Submission;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;

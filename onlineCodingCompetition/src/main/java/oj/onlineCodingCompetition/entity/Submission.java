@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import oj.onlineCodingCompetition.security.entity.User;
 
 import java.time.LocalDateTime;
 

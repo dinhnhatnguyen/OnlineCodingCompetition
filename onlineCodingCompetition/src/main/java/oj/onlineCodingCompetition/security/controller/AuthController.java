@@ -3,7 +3,8 @@ package oj.onlineCodingCompetition.security.controller;
 import jakarta.validation.Valid;
 import oj.onlineCodingCompetition.security.entity.User;
 
-import oj.onlineCodingCompetition.repository.UserRepository;
+
+import oj.onlineCodingCompetition.security.repository.UserRepository;
 import oj.onlineCodingCompetition.security.service.UserDetailsImpl;
 import oj.onlineCodingCompetition.security.dto.JwtResponse;
 import oj.onlineCodingCompetition.security.dto.LoginRequest;

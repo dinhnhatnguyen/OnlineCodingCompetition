@@ -48,7 +48,7 @@ public class Problem {
     @Column(name = "output_format", columnDefinition = "TEXT")
     private String outputFormat;
 
-    @Column(columnDefinition = "nvarchar(MAX)")
+    @Column(columnDefinition = "TEXT")
     private String examples;
 
     @ManyToOne
@@ -57,6 +57,9 @@ public class Problem {
 
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @OneToMany(mappedBy = "problem", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<TestCase> testCases = new HashSet<>();
 
     @OneToMany(mappedBy = "problem", cascade = CascadeType.ALL)
     private Set<Submission> submissions = new HashSet<>();

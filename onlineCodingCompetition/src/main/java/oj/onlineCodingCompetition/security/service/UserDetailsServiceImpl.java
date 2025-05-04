@@ -2,7 +2,8 @@ package oj.onlineCodingCompetition.security.service;
 
 import jakarta.transaction.Transactional;
 import oj.onlineCodingCompetition.security.entity.User;
-import oj.onlineCodingCompetition.repository.UserRepository;
+
+import oj.onlineCodingCompetition.security.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

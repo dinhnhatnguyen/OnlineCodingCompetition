@@ -9,12 +9,15 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface ProblemRepository extends JpaRepository <Problem, Long>{
+public interface ProblemRepository extends JpaRepository<Problem, Long> {
+
     List<Problem> findByDifficulty(String difficulty);
 
-    @Query("SELECT p FROM Problem p JOIN p.topics t WHERE t = :topic")
+    @Query("SELECT p FROM Problem p WHERE :topic MEMBER OF p.topics")
     List<Problem> findByTopic(@Param("topic") String topic);
 
-    @Query("SELECT p FROM Problem p WHERE p.title LIKE %:search% OR p.description LIKE %:search%")
-    List<Problem> findByTitleOrDescriptionContaining(@Param("search") String search);
+    List<Problem> findByTitleContainingIgnoreCase(String titleKeyword);
+
+    @Query("SELECT DISTINCT p.topics FROM Problem p")
+    List<String> findAllTopics();
 }

@@ -1,21 +1,29 @@
 #!/bin/bash
 set -e
 
+# Set resource limits
+ulimit -u 1000
+ulimit -t 10
+ulimit -v 262144
+
 # Get code file from command line parameter
 CODE_FILE=$1
+INPUT_FILE=$2
 
 cd /app/code
 
 # Compile C++ code
-#echo "Compiling C++ code..."
-g++ -std=c++17 -o solution $CODE_FILE
+if ! g++ -std=c++17 -O2 -Wall -Wextra -g -o solution $CODE_FILE 2> error.txt; then
+    cat error.txt >&2
+    exit 1
+fi
 
 # Run the compiled program
-#echo "Running C++ code..."
-./solution > output.txt 2> error.txt
+if [ -n "$INPUT_FILE" ] && [ -f "$INPUT_FILE" ]; then
+    ./solution < $INPUT_FILE
+else
+    ./solution
+fi
 
-# Return exit code from execution
 EXIT_CODE=$?
-cat output.txt
-cat error.txt >&2
 exit $EXIT_CODE

@@ -1,38 +1,21 @@
 #!/bin/bash
 set -e
 
-# Lấy tên file từ tham số dòng lệnh
+ulimit -u 1000
+ulimit -t 10
+ulimit -v 262144
+
 CODE_FILE=$1
+INPUT_FILE=$2
 
 cd /app/code
 
-# Chạy mã nguồn JavaScript với Node.js
-#echo "Running JavaScript code..."
-node $CODE_FILE > output.txt 2> error.txt
+NODE_OPTS=${NODE_OPTS:-"--max-old-space-size=128"}
+if [ -n "$INPUT_FILE" ] && [ -f "$INPUT_FILE" ]; then
+    node $NODE_OPTS $CODE_FILE < $INPUT_FILE
+else
+    node $NODE_OPTS $CODE_FILE
+fi
 
-# Trả về exit code từ lệnh Node.js
 EXIT_CODE=$?
-cat output.txt
-cat error.txt >&2
 exit $EXIT_CODE
-
-
-
-##!/bin/bash
-#set -e
-#
-## Lấy tên file và file test cases từ tham số dòng lệnh
-#CODE_FILE=$1
-#TEST_CASES_FILE=$2
-#
-#cd /app/code
-#
-## Chạy mã nguồn JavaScript với Node.js
-#echo "Running JavaScript code..."
-#node $CODE_FILE < $TEST_CASES_FILE > output.txt 2> error.txt
-#
-## Trả về exit code từ lệnh Node.js
-#EXIT_CODE=$?
-#cat output.txt
-#cat error.txt >&2
-#exit $EXIT_CODE

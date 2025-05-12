@@ -1,10 +1,9 @@
 package oj.onlineCodingCompetition.repository;
 
-import oj.onlineCodingCompetition.entity.Problem;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import oj.onlineCodingCompetition.entity.Problem;
 
 import java.util.List;
 
@@ -13,11 +12,17 @@ public interface ProblemRepository extends JpaRepository<Problem, Long> {
 
     List<Problem> findByDifficulty(String difficulty);
 
-    @Query("SELECT p FROM Problem p WHERE :topic MEMBER OF p.topics")
-    List<Problem> findByTopic(@Param("topic") String topic);
+    // Query để tìm các bài toán có chứa topic cụ thể
+    @Query("SELECT p FROM Problem p JOIN p.topics t WHERE t = :topic")
+    List<Problem> findByTopicsContaining(String topic);
 
-    List<Problem> findByTitleContainingIgnoreCase(String titleKeyword);
+    List<Problem> findByTitleContainingIgnoreCase(String keyword);
 
-    @Query("SELECT DISTINCT p.topics FROM Problem p")
+    // Lấy danh sách các topic đã được sử dụng
+    @Query("SELECT DISTINCT t FROM Problem p JOIN p.topics t ORDER BY t")
     List<String> findAllTopics();
+
+    // Tương thích với phương thức cũ
+    @Query("SELECT p FROM Problem p JOIN p.topics t WHERE t = :topic")
+    List<Problem> findByTopic(String topic);
 }

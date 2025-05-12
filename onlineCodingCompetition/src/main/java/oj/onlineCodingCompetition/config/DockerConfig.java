@@ -17,21 +17,6 @@ import java.time.Duration;
 @Configuration
 public class DockerConfig {
 
-//    @Bean
-//    public DockerClient dockerClient() {
-//        DockerClientConfig config = DefaultDockerClientConfig.createDefaultConfigBuilder().build();
-//
-//        DockerHttpClient httpClient = new ApacheDockerHttpClient.Builder()
-//                .dockerHost(config.getDockerHost())
-//                .sslConfig(config.getSSLConfig())
-//                .maxConnections(100)
-//                .connectionTimeout(Duration.ofSeconds(30))
-//                .responseTimeout(Duration.ofSeconds(45))
-//                .build();
-//
-//        return DockerClientImpl.getInstance(config, httpClient);
-//    }
-
     @Value("${docker.host:unix:///var/run/docker.sock}")
     private String dockerHost;
 

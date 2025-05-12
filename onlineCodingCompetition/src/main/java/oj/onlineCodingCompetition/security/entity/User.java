@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import oj.onlineCodingCompetition.entity.ContestRegistration;
+
 import oj.onlineCodingCompetition.entity.Submission;
 
 import java.time.LocalDateTime;
@@ -49,7 +49,7 @@ public class User {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private Set<Submission> submissions = new HashSet<>();
-
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
-    private Set<ContestRegistration> contestRegistrations = new HashSet<>();
+//
+//    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+//    private Set<ContestRegistration> contestRegistrations = new HashSet<>();
 }

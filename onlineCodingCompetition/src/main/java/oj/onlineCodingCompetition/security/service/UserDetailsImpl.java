@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import oj.onlineCodingCompetition.entity.ContestRegistration;
 import oj.onlineCodingCompetition.security.entity.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -12,6 +13,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Data
 @AllArgsConstructor
@@ -28,8 +31,14 @@ public class UserDetailsImpl implements UserDetails {
 
     private Collection<? extends GrantedAuthority> authorities;
 
+    private Set<Long> contestRegistrationIds;
+
     public static UserDetailsImpl build(User user) {
         GrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + user.getRole().toUpperCase());
+
+        Set<Long> contestRegistrationIds = user.getContestRegistrations().stream()
+                .map(ContestRegistration::getId)
+                .collect(Collectors.toSet());
 
         return UserDetailsImpl.builder()
                 .id(user.getId())
@@ -37,6 +46,7 @@ public class UserDetailsImpl implements UserDetails {
                 .email(user.getEmail())
                 .password(user.getPassword())
                 .authorities(Collections.singletonList(authority))
+                .contestRegistrationIds(contestRegistrationIds)
                 .build();
     }
 

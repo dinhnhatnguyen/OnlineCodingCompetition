@@ -30,6 +30,10 @@ public class Submission {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @ManyToOne
+    @JoinColumn(name = "contest_id")
+    private Contest contest;
+
     @Column(name = "language", nullable = false)
     private String language;
 

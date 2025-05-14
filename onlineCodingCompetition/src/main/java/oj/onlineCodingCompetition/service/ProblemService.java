@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import oj.onlineCodingCompetition.entity.Contest;
+import oj.onlineCodingCompetition.repository.ContestRepository;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -33,6 +35,8 @@ public class ProblemService {
     private final ObjectMapper objectMapper;
     private final ModelMapper modelMapper;
 
+    private final ContestRepository contestRepository;
+
     public ProblemDTO convertToDTO(Problem problem) {
         if (problem == null) {
             return null;
@@ -50,6 +54,14 @@ public class ProblemService {
             dto.setTopics(new HashSet<>(problem.getTopics()));
         } else {
             dto.setTopics(new HashSet<>());
+        }
+
+        if (problem.getContests() != null) {
+            dto.setContestIds(problem.getContests().stream()
+                    .map(Contest::getId)
+                    .collect(Collectors.toSet()));
+        } else {
+            dto.setContestIds(new HashSet<>());
         }
 
         return dto;
@@ -73,6 +85,16 @@ public class ProblemService {
             problem.setTopics(new HashSet<>(dto.getTopics()));
         } else {
             problem.setTopics(new HashSet<>());
+        }
+
+        if (dto.getContestIds() != null && !dto.getContestIds().isEmpty()) {
+            List<Contest> contests = dto.getContestIds().stream()
+                    .map(contestId -> contestRepository.findById(contestId)
+                            .orElseThrow(() -> new EntityNotFoundException("Contest not found with id: " + contestId)))
+                    .collect(Collectors.toList());
+            problem.setContests(contests);
+        } else {
+            problem.setContests(new ArrayList<>());
         }
 
         if (dto.getId() == null) {
@@ -104,6 +126,19 @@ public class ProblemService {
         Problem savedProblem = problemRepository.save(problem);
         log.info("Problem created successfully with ID: {}", savedProblem.getId());
 
+        if (problem.getContests() != null) {
+            for (Contest contest : problem.getContests()) {
+                if (contest.getProblems() == null) {
+                    contest.setProblems(new ArrayList<>());
+                }
+                if (!contest.getProblems().contains(savedProblem)) {
+                    contest.getProblems().add(savedProblem);
+                    contestRepository.save(contest);
+                    log.info("Added problem {} to contest {}", savedProblem.getId(), contest.getId());
+                }
+            }
+        }
+
         return convertToDTO(savedProblem);
     }
 
@@ -115,9 +150,30 @@ public class ProblemService {
 
         validateProblem(problem);
 
+        if (problem.getContests() != null && !problem.getContests().isEmpty()) {
+            Set<Contest> validContests = problem.getContests().stream()
+                    .map(contest -> contestRepository.findById(contest.getId())
+                            .orElseThrow(() -> new EntityNotFoundException("Contest not found with id: " + contest.getId())))
+                    .collect(Collectors.toSet());
+            problem.setContests((List<Contest>) validContests);
+        }
+
         // Save the Problem first
         Problem savedProblem = problemRepository.save(problem);
         log.info("Problem created successfully with ID: {}", savedProblem.getId());
+
+        if (savedProblem.getContests() != null) {
+            for (Contest contest : savedProblem.getContests()) {
+                if (contest.getProblems() == null) {
+                    contest.setProblems(new ArrayList<>());
+                }
+                if (!contest.getProblems().contains(savedProblem)) {
+                    contest.getProblems().add(savedProblem);
+                    contestRepository.save(contest);
+                    log.info("Added problem {} to contest {}", savedProblem.getId(), contest.getId());
+                }
+            }
+        }
 
         if (!problem.getTestCases().isEmpty()) {
             try {
@@ -179,15 +235,53 @@ public class ProblemService {
         // Save topics before mapping
         Set<String> topics = problemDTO.getTopics();
 
+        Set<Long> currentContestIds = existingProblem.getContests().stream()
+                .map(Contest::getId)
+                .collect(Collectors.toSet());
+        Set<Long> newContestIds = problemDTO.getContestIds() != null ? problemDTO.getContestIds() : new HashSet<>();
+
+
         modelMapper.map(problemDTO, existingProblem);
         existingProblem.setId(id);
 
         // Restore topics
         existingProblem.setTopics(topics);
 
+        List<Contest> newContests = newContestIds.stream()
+                .map(contestId -> contestRepository.findById(contestId)
+                        .orElseThrow(() -> new EntityNotFoundException("Contest not found with id: " + contestId)))
+                .collect(Collectors.toList());
+        existingProblem.setContests(newContests);
+
         Problem updatedProblem = problemRepository.save(existingProblem);
         log.info("Problem updated successfully with ID: {}", updatedProblem.getId());
 
+        // Đồng bộ problemIds trong Contest
+        for (Long newContestId : newContestIds) {
+            if (!currentContestIds.contains(newContestId)) {
+                Contest contest = contestRepository.findById(newContestId).orElse(null);
+                if (contest != null) {
+                    if (contest.getProblems() == null) {
+                        contest.setProblems(new ArrayList<>());
+                    }
+                    if (!contest.getProblems().contains(updatedProblem)) {
+                        contest.getProblems().add(updatedProblem);
+                        contestRepository.save(contest);
+                        log.info("Added problem {} to contest {}", updatedProblem.getId(), newContestId);
+                    }
+                }
+            }
+        }
+        for (Long oldContestId : currentContestIds) {
+            if (!newContestIds.contains(oldContestId)) {
+                Contest contest = contestRepository.findById(oldContestId).orElse(null);
+                if (contest != null && contest.getProblems() != null) {
+                    contest.getProblems().remove(updatedProblem);
+                    contestRepository.save(contest);
+                    log.info("Removed problem {} from contest {}", updatedProblem.getId(), oldContestId);
+                }
+            }
+        }
         return convertToDTO(updatedProblem);
     }
 
@@ -228,12 +322,36 @@ public class ProblemService {
         return convertToDTO(problem);
     }
 
+//    @Transactional
+//    public void deleteProblem(Long id) {
+//        log.debug("Deleting problem with ID: {}", id);
+//        if (!problemRepository.existsById(id)) {
+//            log.error("Problem not found with ID: {}", id);
+//            throw new EntityNotFoundException("Problem not found with id: " + id);
+//        }
+//
+//
+//
+//        List<TestCase> testCases = testCaseRepository.findByProblemIdOrderByTestOrderAsc(id);
+//        if (!testCases.isEmpty()) {
+//            testCaseRepository.deleteAll(testCases);
+//            log.info("Deleted {} test cases for problem ID: {}", testCases.size(), id);
+//        }
+//
+//        problemRepository.deleteById(id);
+//        log.info("Problem deleted successfully with ID: {}", id);
+//    }
+
     @Transactional
     public void deleteProblem(Long id) {
         log.debug("Deleting problem with ID: {}", id);
-        if (!problemRepository.existsById(id)) {
-            log.error("Problem not found with ID: {}", id);
-            throw new EntityNotFoundException("Problem not found with id: " + id);
+        Problem problem = problemRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Problem not found with id: " + id));
+
+        // NEW: Kiểm tra contests
+        if (!problem.getContests().isEmpty()) {
+            throw new IllegalStateException("Cannot delete problem used in active contests: " +
+                    problem.getContests().stream().map(Contest::getId).collect(Collectors.toList()));
         }
 
         List<TestCase> testCases = testCaseRepository.findByProblemIdOrderByTestOrderAsc(id);
@@ -274,6 +392,72 @@ public class ProblemService {
     public List<String> getAllTopics() {
         log.debug("Fetching all topics");
         return problemRepository.findAllTopics();
+    }
+
+    // Thêm problem vào contest
+//    @Transactional
+//    public void addProblemToContest(Long problemId, Long contestId) {
+//        log.debug("Adding problem {} to contest {}", problemId, contestId);
+//        Problem problem = problemRepository.findById(problemId)
+//                .orElseThrow(() -> new EntityNotFoundException("Problem not found with id: " + problemId));
+//        Contest contest = contestRepository.findById(contestId)
+//                .orElseThrow(() -> new EntityNotFoundException("Contest not found with id: " + contestId));
+//
+//        problem.getContests().add(contest);
+//        contest.getProblemIds().add(problemId);
+//
+//        problemRepository.save(problem);
+//        contestRepository.save(contest);
+//        log.info("Successfully added problem {} to contest {}", problemId, contestId);
+//    }
+    @Transactional
+    public void addProblemToContest(Long problemId, Long contestId) {
+        log.debug("Adding problem {} to contest {}", problemId, contestId);
+        try {
+            Problem problem = problemRepository.findById(problemId)
+                    .orElseThrow(() -> new EntityNotFoundException("Problem not found with id: " + problemId));
+            Contest contest = contestRepository.findById(contestId)
+                    .orElseThrow(() -> new EntityNotFoundException("Contest not found with id: " + contestId));
+
+
+            if (contest.getProblems() == null) {
+                contest.setProblems(new ArrayList<>());
+            }
+            if (!contest.getProblems().contains(problem)) {
+                contest.getProblems().add(problem);
+            }
+
+            // THAY ĐỔI: Lưu chỉ phía Problem, không cần lưu Contest vì @ManyToMany sẽ xử lý
+            problemRepository.save(problem);
+
+            log.info("Successfully added problem {} to contest {}", problemId, contestId);
+        } catch (Exception e) {
+            // THAY ĐỔI: Thêm try-catch để ghi log lỗi
+            log.error("Failed to add problem {} to contest {}: {}", problemId, contestId, e.getMessage());
+            throw new IllegalStateException("Failed to add problem to contest: " + problemId, e);
+        }
+    }
+
+    // Xóa problem khỏi contest
+    @Transactional
+    public void removeProblemFromContest(Long problemId, Long contestId) {
+        log.debug("Removing problem {} from contest {}", problemId, contestId);
+        Problem problem = problemRepository.findById(problemId)
+                .orElseThrow(() -> new EntityNotFoundException("Problem not found with id: " + problemId));
+        Contest contest = contestRepository.findById(contestId)
+                .orElseThrow(() -> new EntityNotFoundException("Contest not found with id: " + contestId));
+
+        if (problem.getContests() != null) {
+            problem.getContests().remove(contest);
+        }
+
+        if (contest.getProblems() != null) {
+            contest.getProblems().remove(problem);
+        }
+
+        problemRepository.save(problem);
+        contestRepository.save(contest);
+        log.info("Successfully removed problem {} from contest {}", problemId, contestId);
     }
 
     private void validateProblemDTO(ProblemDTO problemDTO) {

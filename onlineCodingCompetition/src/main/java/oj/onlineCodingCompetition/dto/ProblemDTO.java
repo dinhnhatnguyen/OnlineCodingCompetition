@@ -25,6 +25,7 @@ public class ProblemDTO {
     private String constraints;
     private Long createdById;
     private LocalDateTime createdAt;
+    private Set<Long> contestIds;
 
     @Data
     @NoArgsConstructor

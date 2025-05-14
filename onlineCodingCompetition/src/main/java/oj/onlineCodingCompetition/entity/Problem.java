@@ -11,9 +11,7 @@ import oj.onlineCodingCompetition.utils.FunctionSignatureJsonConverter;
 import org.hibernate.annotations.Type;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @Entity
 @Table(name = "problems")
@@ -78,6 +76,14 @@ public class Problem {
 
     @Column(name = "default_memory_limit")
     private Integer defaultMemoryLimit = 262144;
+
+    @ManyToMany
+    @JoinTable(
+            name = "contest_problems",
+            joinColumns = @JoinColumn(name = "problem_id"),
+            inverseJoinColumns = @JoinColumn(name = "contest_id")
+    )
+    private List<Contest> contests = new ArrayList<>();
 
     // Nested class for function signature (optional, dùng để parse JSON)
     @Data

@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import oj.onlineCodingCompetition.entity.Contest;
+import oj.onlineCodingCompetition.repository.ContestRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -20,10 +22,8 @@ import oj.onlineCodingCompetition.security.repository.UserRepository;
 import oj.onlineCodingCompetition.service.ProblemService;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/problems")
@@ -34,6 +34,7 @@ public class ProblemController {
     private final ProblemService problemService;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
+    private final ContestRepository contestRepository;
 
     @GetMapping
     public ResponseEntity<List<ProblemDTO>> getAllProblems() {
@@ -146,6 +147,17 @@ public class ProblemController {
             }
             problem.setFunctionSignatures(functionSignatures);
 
+            List<Long> contestIds = (List<Long>) problemData.get("contestIds");
+            List<Contest> contests = new ArrayList<>();
+            if (contestIds != null && !contestIds.isEmpty()) {
+                contests = contestIds.stream()
+                        .map(contestId -> contestRepository.findById(contestId)
+                                .orElseThrow(() -> new RuntimeException("Contest not found with id: " + contestId)))
+                        .collect(Collectors.toList());
+            }
+            problem.setContests(contests);
+
+
             // Set metadata
             problem.setCreatedBy(user);
             problem.setCreatedAt(LocalDateTime.now());
@@ -231,5 +243,27 @@ public class ProblemController {
         log.debug("REST request to delete problem with ID: {}", id);
         problemService.deleteProblem(id);
         return ResponseEntity.noContent().build();
+    }
+
+    //Thêm problem vào contest
+    @PostMapping("/{problemId}/contests/{contestId}")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
+    public ResponseEntity<Void> addProblemToContest(
+            @PathVariable Long problemId,
+            @PathVariable Long contestId) {
+        log.debug("REST request to add problem {} to contest {}", problemId, contestId);
+        problemService.addProblemToContest(problemId, contestId);
+        return ResponseEntity.ok().build();
+    }
+
+    //Xóa problem khỏi contest
+    @DeleteMapping("/{problemId}/contests/{contestId}")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
+    public ResponseEntity<Void> removeProblemFromContest(
+            @PathVariable Long problemId,
+            @PathVariable Long contestId) {
+        log.debug("REST request to remove problem {} from contest {}", problemId, contestId);
+        problemService.removeProblemFromContest(problemId, contestId);
+        return ResponseEntity.ok().build();
     }
 }

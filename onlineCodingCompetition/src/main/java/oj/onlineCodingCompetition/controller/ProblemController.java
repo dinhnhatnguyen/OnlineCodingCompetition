@@ -100,35 +100,34 @@ public class ProblemController {
     public ResponseEntity<ProblemDTO> createProblemWithTestCases(
             @RequestBody Map<String, Object> requestBody,
             @AuthenticationPrincipal UserDetails userDetails) {
-
         log.debug("REST request to create problem with test cases");
 
         try {
             User user = userRepository.findByUsername(userDetails.getUsername())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            // Extract problem data from the request
             @SuppressWarnings("unchecked")
             Map<String, Object> problemData = (Map<String, Object>) requestBody.get("createProblem");
 
-            // Create and populate Problem entity
             Problem problem = new Problem();
             problem.setTitle((String) problemData.get("title"));
             problem.setDescription((String) problemData.get("description"));
             problem.setDifficulty((String) problemData.get("difficulty"));
             problem.setConstraints((String) problemData.get("constraints"));
 
-            // Set topics
+            if (problemData.get("contestId") != null) {
+                Long contestId = ((Number) problemData.get("contestId")).longValue();
+                problem.setContestId(contestId);
+            }
+
             @SuppressWarnings("unchecked")
             List<String> topics = (List<String>) problemData.get("topics");
             problem.setTopics(new java.util.HashSet<>(topics));
 
-            // Set supported languages
             @SuppressWarnings("unchecked")
             Map<String, Boolean> supportedLanguages = (Map<String, Boolean>) problemData.get("supportedLanguages");
             problem.setSupportedLanguages(supportedLanguages);
 
-            // Fix for function signatures - parse JSON strings into FunctionSignature objects
             @SuppressWarnings("unchecked")
             Map<String, String> functionSignaturesMap = (Map<String, String>) problemData.get("functionSignatures");
             Map<String, Problem.FunctionSignature> functionSignatures = new HashMap<>();
@@ -157,37 +156,28 @@ public class ProblemController {
             }
             problem.setContests(contests);
 
-
-            // Set metadata
             problem.setCreatedBy(user);
             problem.setCreatedAt(LocalDateTime.now());
 
-            // Default limits
-            problem.setDefaultTimeLimit(1000); // 1 second
-            problem.setDefaultMemoryLimit(262144); // 256 MB
+            problem.setDefaultTimeLimit(1000);
+            problem.setDefaultMemoryLimit(262144);
 
-            // Initialize testCases list
             problem.setTestCases(new ArrayList<>());
 
-            // Extract test cases data from the request
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> testCasesData = (List<Map<String, Object>>) requestBody.get("createTestCases");
 
             if (testCasesData != null && !testCasesData.isEmpty()) {
                 for (Map<String, Object> testCaseData : testCasesData) {
                     TestCase testCase = new TestCase();
-
                     testCase.setInputData((String) testCaseData.get("inputData"));
                     testCase.setInputType((String) testCaseData.get("inputType"));
                     testCase.setOutputType((String) testCaseData.get("outputType"));
                     testCase.setExpectedOutputData((String) testCaseData.get("expectedOutputData"));
                     testCase.setDescription((String) testCaseData.get("description"));
-
-                    // Convert Boolean values
                     testCase.setIsExample(Boolean.TRUE.equals(testCaseData.get("isExample")));
                     testCase.setIsHidden(Boolean.TRUE.equals(testCaseData.get("isHidden")));
 
-                    // Convert numeric values safely
                     if (testCaseData.get("timeLimit") != null) {
                         testCase.setTimeLimit(((Number) testCaseData.get("timeLimit")).intValue());
                     }
@@ -207,15 +197,11 @@ public class ProblemController {
                         testCase.setEpsilon(((Number) testCaseData.get("epsilon")).doubleValue());
                     }
 
-                    // Set problem reference
                     testCase.setProblem(problem);
-
-                    // Add to problem's test cases list
                     problem.getTestCases().add(testCase);
                 }
             }
 
-            // Call the service to create the problem with test cases
             Problem createdProblem = problemService.createProblemWithTestCases(problem);
             ProblemDTO problemDTO = problemService.convertToDTO(createdProblem);
 

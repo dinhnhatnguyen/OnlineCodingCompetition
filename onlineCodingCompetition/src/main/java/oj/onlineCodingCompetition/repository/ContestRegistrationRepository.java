@@ -12,4 +12,6 @@ public interface ContestRegistrationRepository extends JpaRepository<ContestRegi
     Optional<ContestRegistration> findByContestIdAndUserId(Long contestId, Long userId);
     List<ContestRegistration> findByContestId(Long contestId);
     List<ContestRegistration> findByContestIdOrderByTotalScoreDesc(Long contestId);
+
+    long countByContestIdAndStatus(Long contestId, ContestRegistration.RegistrationStatus status);
 }

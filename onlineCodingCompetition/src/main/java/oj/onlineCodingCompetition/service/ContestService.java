@@ -5,23 +5,21 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import oj.onlineCodingCompetition.dto.ContestDTO;
 import oj.onlineCodingCompetition.dto.ContestRegistrationDTO;
+import oj.onlineCodingCompetition.entity.Contest;
+import oj.onlineCodingCompetition.entity.ContestRegistration;
 import oj.onlineCodingCompetition.entity.Problem;
+import oj.onlineCodingCompetition.repository.ContestRegistrationRepository;
+import oj.onlineCodingCompetition.repository.ContestRepository;
 import oj.onlineCodingCompetition.repository.ProblemRepository;
+import oj.onlineCodingCompetition.security.entity.User;
+import oj.onlineCodingCompetition.security.repository.UserRepository;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import oj.onlineCodingCompetition.entity.Contest;
-import oj.onlineCodingCompetition.entity.ContestRegistration;
-import oj.onlineCodingCompetition.repository.ContestRegistrationRepository;
-import oj.onlineCodingCompetition.repository.ContestRepository;
-import oj.onlineCodingCompetition.security.entity.User;
-import oj.onlineCodingCompetition.security.repository.UserRepository;
-
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -33,237 +31,165 @@ public class ContestService {
     private final ContestRepository contestRepository;
     private final ContestRegistrationRepository contestRegistrationRepository;
     private final UserRepository userRepository;
-    private final ProblemService problemService;
-    private final ModelMapper modelMapper;
     private final ProblemRepository problemRepository;
-
-//    @Transactional
-//    public ContestDTO createContest(ContestDTO contestDTO, Long creatorId) {
-//        log.debug("Creating contest with creator ID: {}", creatorId);
-//        User creator = userRepository.findById(creatorId)
-//                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + creatorId));
-//
-//        validateContestDTO(contestDTO);
-//
-//        Contest contest = convertToEntity(contestDTO);
-//        contest.setCreatedAt(LocalDateTime.now());
-//        updateContestStatus(contest);
-//
-//        Contest savedContest = contestRepository.save(contest);
-//        log.info("Contest created successfully with ID: {}", savedContest.getId());
-//
-//        // NEW: Thêm bài toán vào contest
-//        if (contestDTO.getProblemIds() != null) {
-//            for (Long problemId : contestDTO.getProblemIds()) {
-//                try {
-//                    problemService.addProblemToContest(problemId, savedContest.getId());
-//                } catch (EntityNotFoundException e) {
-//                    log.error("Failed to add problem {} to contest {}: {}", problemId, savedContest.getId(), e.getMessage());
-//                    throw new IllegalArgumentException("Invalid problem ID: " + problemId, e);
-//                }
-//            }
-//        }
-//
-//        return convertToDTO(savedContest);
-//    }
-//    @Transactional
-//    public Contest createContest(ContestDTO contestDTO, User creator) {
-//        if (creator == null) {
-//            log.debug("Attempt to create contest without a valid creator");
-//            throw new IllegalArgumentException("Creator cannot be null");
-//        }
-//
-//        log.debug("Creating contest: {} by user: {}", contestDTO.getTitle(), creator.getUsername());
-//
-//        // Validate problemIds
-//        if (contestDTO.getProblemIds() != null && !contestDTO.getProblemIds().isEmpty()) {
-//            // Check if all problems exist
-//            boolean allProblemsExist = contestDTO.getProblemIds().stream()
-//                    .allMatch(problemId -> problemRepository.existsById(problemId));
-//
-//            if (!allProblemsExist) {
-//                log.debug("Some problem IDs do not exist in the database");
-//                throw new IllegalArgumentException("One or more problem IDs are invalid");
-//            }
-//        }
-//
-//        // Set creator and ensure other fields are properly set
-//        contestDTO.setCreatedById(creator.getId());
-//        contestDTO.setCreatedAt(LocalDateTime.now());
-//
-//        // Set default status if not provided
-//        if (contestDTO.getStatus() == null) {
-//            contestDTO.setStatus(String.valueOf(Contest.ContestStatus.DRAFT));
-//        }
-//
-//        Contest savedContets = convertToEntity(contestDTO);
-//        log.debug("Saving contest to database");
-//        return contestRepository.save(savedContets);
-//    }
+    private final ModelMapper modelMapper;
 
     @Transactional
-    public Contest createContest(ContestDTO contestDTO, Long creatorId) {
-        if (creatorId == null) {
-            log.error("Attempt to create contest without a valid creator");
-            throw new IllegalArgumentException("Creator cannot be null");
-        }
+    public ContestDTO createContest(ContestDTO contestDTO, Long creatorId) {
+        log.debug("Tạo cuộc thi mới bởi user ID: {}", creatorId);
 
+        // Kiểm tra người tạo
         User creator = userRepository.findById(creatorId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + creatorId));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy user với ID: " + creatorId));
 
-        log.debug("Creating contest: {} by user: {}", contestDTO.getTitle(), creator.getUsername());
+        // Kiểm tra dữ liệu đầu vào
+        validateContestDTO(contestDTO);
 
-        // THAY ĐỔI: Validate và lấy danh sách Problem thay vì chỉ kiểm tra exists
-        List<Problem> problems = new ArrayList<>();
-        if (contestDTO.getProblemIds() != null && !contestDTO.getProblemIds().isEmpty()) {
-            problems = problemRepository.findAllById(contestDTO.getProblemIds());
-            if (problems.size() != contestDTO.getProblemIds().size()) {
-                log.error("Some problem IDs do not exist in the database: {}", contestDTO.getProblemIds());
-                throw new IllegalArgumentException("One or more problem IDs are invalid");
-            }
-        }
-
-        // Convert DTO to entity
-        Contest contest = convertToEntity(contestDTO);
+        // Tạo entity Contest - KHÔNG sử dụng modelMapper cho toàn bộ đối tượng
+        Contest contest = new Contest();
+        contest.setTitle(contestDTO.getTitle());
+        contest.setDescription(contestDTO.getDescription());
+        contest.setStartTime(contestDTO.getStartTime());
+        contest.setEndTime(contestDTO.getEndTime());
         contest.setCreatedBy(creator);
         contest.setCreatedAt(LocalDateTime.now());
-        // THAY ĐỔI: Đặt danh sách problems trực tiếp thay vì gọi addProblemToContest
-        contest.setProblems(problems);
+        contest.setPublic(contestDTO.isPublic());
+        contest.setMaxParticipants(contestDTO.getMaxParticipants());
 
-        // Set default status if not provided
+        // Đặt trạng thái mặc định
         if (contestDTO.getStatus() == null) {
             contest.setStatus(Contest.ContestStatus.DRAFT);
         } else {
             try {
                 contest.setStatus(Contest.ContestStatus.valueOf(contestDTO.getStatus()));
             } catch (IllegalArgumentException e) {
-                log.error("Invalid contest status: {}", contestDTO.getStatus());
-                throw new IllegalArgumentException("Invalid contest status: " + contestDTO.getStatus());
+                log.error("Trạng thái cuộc thi không hợp lệ: {}", contestDTO.getStatus());
+                throw new IllegalArgumentException("Trạng thái không hợp lệ: " + contestDTO.getStatus());
             }
         }
 
-        // Save contest
-        log.debug("Saving contest to database");
+        // Kiểm tra và thêm bài toán
+        List<Problem> problems = List.of();
+        if (contestDTO.getProblemIds() != null && !contestDTO.getProblemIds().isEmpty()) {
+            problems = problemRepository.findAllById(contestDTO.getProblemIds());
+            if (problems.size() != contestDTO.getProblemIds().size()) {
+                log.error("Một số bài toán không tồn tại: {}", contestDTO.getProblemIds());
+                throw new IllegalArgumentException("Một hoặc nhiều ID bài toán không hợp lệ");
+            }
+        }
+        contest.setProblems(problems);
+
+        // Log nội dung cuộc thi trước khi lưu để debug
+        log.debug("Chuẩn bị lưu cuộc thi: title={}, startTime={}, endTime={}",
+                contest.getTitle(), contest.getStartTime(), contest.getEndTime());
+
+        // Lưu cuộc thi
         Contest savedContest = contestRepository.save(contest);
-        log.debug("Contest saved with ID: {}", savedContest.getId());
+        log.info("Tạo cuộc thi thành công với ID: {}", savedContest.getId());
 
-        return savedContest;
+        return convertToDTO(savedContest);
     }
-//@Transactional
-//public Contest createContest(ContestDTO contestDTO, Long creatorId) {
-//    if (creatorId == null) {
-//        log.error("Attempt to create contest without a valid creator");
-//        throw new IllegalArgumentException("Creator cannot be null");
-//    }
-//
-//    log.debug("Creating contest: {} by user: {}", contestDTO.getTitle(),  creatorId);
-//
-//    // Validate problemIds
-//    if (contestDTO.getProblemIds() != null && !contestDTO.getProblemIds().isEmpty()) {
-//        boolean allProblemsExist = contestDTO.getProblemIds().stream()
-//                .allMatch(problemId -> problemRepository.existsById(problemId));
-//        if (!allProblemsExist) {
-//            log.error("Some problem IDs do not exist in the database: {}", contestDTO.getProblemIds());
-//            throw new IllegalArgumentException("One or more problem IDs are invalid");
-//        }
-//    }
-//    contestDTO.setCreatedById(creatorId);
-//
-//    // Convert DTO to entity
-//    Contest contest = convertToEntity(contestDTO);
 
-    /// /    contest.setCreatedBy(creatorId); // Explicitly set creator
-//    contest.setCreatedAt(LocalDateTime.now());
-//
-//    // Set default status if not provided
-//    if (contestDTO.getStatus() == null) {
-//        contest.setStatus(Contest.ContestStatus.DRAFT);
-//    } else {
-//        try {
-//            contest.setStatus(Contest.ContestStatus.valueOf(contestDTO.getStatus()));
-//        } catch (IllegalArgumentException e) {
-//            log.error("Invalid contest status: {}", contestDTO.getStatus());
-//            throw new IllegalArgumentException("Invalid contest status: " + contestDTO.getStatus());
-//        }
-//    }
-//
-//    // Save contest
-//    log.debug("Saving contest to database");
-//    Contest savedContest = contestRepository.save(contest);
-//
-//    // Update problems in contest
-//    if (contestDTO.getProblemIds() != null) {
-//        for (Long problemId : contestDTO.getProblemIds()) {
-//            problemService.addProblemToContest(problemId, savedContest.getId());
-//        }
-//    }
-//
-//    return savedContest;
-//}
     @Transactional
     public ContestDTO updateContest(Long id, ContestDTO contestDTO) {
-        log.debug("Updating contest with ID: {}", id);
-        Contest existingContest = contestRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Contest not found with id: " + id));
+        log.debug("Cập nhật cuộc thi với ID: {}", id);
 
+        // Kiểm tra cuộc thi tồn tại
+        Contest existingContest = contestRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cuộc thi với ID: " + id));
+
+        // Kiểm tra dữ liệu đầu vào
         validateContestDTO(contestDTO);
 
-        List<Long> currentProblemIds = existingContest.getProblemIds();
-        List<Long> newProblemIds = contestDTO.getProblemIds() != null ? contestDTO.getProblemIds() : List.of();
+        // Cập nhật thông tin - KHÔNG dùng modelMapper để tránh lỗi
+        if (contestDTO.getTitle() != null) {
+            existingContest.setTitle(contestDTO.getTitle());
+        }
+        if (contestDTO.getDescription() != null) {
+            existingContest.setDescription(contestDTO.getDescription());
+        }
 
-        modelMapper.map(contestDTO, existingContest);
-        existingContest.setId(id);
-        updateContestStatus(existingContest);
+        // Đảm bảo cập nhật các trường thời gian
+        existingContest.setStartTime(contestDTO.getStartTime());
+        existingContest.setEndTime(contestDTO.getEndTime());
+        existingContest.setPublic(contestDTO.isPublic());
 
+        if (contestDTO.getMaxParticipants() != null) {
+            existingContest.setMaxParticipants(contestDTO.getMaxParticipants());
+        }
+
+        // Cập nhật trạng thái
+        if (contestDTO.getStatus() != null) {
+            try {
+                existingContest.setStatus(Contest.ContestStatus.valueOf(contestDTO.getStatus()));
+            } catch (IllegalArgumentException e) {
+                log.error("Trạng thái cuộc thi không hợp lệ: {}", contestDTO.getStatus());
+                throw new IllegalArgumentException("Trạng thái không hợp lệ: " + contestDTO.getStatus());
+            }
+        }
+
+        // Cập nhật danh sách bài toán
+        List<Problem> problems = List.of();
+        if (contestDTO.getProblemIds() != null && !contestDTO.getProblemIds().isEmpty()) {
+            problems = problemRepository.findAllById(contestDTO.getProblemIds());
+            if (problems.size() != contestDTO.getProblemIds().size()) {
+                log.error("Một số bài toán không tồn tại: {}", contestDTO.getProblemIds());
+                throw new IllegalArgumentException("Một hoặc nhiều ID bài toán không hợp lệ");
+            }
+            existingContest.setProblems(problems);
+        }
+
+        // Log trước khi lưu để debug
+        log.debug("Chuẩn bị lưu cập nhật cuộc thi: title={}, startTime={}, endTime={}",
+                existingContest.getTitle(), existingContest.getStartTime(), existingContest.getEndTime());
+
+        // Lưu cập nhật
         Contest updatedContest = contestRepository.save(existingContest);
-        log.info("Contest updated successfully with ID: {}", updatedContest.getId());
-
-        // NEW: Cập nhật danh sách bài toán
-        for (Long problemId : newProblemIds) {
-            if (!currentProblemIds.contains(problemId)) {
-                problemService.addProblemToContest(problemId, updatedContest.getId());
-            }
-        }
-        for (Long problemId : currentProblemIds) {
-            if (!newProblemIds.contains(problemId)) {
-                problemService.removeProblemFromContest(problemId, updatedContest.getId());
-            }
-        }
+        log.info("Cập nhật cuộc thi thành công với ID: {}", updatedContest.getId());
 
         return convertToDTO(updatedContest);
     }
 
+    // Các phương thức còn lại giữ nguyên
     @Transactional
     public void deleteContest(Long id) {
-        log.debug("Deleting contest with ID: {}", id);
+        log.debug("Xóa cuộc thi với ID: {}", id);
+
+        // Kiểm tra cuộc thi tồn tại
         Contest contest = contestRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Contest not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cuộc thi với ID: " + id));
 
-        // NEW: Xóa registrations
+        // Xóa tất cả đăng ký
         contestRegistrationRepository.deleteAll(contest.getRegistrations());
-        log.info("Deleted {} registrations for contest ID: {}", contest.getRegistrations().size(), id);
+        log.info("Xóa {} đăng ký cho cuộc thi ID: {}", contest.getRegistrations().size(), id);
 
-        // NEW: Xóa contest khỏi problems
-        for (Long problemId : contest.getProblemIds()) {
-            problemService.removeProblemFromContest(problemId, id);
-        }
-
+        // Xóa cuộc thi
         contestRepository.deleteById(id);
-        log.info("Contest deleted successfully with ID: {}", id);
+        log.info("Xóa cuộc thi thành công với ID: {}", id);
     }
 
     @Transactional
     public ContestRegistrationDTO registerUser(Long contestId, Long userId) {
-        log.debug("Registering user {} for contest {}", userId, contestId);
-        Contest contest = contestRepository.findById(contestId)
-                .orElseThrow(() -> new EntityNotFoundException("Contest not found with id: " + contestId));
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
+        log.debug("Đăng ký user {} cho cuộc thi {}", userId, contestId);
 
+        // Kiểm tra cuộc thi và user
+        Contest contest = contestRepository.findById(contestId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cuộc thi với ID: " + contestId));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy user với ID: " + userId));
+
+        // Kiểm tra đã đăng ký chưa
         if (contestRegistrationRepository.findByContestIdAndUserId(contestId, userId).isPresent()) {
-            throw new IllegalStateException("User is already registered for this contest");
+            throw new IllegalStateException("User đã đăng ký cho cuộc thi này");
         }
 
+        // Kiểm tra giới hạn người tham gia
+        if (contest.getMaxParticipants() != null &&
+                contest.getRegistrations().stream().filter(r -> r.getStatus() == ContestRegistration.RegistrationStatus.APPROVED).count() >= contest.getMaxParticipants()) {
+            throw new IllegalStateException("Đã đạt số lượng người tham gia tối đa");
+        }
+
+        // Tạo đăng ký
         ContestRegistration registration = new ContestRegistration();
         registration.setContest(contest);
         registration.setUser(user);
@@ -272,34 +198,74 @@ public class ContestService {
         registration.setTotalScore(0.0);
 
         ContestRegistration savedRegistration = contestRegistrationRepository.save(registration);
-        log.info("User {} registered for contest {} with registration ID: {}", userId, contestId, savedRegistration.getId());
+        log.info("Đăng ký thành công cho user {} trong cuộc thi {} với ID đăng ký: {}", userId, contestId, savedRegistration.getId());
 
         return convertToRegistrationDTO(savedRegistration);
     }
-
     @Transactional
     public void approveRegistration(Long registrationId) {
-        log.debug("Approving registration with ID: {}", registrationId);
-        ContestRegistration registration = contestRegistrationRepository.findById(registrationId)
-                .orElseThrow(() -> new EntityNotFoundException("Registration not found with id: " + registrationId));
-        registration.setStatus(ContestRegistration.RegistrationStatus.APPROVED);
-        contestRegistrationRepository.save(registration);
-        log.info("Registration {} approved", registrationId);
+        log.debug("Duyệt đăng ký với ID: {}", registrationId);
+
+        try {
+            // Tìm thông tin đăng ký và nạp luôn các thông tin liên quan
+            ContestRegistration registration = contestRegistrationRepository.findById(registrationId)
+                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy đăng ký với ID: " + registrationId));
+
+            // In thông tin để debug
+            log.debug("Tìm thấy đăng ký với ID: {}, status: {}", registrationId, registration.getStatus());
+
+            // Lấy thông tin contest với xử lý LazyInitializationException
+            Contest contest = registration.getContest();
+            if (contest == null) {
+                throw new IllegalStateException("Không tìm thấy thông tin cuộc thi cho đăng ký này");
+            }
+
+            log.debug("Contest ID: {}, maxParticipants: {}", contest.getId(), contest.getMaxParticipants());
+
+            // Đếm số lượng đăng ký đã duyệt trước khi kiểm tra (không sử dụng stream để tránh LazyInitializationException)
+            long approvedCount = 0;
+            if (contest.getMaxParticipants() != null) {
+                approvedCount = contestRegistrationRepository.countByContestIdAndStatus(
+                        contest.getId(), ContestRegistration.RegistrationStatus.APPROVED);
+
+                log.debug("Số lượng đăng ký đã duyệt: {}, giới hạn: {}", approvedCount, contest.getMaxParticipants());
+
+                if (approvedCount >= contest.getMaxParticipants()) {
+                    throw new IllegalStateException("Đã đạt số lượng người tham gia tối đa");
+                }
+            }
+
+            // Cập nhật trạng thái
+            registration.setStatus(ContestRegistration.RegistrationStatus.APPROVED);
+            contestRegistrationRepository.save(registration);
+            log.info("Duyệt đăng ký {} thành công", registrationId);
+        } catch (Exception e) {
+            log.error("Lỗi khi duyệt đăng ký ID {}: {}", registrationId, e.getMessage(), e);
+            throw e; // Re-throw để transaction rollback
+        }
     }
 
     @Transactional
     public void rejectRegistration(Long registrationId) {
-        log.debug("Rejecting registration with ID: {}", registrationId);
-        ContestRegistration registration = contestRegistrationRepository.findById(registrationId)
-                .orElseThrow(() -> new EntityNotFoundException("Registration not found with id: " + registrationId));
-        registration.setStatus(ContestRegistration.RegistrationStatus.REJECTED);
-        contestRegistrationRepository.save(registration);
-        log.info("Registration {} rejected", registrationId);
+        log.debug("Từ chối đăng ký với ID: {}", registrationId);
+
+        try {
+            ContestRegistration registration = contestRegistrationRepository.findById(registrationId)
+                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy đăng ký với ID: " + registrationId));
+
+            registration.setStatus(ContestRegistration.RegistrationStatus.REJECTED);
+            contestRegistrationRepository.save(registration);
+            log.info("Từ chối đăng ký {} thành công", registrationId);
+        } catch (Exception e) {
+            log.error("Lỗi khi từ chối đăng ký ID {}: {}", registrationId, e.getMessage(), e);
+            throw e;
+        }
     }
+
 
     @Transactional(readOnly = true)
     public List<ContestDTO> getAllContests() {
-        log.debug("Fetching all contests");
+        log.debug("Lấy tất cả cuộc thi");
         return contestRepository.findAll().stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -307,49 +273,35 @@ public class ContestService {
 
     @Transactional(readOnly = true)
     public Page<ContestDTO> getContestsPage(Pageable pageable) {
-        log.debug("Fetching contests page with pageable: {}", pageable);
+        log.debug("Lấy danh sách cuộc thi theo trang với pageable: {}", pageable);
         return contestRepository.findAll(pageable)
                 .map(this::convertToDTO);
     }
 
     @Transactional(readOnly = true)
     public ContestDTO getContestById(Long id) {
-        log.debug("Fetching contest by ID: {}", id);
+        log.debug("Lấy cuộc thi theo ID: {}", id);
         Contest contest = contestRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Contest not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cuộc thi với ID: " + id));
         return convertToDTO(contest);
     }
 
     @Transactional(readOnly = true)
     public List<ContestRegistrationDTO> getLeaderboard(Long contestId) {
-        log.debug("Fetching leaderboard for contest ID: {}", contestId);
+        log.debug("Lấy bảng xếp hạng cho cuộc thi ID: {}", contestId);
         return contestRegistrationRepository.findByContestIdOrderByTotalScoreDesc(contestId).stream()
                 .map(this::convertToRegistrationDTO)
                 .collect(Collectors.toList());
     }
 
-    public ContestDTO convertToDTO(Contest contest) {
+    private ContestDTO convertToDTO(Contest contest) {
         ContestDTO dto = modelMapper.map(contest, ContestDTO.class);
         dto.setProblemIds(contest.getProblemIds());
+        dto.setCreatedById(contest.getCreatedBy().getId());
+        // Đảm bảo các trường thời gian được chuyển đổi đúng
+        dto.setStartTime(contest.getStartTime());
+        dto.setEndTime(contest.getEndTime());
         return dto;
-    }
-
-//    private Contest convertToEntity(ContestDTO dto) {
-//        Contest contest = modelMapper.map(dto, Contest.class);
-//        if (dto.getProblemIds() != null) {
-//            contest.setProblemIds(new ArrayList<>(dto.getProblemIds()));
-//        }
-//        // Ensure createdBy is not set here; it will be set in createContest
-//        contest.setCreatedBy(null);
-//        return contest;
-//    }
-
-    private Contest convertToEntity(ContestDTO dto) {
-        Contest contest = modelMapper.map(dto, Contest.class);
-//        if (dto.getProblemIds() != null) {
-//            contest.setProblemIds(new ArrayList<>(dto.getProblemIds()));
-//        }
-        return contest;
     }
 
     private ContestRegistrationDTO convertToRegistrationDTO(ContestRegistration registration) {
@@ -361,21 +313,13 @@ public class ContestService {
 
     private void validateContestDTO(ContestDTO contestDTO) {
         if (contestDTO.getStartTime() == null || contestDTO.getEndTime() == null) {
-            throw new IllegalArgumentException("Start time and end time are required");
+            throw new IllegalArgumentException("Thời gian bắt đầu và kết thúc là bắt buộc");
         }
         if (contestDTO.getEndTime().isBefore(contestDTO.getStartTime())) {
-            throw new IllegalArgumentException("End time must be after start time");
+            throw new IllegalArgumentException("Thời gian kết thúc phải sau thời gian bắt đầu");
         }
-    }
-
-    private void updateContestStatus(Contest contest) {
-        LocalDateTime now = LocalDateTime.now();
-        if (now.isBefore(contest.getStartTime())) {
-            contest.setStatus(Contest.ContestStatus.UPCOMING);
-        } else if (now.isAfter(contest.getEndTime())) {
-            contest.setStatus(Contest.ContestStatus.COMPLETED);
-        } else {
-            contest.setStatus(Contest.ContestStatus.ONGOING);
+        if (contestDTO.getMaxParticipants() != null && contestDTO.getMaxParticipants() <= 0) {
+            throw new IllegalArgumentException("Số lượng người tham gia tối đa phải lớn hơn 0");
         }
     }
 }

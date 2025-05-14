@@ -49,7 +49,6 @@ public class ProblemService {
                     .collect(Collectors.toList()));
         }
 
-        // Ensure topics are properly mapped
         if (problem.getTopics() != null) {
             dto.setTopics(new HashSet<>(problem.getTopics()));
         } else {
@@ -63,6 +62,8 @@ public class ProblemService {
         } else {
             dto.setContestIds(new HashSet<>());
         }
+
+        dto.setContestId(problem.getContestId());
 
         return dto;
     }
@@ -80,7 +81,6 @@ public class ProblemService {
 
         problem.setCreatedBy(creator);
 
-        // Ensure topics are properly mapped
         if (dto.getTopics() != null) {
             problem.setTopics(new HashSet<>(dto.getTopics()));
         } else {
@@ -96,6 +96,8 @@ public class ProblemService {
         } else {
             problem.setContests(new ArrayList<>());
         }
+
+        problem.setContestId(dto.getContestId());
 
         if (dto.getId() == null) {
             problem.setCreatedAt(LocalDateTime.now());
@@ -121,6 +123,11 @@ public class ProblemService {
                 });
 
         validateProblemDTO(problemDTO);
+
+        if (problemDTO.getContestId() != null) {
+            contestRepository.findById(problemDTO.getContestId())
+                    .orElseThrow(() -> new EntityNotFoundException("Contest not found with id: " + problemDTO.getContestId()));
+        }
 
         Problem problem = convertToEntity(problemDTO, creator);
         Problem savedProblem = problemRepository.save(problem);
@@ -150,15 +157,19 @@ public class ProblemService {
 
         validateProblem(problem);
 
+        if (problem.getContestId() != null) {
+            contestRepository.findById(problem.getContestId())
+                    .orElseThrow(() -> new EntityNotFoundException("Contest not found with id: " + problem.getContestId()));
+        }
+
         if (problem.getContests() != null && !problem.getContests().isEmpty()) {
             Set<Contest> validContests = problem.getContests().stream()
                     .map(contest -> contestRepository.findById(contest.getId())
                             .orElseThrow(() -> new EntityNotFoundException("Contest not found with id: " + contest.getId())))
                     .collect(Collectors.toSet());
-            problem.setContests((List<Contest>) validContests);
+            problem.setContests(new ArrayList<>(validContests));
         }
 
-        // Save the Problem first
         Problem savedProblem = problemRepository.save(problem);
         log.info("Problem created successfully with ID: {}", savedProblem.getId());
 
@@ -177,37 +188,28 @@ public class ProblemService {
 
         if (!problem.getTestCases().isEmpty()) {
             try {
-                // Ensure testCases list in savedProblem is initialized
                 if (savedProblem.getTestCases() == null) {
                     savedProblem.setTestCases(new ArrayList<>());
                 } else {
-                    // Clear all current test cases to avoid ConcurrentModificationException
                     savedProblem.getTestCases().clear();
                 }
 
-                // Create a copy of test cases list to avoid ConcurrentModificationException
                 List<TestCase> testCasesToAdd = new ArrayList<>(problem.getTestCases());
 
                 for (TestCase testCase : testCasesToAdd) {
-                    // Only assign Problem if not already assigned
                     if (testCase.getProblem() == null) {
                         testCase.setProblem(savedProblem);
                     }
 
-                    // Assign defaultTimeLimit and defaultMemoryLimit if not specified
                     testCase.setTimeLimit(testCase.getTimeLimit() != null ? testCase.getTimeLimit() :
                             savedProblem.getDefaultTimeLimit() != null ? savedProblem.getDefaultTimeLimit() : 1000);
                     testCase.setMemoryLimit(testCase.getMemoryLimit() != null ? testCase.getMemoryLimit() :
                             savedProblem.getDefaultMemoryLimit() != null ? savedProblem.getDefaultMemoryLimit() : 262144);
 
-                    // Save testCase to database
                     TestCase savedTestCase = testCaseRepository.save(testCase);
-
-                    // Add saved testCase to savedProblem's testCases list for synchronization
                     savedProblem.getTestCases().add(savedTestCase);
                 }
 
-                // Update problem
                 problemRepository.save(savedProblem);
 
                 log.info("Successfully created {} test cases for problem ID: {}",
@@ -427,7 +429,7 @@ public class ProblemService {
                 contest.getProblems().add(problem);
             }
 
-            // THAY ĐỔI: Lưu chỉ phía Problem, không cần lưu Contest vì @ManyToMany sẽ xử lý
+            // Lưu chỉ phía Problem, không cần lưu Contest vì @ManyToMany sẽ xử lý
             problemRepository.save(problem);
 
             log.info("Successfully added problem {} to contest {}", problemId, contestId);

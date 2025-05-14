@@ -3,7 +3,11 @@ package oj.onlineCodingCompetition.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import oj.onlineCodingCompetition.entity.Contest;
+import oj.onlineCodingCompetition.dto.ContestDTO;
+import oj.onlineCodingCompetition.dto.ContestRegistrationDTO;
+import oj.onlineCodingCompetition.security.entity.User;
+import oj.onlineCodingCompetition.security.repository.UserRepository;
+import oj.onlineCodingCompetition.service.ContestService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -12,11 +16,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
-import oj.onlineCodingCompetition.dto.ContestDTO;
-import oj.onlineCodingCompetition.dto.ContestRegistrationDTO;
-import oj.onlineCodingCompetition.security.entity.User;
-import oj.onlineCodingCompetition.security.repository.UserRepository;
-import oj.onlineCodingCompetition.service.ContestService;
 
 import java.util.List;
 
@@ -31,72 +30,55 @@ public class ContestController {
 
     @GetMapping
     public ResponseEntity<List<ContestDTO>> getAllContests() {
-        log.debug("REST request to get all contests");
+        log.debug("Yêu cầu lấy tất cả cuộc thi");
         return ResponseEntity.ok(contestService.getAllContests());
     }
 
     @GetMapping("/page")
     public ResponseEntity<Page<ContestDTO>> getContestsPage(Pageable pageable) {
-        log.debug("REST request to get a page of contests");
+        log.debug("Yêu cầu lấy danh sách cuộc thi theo trang");
         return ResponseEntity.ok(contestService.getContestsPage(pageable));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ContestDTO> getContestById(@PathVariable Long id) {
-        log.debug("REST request to get contest by ID: {}", id);
+        log.debug("Yêu cầu lấy cuộc thi với ID: {}", id);
         return ResponseEntity.ok(contestService.getContestById(id));
     }
 
     @GetMapping("/{id}/leaderboard")
     public ResponseEntity<List<ContestRegistrationDTO>> getLeaderboard(@PathVariable Long id) {
-        log.debug("REST request to get leaderboard for contest ID: {}", id);
+        log.debug("Yêu cầu lấy bảng xếp hạng cho cuộc thi ID: {}", id);
         return ResponseEntity.ok(contestService.getLeaderboard(id));
     }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<ContestDTO> createContest(
-            @Valid @RequestBody ContestDTO contestCreateDTO,
+            @Valid @RequestBody ContestDTO contestDTO,
             @AuthenticationPrincipal UserDetails userDetails) {
-        log.debug("REST request to create contest: {} by user: {}",
-                contestCreateDTO.getTitle(), userDetails != null ? userDetails.getUsername() : "null");
-
-        if (userDetails == null) {
-            log.error("AuthenticationPrincipal user is null");
-            throw new IllegalStateException("User authentication required");
-        }
+        log.debug("Yêu cầu tạo cuộc thi: {} bởi user: {}", contestDTO.getTitle(), userDetails.getUsername());
 
         User user = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        Contest createdContest = contestService.createContest(contestCreateDTO, user.getId());
-        ContestDTO createdContestDTO = contestService.convertToDTO(createdContest);
-        return new ResponseEntity<>(createdContestDTO, HttpStatus.CREATED);
-    }
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
 
-//    public ResponseEntity<ContestDTO> createContest(
-//            @Valid @RequestBody ContestDTO contestDTO,
-//            @AuthenticationPrincipal UserDetails userDetails) {
-//        log.debug("REST request to create contest: {}", contestDTO);
-//        User user = userRepository.findByUsername(userDetails.getUsername())
-//                .orElseThrow(() -> new RuntimeException("User not found"));
-//        ContestDTO createdContest = contestService.createContest(contestDTO, user.getId());
-//        return new ResponseEntity<>(createdContest, HttpStatus.CREATED);
-//    }
+        ContestDTO createdContest = contestService.createContest(contestDTO, user.getId());
+        return new ResponseEntity<>(createdContest, HttpStatus.CREATED);
+    }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<ContestDTO> updateContest(
             @PathVariable Long id,
             @Valid @RequestBody ContestDTO contestDTO) {
-
-        log.debug("REST request to update contest with ID: {}", id);
+        log.debug("Yêu cầu cập nhật cuộc thi với ID: {}", id);
         return ResponseEntity.ok(contestService.updateContest(id, contestDTO));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<Void> deleteContest(@PathVariable Long id) {
-        log.debug("REST request to delete contest with ID: {}", id);
+        log.debug("Yêu cầu xóa cuộc thi với ID: {}", id);
         contestService.deleteContest(id);
         return ResponseEntity.noContent().build();
     }
@@ -105,16 +87,18 @@ public class ContestController {
     public ResponseEntity<ContestRegistrationDTO> registerUser(
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails userDetails) {
-        log.debug("REST request to register user for contest ID: {}", id);
+        log.debug("Yêu cầu đăng ký user cho cuộc thi ID: {}", id);
+
         User user = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
+
         return ResponseEntity.ok(contestService.registerUser(id, user.getId()));
     }
 
     @PostMapping("/registrations/{registrationId}/approve")
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<Void> approveRegistration(@PathVariable Long registrationId) {
-        log.debug("REST request to approve registration with ID: {}", registrationId);
+        log.debug("Yêu cầu duyệt đăng ký với ID: {}", registrationId);
         contestService.approveRegistration(registrationId);
         return ResponseEntity.ok().build();
     }
@@ -122,7 +106,7 @@ public class ContestController {
     @PostMapping("/registrations/{registrationId}/reject")
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<Void> rejectRegistration(@PathVariable Long registrationId) {
-        log.debug("REST request to reject registration with ID: {}", registrationId);
+        log.debug("Yêu cầu từ chối đăng ký với ID: {}", registrationId);
         contestService.rejectRegistration(registrationId);
         return ResponseEntity.ok().build();
     }

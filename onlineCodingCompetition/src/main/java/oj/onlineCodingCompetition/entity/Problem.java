@@ -77,6 +77,9 @@ public class Problem {
     @Column(name = "default_memory_limit")
     private Integer defaultMemoryLimit = 262144;
 
+    @Column(name = "contest_id")
+    private Long contestId;
+
     @ManyToMany
     @JoinTable(
             name = "contest_problems",

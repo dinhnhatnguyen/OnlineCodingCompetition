@@ -14,27 +14,28 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ContestRegistration {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "contest_id", nullable = false)
     private Contest contest;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @Column(name = "registered_at")
-    private LocalDateTime registeredAt = LocalDateTime.now();
+    private LocalDateTime registeredAt;
 
-    @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
-    private RegistrationStatus status = RegistrationStatus.PENDING;
+    @Column(name = "status", nullable = false)
+    private RegistrationStatus status;
 
     @Column(name = "total_score")
-    private Double totalScore = 0.0;
+    private Double totalScore;
 
     public enum RegistrationStatus {
         PENDING, APPROVED, REJECTED

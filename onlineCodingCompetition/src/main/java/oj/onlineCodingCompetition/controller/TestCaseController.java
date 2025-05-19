@@ -1,6 +1,7 @@
 package oj.onlineCodingCompetition.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/test-cases")
 @RequiredArgsConstructor
+@Tag(name = "Testcase", description = "API để quản lý TestCase")
+
 public class TestCaseController {
 
     private final TestCaseService testCaseService;

@@ -1,6 +1,7 @@
 package oj.onlineCodingCompetition.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/problems")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Problem ", description = "API để quản lý Problem")
 public class ProblemController {
 
     private final ProblemService problemService;

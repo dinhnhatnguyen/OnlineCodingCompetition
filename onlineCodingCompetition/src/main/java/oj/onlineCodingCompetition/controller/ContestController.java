@@ -1,5 +1,6 @@
 package oj.onlineCodingCompetition.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,7 @@ import java.util.List;
 @RequestMapping("/api/contests")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Contest ", description = "API để quản lý Contest")
 public class ContestController {
 
     private final ContestService contestService;

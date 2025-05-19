@@ -1,5 +1,6 @@
 package oj.onlineCodingCompetition.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -14,6 +15,7 @@ import oj.onlineCodingCompetition.service.SubmissionService;
 @RestController
 @RequestMapping("/api/submissions")
 @RequiredArgsConstructor
+@Tag(name = "Submission", description = "API để quản lý submission")
 public class SubmissionController {
 
     private final SubmissionService submissionService;

@@ -65,7 +65,7 @@ input[type='password'] {
   width: 100%;
   padding: 0.75rem;
   margin-top: 1rem;
-  background: linear-gradient(45deg, #8a2be2, #da70d6);
+  background: linear-gradient(45deg, #ff0077, #da4f94);
   border: none;
   border-radius: 5px;
   color: white;
@@ -80,8 +80,8 @@ input[type='password'] {
   cursor: pointer;
 }
 
-.purple {
-  background: linear-gradient(45deg, #8a2be2, #da70d6);
+.pink {
+  background: linear-gradient(45deg, #ff0077, #da4f94);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -100,6 +100,6 @@ input[type='password'] {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: linear-gradient(45deg, #8a2be2, #da70d6);
+  background: linear-gradient(45deg, #ff0077, #da4f94);
   margin-right: 10px;
 }

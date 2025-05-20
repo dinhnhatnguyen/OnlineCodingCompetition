@@ -125,7 +125,6 @@ public class WorkerService {
                         }
                     }
 
-
                     // Cập nhật trạng thái thành PROCESSING
                     log.info("Processing submission {} with status: {}", submissionId, submission.getStatus());
                     submission.setStatus(Submission.SubmissionStatus.PROCESSING);
@@ -151,7 +150,7 @@ public class WorkerService {
                     int passedTestCases = 0;
                     double totalScore = 0.0;
                     boolean earlyStop = false;
-                    long totalRuntimeMs = 0;
+                    List<Long> runtimeMsList = new ArrayList<>(); // Danh sách lưu runtime của từng test case
                     long totalMemoryUsedKb = 0;
 
                     List<TestCaseResult> testCaseResults = new ArrayList<>();
@@ -159,7 +158,8 @@ public class WorkerService {
                     for (TestCase testCase : testCases) {
                         TestCaseResult result = runTestCase(submission, testCase);
 
-                        totalRuntimeMs += result.getRuntimeMs();
+                        // Lưu runtimeMs vào danh sách
+                        runtimeMsList.add((long) result.getRuntimeMs());
                         totalMemoryUsedKb = Math.max(totalMemoryUsedKb, result.getMemoryUsedKb());
 
                         if (result.getStatus() == TestCaseResult.TestCaseStatus.PASSED) {
@@ -180,11 +180,16 @@ public class WorkerService {
                         continue;
                     }
 
+                    // Tính trung bình runtimeMs
+                    int averageRuntimeMs = 0;
+                    if (!runtimeMsList.isEmpty()) {
+                        long sumRuntimeMs = runtimeMsList.stream().mapToLong(Long::longValue).sum();
+                        averageRuntimeMs = (int) (sumRuntimeMs / runtimeMsList.size());
+                    }
 
-                    // THAY ĐỔI: Lưu runtimeMs và memoryUsedKb vào submission
-                    submission.setRuntimeMs((int) totalRuntimeMs);
+                    // Lưu runtimeMs và memoryUsedKb vào submission
+                    submission.setRuntimeMs(averageRuntimeMs);
                     submission.setMemoryUsedKb((int) totalMemoryUsedKb);
-
 
                     // Cập nhật kết quả cuối cùng
                     if (earlyStop) {
@@ -197,8 +202,8 @@ public class WorkerService {
                     submission.setTotalTestCases(testCases.size());
                     submission.setScore(totalScore);
                     submission.setCompletedAt(LocalDateTime.now());
-                    log.info("Final submission status: {}, passed: {}, total: {}, score: {}",
-                            submission.getStatus(), passedTestCases, testCases.size(), totalScore);
+                    log.info("Final submission status: {}, passed: {}, total: {}, score: {}, average runtime: {}ms",
+                            submission.getStatus(), passedTestCases, testCases.size(), totalScore, averageRuntimeMs);
                     submissionService.updateSubmission(submission);
 
                     // Xóa message khỏi queue sau khi xử lý thành công
@@ -326,16 +331,27 @@ public class WorkerService {
         switch (language.toLowerCase()) {
             case "java":
                 StringBuilder javaMain = new StringBuilder();
-                javaMain.append("import java.util.Scanner;\n\n");
+                javaMain.append("import java.util.Scanner;\n");
+                javaMain.append("import java.util.Arrays;\n\n");
                 javaMain.append("public class Main {\n");
                 javaMain.append("    public static void main(String[] args) {\n");
                 javaMain.append("        Scanner scanner = new Scanner(System.in);\n");
 
                 StringBuilder paramList = new StringBuilder();
                 for (int i = 0; i < paramTypes.size(); i++) {
-                    String paramType = paramTypes.get(i);
+                    String paramType = paramTypes.get(i).toLowerCase();
                     String paramName = "param" + i;
-                    switch (paramType.toLowerCase()) {
+                    switch (paramType) {
+                        case "int[]":
+                            // Parse array input like "[2,7,11,15]"
+                            javaMain.append("        String ").append(paramName).append("Str = scanner.nextLine();\n");
+                            javaMain.append("        ").append(paramName).append("Str = ").append(paramName).append("Str.replace(\"[\", \"\").replace(\"]\", \"\");\n");
+                            javaMain.append("        String[] ").append(paramName).append("Parts = ").append(paramName).append("Str.split(\",\");\n");
+                            javaMain.append("        int[] ").append(paramName).append(" = new int[").append(paramName).append("Parts.length];\n");
+                            javaMain.append("        for (int i = 0; i < ").append(paramName).append("Parts.length; i++) {\n");
+                            javaMain.append("            ").append(paramName).append("[i] = Integer.parseInt(").append(paramName).append("Parts[i].trim());\n");
+                            javaMain.append("        }\n");
+                            break;
                         case "string":
                             javaMain.append("        String ").append(paramName).append(" = scanner.nextLine();\n");
                             break;
@@ -353,8 +369,14 @@ public class WorkerService {
                 }
 
                 javaMain.append("        ").append(mainClassName).append(" solution = new ").append(mainClassName).append("();\n");
-                javaMain.append("        ").append(returnType).append(" result = solution.").append(functionName).append("(").append(paramList.toString()).append(");\n");
-                javaMain.append("        System.out.println(result);\n");
+                javaMain.append("        ").append(returnType).append(" result = solution.").append(functionName).append("(").append(paramList).append(");\n");
+
+                // Handle output based on returnType
+                if (returnType.toLowerCase().equals("int[]")) {
+                    javaMain.append("        System.out.println(Arrays.toString(result).replace(\" \", \"\"));\n");
+                } else {
+                    javaMain.append("        System.out.println(result);\n");
+                }
                 javaMain.append("    }\n");
                 javaMain.append("}\n");
                 return javaMain.toString();

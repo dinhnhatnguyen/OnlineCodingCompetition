@@ -14,7 +14,7 @@ const Register = ({ switchToLogin }) => {
         <input type="password" placeholder="Password" />
         <input type="password" placeholder="Confirm Password" />
         <button className="btn">Register</button>
-      <div className="link" onClick={switchToLogin}>Already have an account? Log In</div>
+        <div className="link" onClick={switchToLogin}>Already have an account? Log In</div>
       </div>
     </div>
   );

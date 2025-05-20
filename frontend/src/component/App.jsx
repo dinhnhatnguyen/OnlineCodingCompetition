@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { FaBolt, FaChartLine, FaGraduationCap } from 'react-icons/fa';
 import Login from './login';
-import Register from '/register';
+import Register from './register';
 import './styles.css';
 
 const App = () => {
@@ -32,7 +33,7 @@ const App = () => {
 
       <div className="info-container">
         <h1>
-          Online Coding <span className="purple">Competition</span> System
+          Online Coding <span className="pink-gradient">Competition</span> System
         </h1>
         <p>
           Sharpen your coding skills, compete with peers, and track your progress with our university-focused coding platform.
@@ -40,16 +41,19 @@ const App = () => {
         <div className="features">
           <div className="feature">
             <span className="feature-dot"></span>
+            <FaChartLine className="pink-gradient" style={{ marginRight: '10px' }} />
             <strong>Practice & Improve</strong><br />
             Solve problems of varying difficulty in multiple programming languages.
           </div>
           <div className="feature">
             <span className="feature-dot"></span>
+            <FaBolt className="pink-gradient" style={{ marginRight: '10px' }} />
             <strong>Compete & Challenge</strong><br />
             Participate in timed competitions and climb the university leaderboard.
           </div>
           <div className="feature">
             <span className="feature-dot"></span>
+            <FaGraduationCap className="pink-gradient" style={{ marginRight: '10px' }} />
             <strong>Learn & Grow</strong><br />
             Track your progress, analyze submission history, and enhance your skills.
           </div>

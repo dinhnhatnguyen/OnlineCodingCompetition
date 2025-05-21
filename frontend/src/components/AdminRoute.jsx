@@ -9,7 +9,7 @@ const AdminRoute = ({ children }) => {
     return <div>Loading...</div>;
   }
 
-  if (!user || user.role !== "ADMIN") {
+  if (!user || (user.role !== "admin" && user.role !== "instructor")) {
     return <Navigate to="/" replace />;
   }
 

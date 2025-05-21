@@ -38,6 +38,10 @@ const Header = () => {
     // Add your theme toggle logic here
   };
 
+  // Kiểm tra xem user có phải là admin hoặc instructor không
+  const isAdminOrInstructor =
+    user && (user.role === "admin" || user.role === "instructor");
+
   return (
     <header className="bg-black text-white p-4 flex justify-between items-center">
       <div className="flex items-center space-x-6">
@@ -58,6 +62,14 @@ const Header = () => {
           >
             Contests
           </Link>
+          {isAdminOrInstructor && (
+            <Link
+              to="/admin"
+              className="text-primary-pink hover:text-pink-400 transition-colors"
+            >
+              Quản lý
+            </Link>
+          )}
         </nav>
       </div>
 

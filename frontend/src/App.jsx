@@ -10,9 +10,17 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import PrivateRoute from "./components/PrivateRoute";
 import AdminRoute from "./components/AdminRoute";
+
+// Admin/Instructor pages
+import Dashboard from "./pages/admin/Dashboard";
+import DashboardHome from "./pages/admin/DashboardHome";
 import ProblemManagement from "./pages/admin/ProblemManagement";
 import CreateProblem from "./pages/admin/CreateProblem";
+import CreateAdvancedProblem from "./pages/admin/CreateAdvancedProblem";
 import EditProblem from "./pages/admin/EditProblem";
+import ContestManagement from "./pages/admin/ContestManagement";
+import CreateContest from "./pages/admin/CreateContest";
+import EditContest from "./pages/admin/EditContest";
 
 function App() {
   return (
@@ -25,31 +33,31 @@ function App() {
           <Route path="/contests" element={<ContestsPage />} />
           <Route path="/contests/:id" element={<ContestDetails />} />
 
-          {/* Admin Routes */}
+          {/* Admin/Instructor Routes with Dashboard Layout */}
           <Route
-            path="/admin/problems"
+            path="/admin"
             element={
               <AdminRoute>
-                <ProblemManagement />
+                <Dashboard />
               </AdminRoute>
             }
-          />
-          <Route
-            path="/admin/problems/create"
-            element={
-              <AdminRoute>
-                <CreateProblem />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/admin/problems/edit/:id"
-            element={
-              <AdminRoute>
-                <EditProblem />
-              </AdminRoute>
-            }
-          />
+          >
+            <Route index element={<DashboardHome />} />
+
+            {/* Problem Management Routes */}
+            <Route path="problems" element={<ProblemManagement />} />
+            <Route path="problems/create" element={<CreateProblem />} />
+            <Route
+              path="problems/create-advanced"
+              element={<CreateAdvancedProblem />}
+            />
+            <Route path="problems/edit/:id" element={<EditProblem />} />
+
+            {/* Contest Management Routes */}
+            <Route path="contests" element={<ContestManagement />} />
+            <Route path="contests/create" element={<CreateContest />} />
+            <Route path="contests/edit/:id" element={<EditContest />} />
+          </Route>
         </Routes>
       </AuthProvider>
     </NotificationProvider>

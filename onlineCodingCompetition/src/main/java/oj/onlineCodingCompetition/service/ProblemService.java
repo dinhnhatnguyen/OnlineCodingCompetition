@@ -296,7 +296,7 @@ public class ProblemService {
     }
 
     public Problem.FunctionSignature getFunctionSignature(Long problemId, String language) {
-        Problem problem = problemRepository.findById(problemId)
+        Problem problem = problemRepository.findByIdWithFunctionSignatures(problemId)
                 .orElseThrow(() -> new EntityNotFoundException("Problem not found with id: " + problemId));
         Problem.FunctionSignature signature = problem.getFunctionSignatures().get(language.toLowerCase());
         if (signature == null) {

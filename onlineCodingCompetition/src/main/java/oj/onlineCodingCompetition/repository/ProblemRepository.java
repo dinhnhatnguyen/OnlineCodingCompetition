@@ -2,10 +2,12 @@ package oj.onlineCodingCompetition.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import oj.onlineCodingCompetition.entity.Problem;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ProblemRepository extends JpaRepository<Problem, Long> {
@@ -25,4 +27,8 @@ public interface ProblemRepository extends JpaRepository<Problem, Long> {
     // Tương thích với phương thức cũ
     @Query("SELECT p FROM Problem p JOIN p.topics t WHERE t = :topic")
     List<Problem> findByTopic(String topic);
+
+    // Add method to fetch the problem with function signatures eagerly loaded
+    @Query("SELECT p FROM Problem p LEFT JOIN FETCH p.functionSignatures WHERE p.id = :id")
+    Optional<Problem> findByIdWithFunctionSignatures(@Param("id") Long id);
 }

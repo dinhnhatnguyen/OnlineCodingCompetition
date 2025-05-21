@@ -6,6 +6,7 @@ import Problems from "./pages/Problems";
 import ProblemDetails from "./pages/ProblemDetails";
 import ContestsPage from "./pages/ContestsPage";
 import ContestDetails from "./pages/ContestDetails";
+import SubmissionDetails from "./pages/SubmissionDetails";
 import { AuthProvider } from "./contexts/AuthContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import PrivateRoute from "./components/PrivateRoute";
@@ -32,6 +33,7 @@ function App() {
           <Route path="/problems/:id" element={<ProblemDetails />} />
           <Route path="/contests" element={<ContestsPage />} />
           <Route path="/contests/:id" element={<ContestDetails />} />
+          <Route path="/submissions/:id" element={<SubmissionDetails />} />
 
           {/* Admin/Instructor Routes with Dashboard Layout */}
           <Route

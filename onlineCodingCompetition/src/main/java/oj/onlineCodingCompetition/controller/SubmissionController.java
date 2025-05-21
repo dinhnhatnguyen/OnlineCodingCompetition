@@ -9,8 +9,11 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import oj.onlineCodingCompetition.dto.SubmissionDTO;
+import oj.onlineCodingCompetition.dto.TestCaseResultDTO;
 import oj.onlineCodingCompetition.security.repository.UserRepository;
 import oj.onlineCodingCompetition.service.SubmissionService;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/submissions")
@@ -35,5 +38,30 @@ public class SubmissionController {
     @GetMapping("/{id}")
     public ResponseEntity<SubmissionDTO> getSubmissionById(@PathVariable Long id) {
         return ResponseEntity.ok(submissionService.getSubmissionById(id));
+    }
+    
+    @GetMapping("/{id}/test-cases")
+    public ResponseEntity<List<TestCaseResultDTO>> getSubmissionTestCases(@PathVariable Long id) {
+        return ResponseEntity.ok(submissionService.getTestCaseResults(id));
+    }
+    
+    @PostMapping("/{problemId}/mark-solved")
+    public ResponseEntity<?> markProblemSolved(
+            @PathVariable Long problemId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"))
+                .getId();
+        submissionService.markProblemSolved(problemId, userId);
+        return ResponseEntity.ok().build();
+    }
+    
+    @GetMapping("/user/solved")
+    public ResponseEntity<List<Long>> getUserSolvedProblems(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"))
+                .getId();
+        return ResponseEntity.ok(submissionService.getUserSolvedProblems(userId));
     }
 }

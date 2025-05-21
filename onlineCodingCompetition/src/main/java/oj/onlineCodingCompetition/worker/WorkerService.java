@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import oj.onlineCodingCompetition.entity.Problem;
 import oj.onlineCodingCompetition.repository.ProblemRepository;
+import oj.onlineCodingCompetition.repository.TestCaseResultRepository;
 import oj.onlineCodingCompetition.security.entity.User;
 import oj.onlineCodingCompetition.security.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,6 +41,7 @@ public class WorkerService {
     private final AmazonSQS amazonSQS;
     private final SubmissionService submissionService;
     private final TestCaseRepository testCaseRepository;
+    private final TestCaseResultRepository testCaseResultRepository;
     private final TestCaseService testCaseService;
     private final ProblemService problemService;
     private final ObjectMapper objectMapper;
@@ -80,7 +82,6 @@ public class WorkerService {
         private long memoryUsedKb;
     }
 
-    @Transactional
     public void processSubmissions() {
         while (true) {
             ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(queueUrl)
@@ -99,6 +100,8 @@ public class WorkerService {
 
                     // Lấy submission từ cơ sở dữ liệu
                     Long submissionId = Long.valueOf(messageMap.get("submissionId").toString());
+                    Long problemId = Long.valueOf(messageMap.get("problemId").toString());
+                    Long userId = Long.valueOf(messageMap.get("userId").toString());
 
                     // Thêm cơ chế retry với backoff để tìm submission
                     int maxRetries = 3;
@@ -107,7 +110,7 @@ public class WorkerService {
 
                     while (retryCount < maxRetries) {
                         try {
-                            submission = submissionService.getSubmissionEntityById(submissionId);
+                            submission = fetchSubmission(submissionId);
                             break; // Thoát vòng lặp nếu tìm thấy
                         } catch (Exception e) {
                             retryCount++;
@@ -125,86 +128,72 @@ public class WorkerService {
                         }
                     }
 
-                    // Cập nhật trạng thái thành PROCESSING
-                    log.info("Processing submission {} with status: {}", submissionId, submission.getStatus());
-                    submission.setStatus(Submission.SubmissionStatus.PROCESSING);
-                    submissionService.updateSubmission(submission);
+                    // Use a new transaction to update status to PROCESSING
+                    updateSubmissionStatus(submissionId, Submission.SubmissionStatus.PROCESSING);
                     log.info("Submission {} set to PROCESSING", submissionId);
 
-                    // Lấy Problem và User từ database
-                    Long problemId = Long.valueOf(messageMap.get("problemId").toString());
-                    Long userId = Long.valueOf(messageMap.get("userId").toString());
-                    Problem problem = problemRepository.findById(problemId)
-                            .orElseThrow(() -> new RuntimeException("Problem not found: " + problemId));
-                    User user = userRepository.findById(userId)
-                            .orElseThrow(() -> new RuntimeException("User not found: " + userId));
-
-                    // Đảm bảo submission có thông tin đúng
-                    submission.setProblem(problem);
-                    submission.setUser(user);
-                    submission.setLanguage((String) messageMap.get("language"));
-                    submission.setSourceCode((String) messageMap.get("sourceCode"));
-
-                    // Lấy test cases
-                    List<TestCase> testCases = testCaseRepository.findByProblemIdOrderByTestOrderAsc(problem.getId());
+                    // Fetch problem in a separate transaction
+                    Problem problem = fetchProblem(problemId);
+                    
+                    // Use the data we need outside of transaction
+                    String language = submission.getLanguage();
+                    String sourceCode = submission.getSourceCode();
+                    
+                    // Load test cases in a separate transaction
+                    List<TestCase> testCases = fetchTestCases(problemId);
+                    
+                    // These operations happen outside any transaction boundary
                     int passedTestCases = 0;
-                    double totalScore = 0.0;
+                    int totalTestCases = testCases.size();
                     boolean earlyStop = false;
-                    List<Long> runtimeMsList = new ArrayList<>(); // Danh sách lưu runtime của từng test case
+                    double totalScore = 0.0;
                     long totalMemoryUsedKb = 0;
-
+                    List<Long> runtimeMsList = new ArrayList<>();
                     List<TestCaseResult> testCaseResults = new ArrayList<>();
 
+                    // Process each test case - this is the CPU intensive part that should be outside transactions
                     for (TestCase testCase : testCases) {
                         TestCaseResult result = runTestCase(submission, testCase);
-
-                        // Lưu runtimeMs vào danh sách
-                        runtimeMsList.add((long) result.getRuntimeMs());
-                        totalMemoryUsedKb = Math.max(totalMemoryUsedKb, result.getMemoryUsedKb());
-
+                        testCaseResults.add(result);
+                        
                         if (result.getStatus() == TestCaseResult.TestCaseStatus.PASSED) {
                             passedTestCases++;
-                            totalScore += result.getScore() != null ? result.getScore() : 1.0;
-                        } else {
+                            totalScore += testCase.getWeight() != null ? testCase.getWeight() : 1.0;
+                        } else if (testCase.getIsExample() && result.getStatus() == TestCaseResult.TestCaseStatus.FAILED) {
+                            // Nếu test case ví dụ không pass, dừng sớm
                             earlyStop = true;
                             break;
                         }
-
-                        log.debug("Saved test case result for test case {} in submission {}", testCase.getId(), submissionId);
+                        
+                        // Safely handle null values for runtimeMs and memoryUsedKb
+                        if (result.getRuntimeMs() != null) {
+                            runtimeMsList.add((long) result.getRuntimeMs());
+                        }
+                        if (result.getMemoryUsedKb() != null) {
+                            totalMemoryUsedKb += result.getMemoryUsedKb();
+                        }
                     }
 
-                    // Tải lại submission để đảm bảo phiên bản mới nhất
-                    submission = submissionService.getSubmissionEntityById(submissionId);
-                    if (submission == null) {
-                        log.error("Submission {} not found after processing test cases", submissionId);
-                        continue;
-                    }
-
-                    // Tính trung bình runtimeMs
+                    // Calculate final results
                     int averageRuntimeMs = 0;
                     if (!runtimeMsList.isEmpty()) {
                         long sumRuntimeMs = runtimeMsList.stream().mapToLong(Long::longValue).sum();
                         averageRuntimeMs = (int) (sumRuntimeMs / runtimeMsList.size());
                     }
 
-                    // Lưu runtimeMs và memoryUsedKb vào submission
-                    submission.setRuntimeMs(averageRuntimeMs);
-                    submission.setMemoryUsedKb((int) totalMemoryUsedKb);
-
-                    // Cập nhật kết quả cuối cùng
-                    if (earlyStop) {
-                        submission.setStatus(Submission.SubmissionStatus.WRONG_ANSWER);
-                    } else {
-                        submission.setStatus(passedTestCases == testCases.size() ?
-                                Submission.SubmissionStatus.ACCEPTED : Submission.SubmissionStatus.WRONG_ANSWER);
-                    }
-                    submission.setPassedTestCases(passedTestCases);
-                    submission.setTotalTestCases(testCases.size());
-                    submission.setScore(totalScore);
-                    submission.setCompletedAt(LocalDateTime.now());
-                    log.info("Final submission status: {}, passed: {}, total: {}, score: {}, average runtime: {}ms",
-                            submission.getStatus(), passedTestCases, testCases.size(), totalScore, averageRuntimeMs);
-                    submissionService.updateSubmission(submission);
+                    // Update final results in a new transaction
+                    updateFinalResults(
+                        submissionId, 
+                        earlyStop ? Submission.SubmissionStatus.WRONG_ANSWER : 
+                            (passedTestCases == testCases.size() ? 
+                                Submission.SubmissionStatus.ACCEPTED : Submission.SubmissionStatus.WRONG_ANSWER),
+                        passedTestCases,
+                        totalTestCases,
+                        totalScore,
+                        averageRuntimeMs,
+                        (int) totalMemoryUsedKb,
+                        testCaseResults
+                    );
 
                     // Xóa message khỏi queue sau khi xử lý thành công
                     amazonSQS.deleteMessage(queueUrl, message.getReceiptHandle());
@@ -217,7 +206,65 @@ public class WorkerService {
         }
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    protected Submission fetchSubmission(Long submissionId) {
+        return submissionService.getSubmissionEntityById(submissionId);
+    }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    protected Problem fetchProblem(Long problemId) {
+        return problemRepository.findByIdWithFunctionSignatures(problemId)
+            .orElseThrow(() -> new RuntimeException("Problem not found: " + problemId));
+        
+        // No need to force initialization anymore as we're using LEFT JOIN FETCH
+        // if (problem.getFunctionSignatures() != null) {
+        //     problem.getFunctionSignatures().size();
+        // }
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    protected List<TestCase> fetchTestCases(Long problemId) {
+        return testCaseRepository.findByProblemIdOrderByTestOrderAsc(problemId);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    protected void updateSubmissionStatus(Long submissionId, Submission.SubmissionStatus status) {
+        Submission submission = submissionService.getSubmissionEntityById(submissionId);
+        submission.setStatus(status);
+        submissionService.updateSubmission(submission);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    protected void updateFinalResults(
+            Long submissionId,
+            Submission.SubmissionStatus status,
+            int passedTestCases,
+            int totalTestCases,
+            double score,
+            int runtimeMs,
+            int memoryUsedKb,
+            List<TestCaseResult> testCaseResults
+    ) {
+        Submission submission = submissionService.getSubmissionEntityById(submissionId);
+        submission.setStatus(status);
+        submission.setPassedTestCases(passedTestCases);
+        submission.setTotalTestCases(totalTestCases);
+        submission.setScore(score);
+        submission.setRuntimeMs(runtimeMs);
+        submission.setMemoryUsedKb(memoryUsedKb);
+        submission.setCompletedAt(LocalDateTime.now());
+        submissionService.updateSubmission(submission);
+        
+        // Save test case results in the same transaction
+        for (TestCaseResult result : testCaseResults) {
+            result.setSubmission(submission);
+            // Don't save the test case itself, which is likely causing confusion
+            // testCaseRepository.save(result.getTestCase());
+            
+            // Instead, save the test case result
+            testCaseResultRepository.save(result);
+        }
+    }
 
     private TestCaseResult runTestCase(Submission submission, TestCase testCase) {
         TestCaseResult result = new TestCaseResult();
@@ -228,52 +275,86 @@ public class WorkerService {
         // Khởi tạo compileError mặc định
         submission.setCompileError("");
 
+        log.info("====== Running test case {} for submission {} ======", testCase.getId(), submission.getId());
+        log.info("Test case description: {}", testCase.getDescription());
+        log.info("Input data: {}", testCase.getInputData());
+        log.info("Expected output: {}", testCase.getExpectedOutputData());
+
         String tempDir = "/tmp/submission-" + UUID.randomUUID().toString();
         try {
             Files.createDirectories(Paths.get(tempDir));
+            log.info("Created temp directory: {}", tempDir);
 
             String language = submission.getLanguage().toLowerCase();
+            log.info("Submission language: {}", language);
 
             log.debug("Fetching function signature for problem {} and language {}", submission.getProblem().getId(), language);
             FunctionSignature functionSignature = problemService.getFunctionSignature(submission.getProblem().getId(), language);
 
             if (functionSignature == null) {
+                log.error("Function signature is null for problem {} and language {}", submission.getProblem().getId(), language);
                 throw new RuntimeException("Function signature not found for language: " + language);
             }
+            log.info("Function signature: {}", functionSignature);
 
             String executionEnvironment = LANGUAGE_IMAGE_MAP.get(language); // Lấy tên image
             submission.setExecutionEnvironment(executionEnvironment);
+            log.info("Using execution environment: {}", executionEnvironment);
 
             String extension = LANGUAGE_EXTENSION_MAP.get(language);
             String solutionFilePath = tempDir + "/Solution" + extension;
             Files.writeString(Paths.get(solutionFilePath), submission.getSourceCode());
+            log.info("Written solution code to: {}", solutionFilePath);
 
             List<TestCaseService.TestCaseInput> inputs = testCaseService.parseInputData(testCase.getInputData());
             String inputFilePath = tempDir + "/input.txt";
             StringBuilder inputContent = new StringBuilder();
             for (TestCaseService.TestCaseInput input : inputs) {
                 inputContent.append(input.getInput()).append("\n");
+                log.info("Test input: {} (type: {})", input.getInput(), input.getDataType());
             }
             Files.writeString(Paths.get(inputFilePath), inputContent.toString());
+            log.info("Written input to file: {}", inputFilePath);
+            log.info("Input content: {}", inputContent.toString());
 
             String mainProgramPath = tempDir + "/Main" + extension;
             String mainProgramCode = generateMainProgram(language, functionSignature, inputs);
             Files.writeString(Paths.get(mainProgramPath), mainProgramCode);
+            log.info("Generated main program file: {}", mainProgramPath);
+            log.info("Main program code: \n{}", mainProgramCode);
 
             ExecutionResult executionResult = runInContainer(language, mainProgramPath, inputFilePath);
+            log.info("Execution result - exit code: {}", executionResult.getExitCode());
+            log.info("Execution result - output: '{}'", executionResult.getOutput());
+            log.info("Execution result - error: '{}'", executionResult.getError());
+            log.info("Execution result - runtime: {}ms", executionResult.getRuntimeMs());
+            log.info("Execution result - memory: {}KB", executionResult.getMemoryUsedKb());
 
-            result.setRuntimeMs((int) executionResult.getRuntimeMs());
-            result.setMemoryUsedKb((int) executionResult.getMemoryUsedKb());
+            // Thiết lập kết quả thực thi
+            if (executionResult.getRuntimeMs() > 0) {
+                result.setRuntimeMs((int) executionResult.getRuntimeMs());
+            } else {
+                log.warn("Runtime is zero or negative, setting a default value of 1");
+                result.setRuntimeMs(1);
+            }
+            
+            if (executionResult.getMemoryUsedKb() > 0) {
+                result.setMemoryUsedKb((int) executionResult.getMemoryUsedKb());
+            } else {
+                log.warn("Memory usage is zero or negative, setting a default value of 1024");
+                result.setMemoryUsedKb(1024);
+            }
 
             if (executionResult.getExitCode() != 0 && !executionResult.getError().isEmpty()) {
                 if (executionResult.getError().contains("compile")) {
+                    log.error("Compile error: {}", executionResult.getError());
                     result.setStatus(TestCaseResult.TestCaseStatus.COMPILE_ERROR);
                     result.setErrorMessage(executionResult.getError());
                     submission.setCompileError(executionResult.getError());
                     submission.setStatus(Submission.SubmissionStatus.COMPILE_ERROR);
-//                    submissionService.updateSubmission(submission);
                     return result;
                 } else {
+                    log.error("Runtime error: {}", executionResult.getError());
                     result.setStatus(TestCaseResult.TestCaseStatus.RUNTIME_ERROR);
                     result.setErrorMessage(executionResult.getError());
                     return result;
@@ -281,11 +362,13 @@ public class WorkerService {
             }
 
             if (executionResult.getRuntimeMs() > testCase.getTimeLimit()) {
+                log.warn("Time limit exceeded: {}ms > {}ms", executionResult.getRuntimeMs(), testCase.getTimeLimit());
                 result.setStatus(TestCaseResult.TestCaseStatus.TIME_LIMIT_EXCEEDED);
                 return result;
             }
 
             if (executionResult.getMemoryUsedKb() > testCase.getMemoryLimit()) {
+                log.warn("Memory limit exceeded: {}KB > {}KB", executionResult.getMemoryUsedKb(), testCase.getMemoryLimit());
                 result.setStatus(TestCaseResult.TestCaseStatus.MEMORY_LIMIT_EXCEEDED);
                 return result;
             }
@@ -293,9 +376,17 @@ public class WorkerService {
             TestCaseService.TestCaseOutput expectedOutput = testCaseService.parseExpectedOutput(testCase.getExpectedOutputData());
             String userOutput = executionResult.getOutput().trim();
             result.setUserOutput(userOutput);
-
+            
+            log.info("Comparing outputs:");
+            log.info("User output: '{}' (length: {})", userOutput, userOutput.length());
+            
             String expected = expectedOutput.getExpectedOutput().trim();
-            if (compareOutput(userOutput, expected, testCase)) {
+            log.info("Expected output: '{}' (length: {})", expected, expected.length());
+
+            boolean isCorrect = compareOutput(userOutput, expected, testCase);
+            log.info("Comparison result: {}", isCorrect ? "PASSED" : "FAILED");
+            
+            if (isCorrect) {
                 result.setStatus(TestCaseResult.TestCaseStatus.PASSED);
                 result.setScore(testCase.getWeight() != null ? testCase.getWeight() : 1.0);
             } else {
@@ -304,7 +395,7 @@ public class WorkerService {
             }
 
         } catch (Exception e) {
-            log.error("Error running test case {} for submission {}: {}", testCase.getId(), submission.getId(), e.getMessage());
+            log.error("Error running test case {} for submission {}: {}", testCase.getId(), submission.getId(), e.getMessage(), e);
             result.setStatus(TestCaseResult.TestCaseStatus.SYSTEM_ERROR);
             result.setErrorMessage(e.getMessage());
             result.setScore(0.0);
@@ -314,11 +405,13 @@ public class WorkerService {
                         .sorted(Comparator.reverseOrder())
                         .map(Path::toFile)
                         .forEach(File::delete);
+                log.debug("Cleaned up temp directory: {}", tempDir);
             } catch (Exception e) {
                 log.warn("Failed to clean up temp directory: {}", tempDir, e);
             }
         }
 
+        log.info("Test case {} result: {}", testCase.getId(), result.getStatus());
         return result;
     }
 
@@ -526,6 +619,19 @@ public class WorkerService {
             );
             log.info("Executing Docker command: {}", dockerCommand);
 
+            // Log more Docker details
+            log.debug("Container name: {}", containerName);
+            log.debug("Mount path: {}", Paths.get(codeFilePath).getParent().toAbsolutePath());
+            log.debug("Container path: /app/code/Main{}", LANGUAGE_EXTENSION_MAP.get(language));
+            
+            // Check if the main file exists
+            File mainFile = new File(codeFilePath);
+            log.debug("Main file exists: {}, size: {} bytes", mainFile.exists(), mainFile.length());
+            
+            // Check if the input file exists
+            File inputFile = new File(inputFilePath);
+            log.debug("Input file exists: {}, size: {} bytes", inputFile.exists(), inputFile.length());
+
             long startTime = System.currentTimeMillis();
             Process process = Runtime.getRuntime().exec(dockerCommand);
 
@@ -536,9 +642,11 @@ public class WorkerService {
                  BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
                 String line;
                 while ((line = outputReader.readLine()) != null) {
+                    log.debug("Docker stdout: {}", line);
                     output.append(line).append("\n");
                 }
                 while ((line = errorReader.readLine()) != null) {
+                    log.debug("Docker stderr: {}", line);
                     error.append(line).append("\n");
                 }
             }
@@ -554,8 +662,11 @@ public class WorkerService {
             result.setError(error.toString());
             result.setExitCode(exitCode);
 
+            log.info("Docker execution completed. Exit code: {}", exitCode);
+            log.info("Runtime: {}ms, Memory usage: {}KB", result.getRuntimeMs(), result.getMemoryUsedKb());
+
         } catch (Exception e) {
-            log.error("Error running container for language {}: {}", language, e.getMessage());
+            log.error("Error running container for language {}: {}", language, e.getMessage(), e);
             result.setError(e.getMessage());
             result.setExitCode(1);
         }
@@ -568,50 +679,105 @@ public class WorkerService {
             Process process = Runtime.getRuntime().exec("docker stats --no-stream --format \"{{.MemUsage}}\" " + containerName);
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String memUsage = reader.readLine();
-            if (memUsage != null) {
-                String used = memUsage.split("/")[0].trim();
-                if (used.endsWith("MiB")) {
-                    double mb = Double.parseDouble(used.replace("MiB", "").trim());
-                    return (long) (mb * 1024);
-                } else if (used.endsWith("GiB")) {
-                    double gb = Double.parseDouble(used.replace("GiB", "").trim());
-                    return (long) (gb * 1024 * 1024);
-                }
+            log.info("Memory usage raw output: {}", memUsage);
+            
+            if (memUsage == null || memUsage.trim().isEmpty()) {
+                log.warn("Empty memory usage output for container {}", containerName);
+                return 0;
+            }
+            
+            // Xử lý format như "10.5MiB / 100MiB"
+            String used = memUsage.split("/")[0].trim();
+            log.info("Extracted memory usage: {}", used);
+            
+            // Xử lý các đơn vị khác nhau
+            if (used.endsWith("B")) {
+                return extractMemoryInKB(used);
+            } else if (used.endsWith("KiB")) {
+                double kb = Double.parseDouble(used.replace("KiB", "").trim());
+                return Math.round(kb);
+            } else if (used.endsWith("MiB")) {
+                double mb = Double.parseDouble(used.replace("MiB", "").trim());
+                return Math.round(mb * 1024);
+            } else if (used.endsWith("GiB")) {
+                double gb = Double.parseDouble(used.replace("GiB", "").trim());
+                return Math.round(gb * 1024 * 1024);
+            } else {
+                // Nếu không có đơn vị, coi là KB
+                log.warn("Unknown memory format: {}, assuming KB", used);
+                return Math.round(Double.parseDouble(used.trim()));
             }
         } catch (Exception e) {
             log.warn("Failed to measure memory usage for container {}: {}", containerName, e.getMessage());
+            return 0;
         }
-        return 0;
+    }
+    
+    // Helper method to extract memory value in KB
+    private long extractMemoryInKB(String memoryString) {
+        try {
+            if (memoryString.equals("0B")) {
+                return 0;
+            }
+            
+            if (memoryString.endsWith("B")) {
+                double bytes = Double.parseDouble(memoryString.replace("B", "").trim());
+                return Math.round(bytes / 1024.0);
+            }
+            
+            return 0;
+        } catch (Exception e) {
+            log.warn("Failed to parse memory string {}: {}", memoryString, e.getMessage());
+            return 0;
+        }
     }
 
     private boolean compareOutput(String userOutput, String expectedOutput, TestCase testCase) {
         String comparisonMode = testCase.getComparisonMode() != null ? testCase.getComparisonMode() : "EXACT";
         Double epsilon = testCase.getEpsilon();
 
+        log.debug("Using comparison mode: {}", comparisonMode);
+        log.debug("Epsilon: {}", epsilon);
+        log.debug("User output (hex): {}", bytesToHexString(userOutput.getBytes()));
+        log.debug("Expected output (hex): {}", bytesToHexString(expectedOutput.getBytes()));
+
         switch (comparisonMode.toUpperCase()) {
             case "EXACT":
-                return userOutput.equals(expectedOutput);
+                boolean isEqual = userOutput.equals(expectedOutput);
+                log.debug("EXACT comparison result: {}", isEqual);
+                return isEqual;
             case "FLOAT":
                 if (epsilon == null) epsilon = 1e-6;
                 try {
                     double userValue = Double.parseDouble(userOutput);
                     double expectedValue = Double.parseDouble(expectedOutput);
-                    return Math.abs(userValue - expectedValue) <= epsilon;
+                    boolean isWithinEpsilon = Math.abs(userValue - expectedValue) <= epsilon;
+                    log.debug("FLOAT comparison: |{} - {}| = {} <= {}: {}", 
+                        userValue, expectedValue, Math.abs(userValue - expectedValue), epsilon, isWithinEpsilon);
+                    return isWithinEpsilon;
                 } catch (NumberFormatException e) {
+                    log.error("Error parsing float values: {}", e.getMessage());
                     return false;
                 }
             case "IGNORE_WHITESPACE":
-                return userOutput.replaceAll("\\s+", "").equals(expectedOutput.replaceAll("\\s+", ""));
+                boolean isEqualNoWhitespace = userOutput.replaceAll("\\s+", "")
+                    .equals(expectedOutput.replaceAll("\\s+", ""));
+                log.debug("IGNORE_WHITESPACE comparison result: {}", isEqualNoWhitespace);
+                return isEqualNoWhitespace;
             default:
+                log.debug("Using default EXACT comparison for unknown mode: {}", comparisonMode);
                 return userOutput.equals(expectedOutput);
         }
-
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void updateSubmissionStatus(Long submissionId, Submission.SubmissionStatus status) {
-        Submission submission = submissionService.getSubmissionEntityById(submissionId);
-        submission.setStatus(status);
-        submissionService.updateSubmission(submission);
+    // Helper method to convert bytes to hex string for better debugging
+    private String bytesToHexString(byte[] bytes) {
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : bytes) {
+            String hex = Integer.toHexString(0xff & b);
+            if (hex.length() == 1) hexString.append('0');
+            hexString.append(hex);
+        }
+        return hexString.toString();
     }
 }

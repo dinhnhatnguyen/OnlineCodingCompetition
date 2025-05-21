@@ -14,7 +14,7 @@ const HeroSection = () => {
         <a href="/problems" className="primary-btn px-6 py-3">
           Start Practicing
         </a>
-        <a href="#" className="text-white hover:text-primary-pink">
+        <a href="/contests" className="text-white hover:text-primary-pink">
           View Contests
         </a>
       </div>

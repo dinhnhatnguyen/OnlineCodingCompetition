@@ -28,6 +28,7 @@ public class ContestDTO {
     private String status;
     private boolean isPublic;
     private Integer maxParticipants;
+    private Integer currentParticipants;
     private Long createdById;
     private List<Long> problemIds;
 }

@@ -172,24 +172,33 @@ public class ContestService {
     public ContestRegistrationDTO registerUser(Long contestId, Long userId) {
         log.debug("Đăng ký user {} cho cuộc thi {}", userId, contestId);
 
-        // Kiểm tra cuộc thi và user
+        // Kiểm tra cuộc thi
+        log.debug("Tìm kiếm cuộc thi với ID: {}", contestId);
         Contest contest = contestRepository.findById(contestId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cuộc thi với ID: " + contestId));
+        log.debug("Tìm thấy cuộc thi: {}", contest.getTitle());
+
+        // Kiểm tra người dùng
+        log.debug("Tìm kiếm user với ID: {}", userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy user với ID: " + userId));
+        log.debug("Tìm thấy user: {}", user.getUsername());
 
-        // Kiểm tra đã đăng ký chưa
+        // Kiểm tra đăng ký
+        log.debug("Kiểm tra xem user đã đăng ký chưa");
         if (contestRegistrationRepository.findByContestIdAndUserId(contestId, userId).isPresent()) {
             throw new IllegalStateException("User đã đăng ký cho cuộc thi này");
         }
 
         // Kiểm tra giới hạn người tham gia
-        if (contest.getMaxParticipants() != null &&
-                contest.getRegistrations().stream().filter(r -> r.getStatus() == ContestRegistration.RegistrationStatus.APPROVED).count() >= contest.getMaxParticipants()) {
+        log.debug("Kiểm tra giới hạn người tham gia");
+        long approvedCount = contestRegistrationRepository.countByContestIdAndStatus(contestId, ContestRegistration.RegistrationStatus.APPROVED);
+        if (contest.getMaxParticipants() != null && approvedCount >= contest.getMaxParticipants()) {
             throw new IllegalStateException("Đã đạt số lượng người tham gia tối đa");
         }
 
         // Tạo đăng ký
+        log.debug("Tạo bản ghi đăng ký mới");
         ContestRegistration registration = new ContestRegistration();
         registration.setContest(contest);
         registration.setUser(user);
@@ -197,9 +206,13 @@ public class ContestService {
         registration.setStatus(ContestRegistration.RegistrationStatus.PENDING);
         registration.setTotalScore(0.0);
 
+        // Lưu đăng ký
+        log.debug("Lưu bản ghi đăng ký");
         ContestRegistration savedRegistration = contestRegistrationRepository.save(registration);
         log.info("Đăng ký thành công cho user {} trong cuộc thi {} với ID đăng ký: {}", userId, contestId, savedRegistration.getId());
 
+        // Chuyển đổi DTO
+        log.debug("Chuyển đổi sang DTO");
         return convertToRegistrationDTO(savedRegistration);
     }
     @Transactional
@@ -301,6 +314,12 @@ public class ContestService {
         // Đảm bảo các trường thời gian được chuyển đổi đúng
         dto.setStartTime(contest.getStartTime());
         dto.setEndTime(contest.getEndTime());
+        
+        // Tính số người tham gia hiện tại (đã được duyệt)
+        long approvedCount = contestRegistrationRepository.countByContestIdAndStatus(
+                contest.getId(), ContestRegistration.RegistrationStatus.APPROVED);
+        dto.setCurrentParticipants((int) approvedCount);
+        
         return dto;
     }
 
@@ -308,6 +327,14 @@ public class ContestService {
         ContestRegistrationDTO dto = modelMapper.map(registration, ContestRegistrationDTO.class);
         dto.setContestId(registration.getContest().getId());
         dto.setUserId(registration.getUser().getId());
+        
+        // Thêm thông tin người dùng
+        User user = registration.getUser();
+        if (user != null) {
+            dto.setUsername(user.getUsername());
+            dto.setEmail(user.getEmail());
+        }
+        
         return dto;
     }
 

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { signIn, signUp } from "../api/authApi";
+import { signIn, signUp, signOut } from "../api/authApi";
 
 const AuthContext = createContext();
 
@@ -19,11 +19,13 @@ export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("token");
+    // Check for stored user data on initial load
     const storedUser = localStorage.getItem("user");
-    if (storedToken && storedUser) {
-      setToken(storedToken);
+    const storedToken = localStorage.getItem("token");
+
+    if (storedUser && storedToken) {
       setUser(JSON.parse(storedUser));
+      setToken(storedToken);
     }
     setLoading(false);
   }, []);
@@ -31,17 +33,12 @@ export const AuthProvider = ({ children }) => {
   const login = async (username, password) => {
     try {
       const response = await signIn({ username, password });
-      const { token, user } = response;
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
-      setToken(token);
-      setUser(user);
+      setUser(response);
+      setToken(response.token);
       navigate("/");
+      return response;
     } catch (error) {
-      console.error("Login error:", {
-        message: error.message,
-        data: error.response?.data,
-      });
+      console.error("Login error:", error);
       throw error;
     }
   };
@@ -49,25 +46,29 @@ export const AuthProvider = ({ children }) => {
   const register = async (username, email, password) => {
     try {
       const response = await signUp({ username, email, password });
-      console.log("SignUp response:", response);
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Đợi 1 giây
-      await login(username, password);
+
+      // Only attempt to login if registration was successful
+      if (response.message === "User registered successfully!") {
+        try {
+          await login(username, password);
+        } catch (loginError) {
+          console.error("Auto-login after registration failed:", loginError);
+          // Don't throw here, as registration was successful
+        }
+      }
+
       return response;
     } catch (error) {
-      console.error("Registration error:", {
-        message: error.message,
-        data: error.response?.data,
-      });
+      console.error("Registration error:", error);
       throw error;
     }
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    setToken(null);
+    signOut();
     setUser(null);
-    navigate("/login");
+    setToken(null);
+    navigate("/");
   };
 
   const value = {

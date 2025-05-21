@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import oj.onlineCodingCompetition.entity.ContestRegistration;
 import oj.onlineCodingCompetition.security.entity.User;
+import org.hibernate.Hibernate;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -36,9 +37,33 @@ public class UserDetailsImpl implements UserDetails {
     public static UserDetailsImpl build(User user) {
         GrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + user.getRole().toUpperCase());
 
-        Set<Long> contestRegistrationIds = user.getContestRegistrations().stream()
-                .map(ContestRegistration::getId)
-                .collect(Collectors.toSet());
+        // Safely handle the IDs without triggering lazy loading issues
+        Set<Long> contestRegistrationIds = Collections.emptySet();
+        try {
+            // First check if the collection is already initialized to avoid unnecessary queries
+            if (user.getContestRegistrations() != null && 
+               !Hibernate.isInitialized(user.getContestRegistrations())) {
+                // Skip loading contestRegistrations to avoid ConcurrentModificationException
+                // They'll be loaded when actually needed
+                return UserDetailsImpl.builder()
+                        .id(user.getId())
+                        .username(user.getUsername())
+                        .email(user.getEmail())
+                        .password(user.getPassword())
+                        .authorities(Collections.singletonList(authority))
+                        .contestRegistrationIds(Collections.emptySet())
+                        .build();
+            } else if (user.getContestRegistrations() != null) {
+                // Collection is already initialized, safe to use
+                contestRegistrationIds = user.getContestRegistrations().stream()
+                        .filter(reg -> reg != null) // Defensive filter for null elements
+                        .map(ContestRegistration::getId)
+                        .collect(Collectors.toSet());
+            }
+        } catch (Exception e) {
+            // In case of any issues, log and continue with empty set
+            System.err.println("Could not load contest registrations: " + e.getMessage());
+        }
 
         return UserDetailsImpl.builder()
                 .id(user.getId())

@@ -78,6 +78,8 @@ public class WebSecurityConfig {
                         .requestMatchers("/api/instructor/**").hasAnyRole("INSTRUCTOR", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/problems").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/contests").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/contests/{id}").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/contests/{id}/register").authenticated()
                         .anyRequest().authenticated()
                 );
 

@@ -1,97 +1,125 @@
 import React, { useState } from "react";
-import { FaSun, FaMoon } from "react-icons/fa"; // Thêm biểu tượng sun/moon
-import logo from "../../assets/OCCS.png";
+import { Link } from "react-router-dom";
+import { FaSun, FaMoon } from "react-icons/fa";
+import { useAuth } from "../../contexts/AuthContext";
 import AuthModal from "../auth/AuthModal";
-import { useAuth } from "../../context/AuthContext";
+import logo from "../../assets/OCCS.png";
 
 const Header = () => {
-  // Giả lập trạng thái theme (light/dark)
-  const isDarkMode = true; // Có thể thay bằng logic thực tế để toggle theme
-  const { user, signOut, signIn } = useAuth();
-  const [showModal, setShowModal] = useState(false);
+  const { user, logout, login, register } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState("signin");
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
   const handleShow = (mode) => {
     setAuthMode(mode);
-    setShowModal(true);
+    setShowAuthModal(true);
   };
 
-  const handleClose = () => {
-    setShowModal(false);
-    setMessage("");
+  const handleAuthSuccess = async (values) => {
+    if (authMode === "signup") {
+      return await register(values.username, values.email, values.password);
+    } else {
+      return await login(values.username, values.password);
+    }
   };
 
-  const handleSuccess = (userData) => {
-    signIn(userData);
-    setShowModal(false);
+  const handleLogout = () => {
+    logout();
+    setMessage("Signed out successfully");
+    setMessageType("success");
+    setTimeout(() => setMessage(""), 3000);
   };
 
-  const showMessage = (msg, type) => {
-    setMessage(msg);
-    setMessageType(type);
-    setTimeout(() => setMessage(""), 2000);
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+    // Add your theme toggle logic here
   };
 
   return (
     <header className="bg-black text-white p-4 flex justify-between items-center">
       <div className="flex items-center space-x-6">
-        <a href="/" className="flex items-center space-x-2">
+        <Link to="/" className="flex items-center space-x-2">
           <img src={logo} alt="OCCS Logo" className="h-8 w-8 object-contain" />
           <div className="text-2xl font-bold logo-text">OCCS</div>
-        </a>
+        </Link>
         <nav className="flex space-x-6">
-          <a href="/problems" className="text-gray-400 hover:text-primary-pink">
+          <Link
+            to="/problems"
+            className="text-gray-400 hover:text-primary-pink transition-colors"
+          >
             Problems
-          </a>
-          <a href="#" className="text-gray-400 hover:text-primary-pink">
+          </Link>
+          <Link
+            to="/contests"
+            className="text-gray-400 hover:text-primary-pink transition-colors"
+          >
             Contests
-          </a>
+          </Link>
         </nav>
       </div>
+
       <div className="flex items-center space-x-4">
-        {!user ? (
+        {message && (
+          <div
+            className={`px-4 py-2 rounded ${
+              messageType === "success" ? "bg-green-500" : "bg-red-500"
+            }`}
+          >
+            {message}
+          </div>
+        )}
+        {user ? (
+          <div className="flex items-center space-x-4">
+            <div className="flex flex-col items-end">
+              <span className="font-bold text-primary-pink">
+                {user.username}
+              </span>
+              <span className="text-xs uppercase tracking-wider text-gray-400">
+                {user.role}
+              </span>
+            </div>
+            <button onClick={handleLogout} className="primary-btn">
+              Sign out
+            </button>
+          </div>
+        ) : (
           <>
             <button
-              className="text-gray-400 hover:text-primary-pink"
               onClick={() => handleShow("signin")}
+              className="text-gray-400 hover:text-primary-pink transition-colors"
+              style={{ padding: "10px 20px" }}
             >
               Sign in
             </button>
             <button
-              className="primary-btn"
               onClick={() => handleShow("signup")}
+              className="primary-btn"
             >
               Sign up
             </button>
           </>
-        ) : (
-          <button className="primary-btn" onClick={signOut}>
-            Sign out
-          </button>
         )}
-        <button className="text-gray-400 hover:text-primary-pink">
-          {isDarkMode ? <FaSun /> : <FaMoon />}
-        </button>
+        {/* <button
+          onClick={toggleTheme}
+          className="text-gray-400 hover:text-primary-pink transition-colors"
+        ></button> */}
       </div>
+
       <AuthModal
+        show={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
         mode={authMode}
-        onClose={handleClose}
-        onSuccess={handleSuccess}
-        show={showModal}
         setMode={setAuthMode}
-        showMessage={showMessage}
+        onSuccess={handleAuthSuccess}
+        showMessage={(msg, type) => {
+          setMessage(msg);
+          setMessageType(type);
+          setTimeout(() => setMessage(""), 3000);
+        }}
       />
-      {message && (
-        <div
-          className={`fixed top-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded text-white z-50 ${
-            messageType === "success" ? "bg-green-600" : "bg-red-600"
-          }`}
-        >
-          {message}
-        </div>
-      )}
     </header>
   );
 };

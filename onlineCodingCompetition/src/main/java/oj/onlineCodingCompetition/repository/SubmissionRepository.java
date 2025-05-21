@@ -22,7 +22,11 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     Page<Submission> findByProblemIdOrderBySubmittedAtDesc(Long problemId, Pageable pageable);
     List<Submission> findTop5ByUserIdAndProblemIdOrderBySubmittedAtDesc(Long userId, Long problemId);
 
+    List<Submission> findByContestIdAndUserIdOrderBySubmittedAtDesc(Long contestId, Long userId);
 
+    List<Submission> findByContestIdOrderByScoreDescSubmittedAtAsc(Long contestId);
+
+    List<Submission> findByContestIdAndProblemIdOrderByScoreDescSubmittedAtAsc(Long contestId, Long problemId);
 
     // For analytics
     long countByProblemIdAndStatus(Long problemId, SubmissionStatus status);

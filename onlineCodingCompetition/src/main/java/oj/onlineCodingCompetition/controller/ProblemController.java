@@ -254,4 +254,143 @@ public class ProblemController {
         problemService.removeProblemFromContest(problemId, contestId);
         return ResponseEntity.ok().build();
     }
+
+    @PutMapping("/{id}/with-test-cases")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
+    public ResponseEntity<ProblemDTO> updateProblemWithTestCases(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> requestBody,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        log.debug("REST request to update problem with test cases: {}", id);
+
+        try {
+            User user = userRepository.findByUsername(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            Problem problem = problemService.getProblemEntityById(id);
+            
+            // Verify ownership or admin role
+            if (!problem.getCreatedBy().getId().equals(user.getId()) && 
+                    !userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> problemData = (Map<String, Object>) requestBody.get("createProblem");
+
+            // Update basic problem data
+            if (problemData.get("title") != null) problem.setTitle((String) problemData.get("title"));
+            if (problemData.get("description") != null) problem.setDescription((String) problemData.get("description"));
+            if (problemData.get("difficulty") != null) problem.setDifficulty((String) problemData.get("difficulty"));
+            if (problemData.get("constraints") != null) problem.setConstraints((String) problemData.get("constraints"));
+
+            if (problemData.get("contestId") != null) {
+                Long contestId = ((Number) problemData.get("contestId")).longValue();
+                problem.setContestId(contestId);
+            }
+
+            // Update topics
+            @SuppressWarnings("unchecked")
+            List<String> topics = (List<String>) problemData.get("topics");
+            if (topics != null) {
+                problem.setTopics(new java.util.HashSet<>(topics));
+            }
+
+            // Update supported languages
+            @SuppressWarnings("unchecked")
+            Map<String, Boolean> supportedLanguages = (Map<String, Boolean>) problemData.get("supportedLanguages");
+            if (supportedLanguages != null) {
+                problem.setSupportedLanguages(supportedLanguages);
+            }
+
+            // Update function signatures
+            @SuppressWarnings("unchecked")
+            Map<String, String> functionSignaturesMap = (Map<String, String>) problemData.get("functionSignatures");
+            if (functionSignaturesMap != null) {
+                Map<String, Problem.FunctionSignature> functionSignatures = new HashMap<>();
+                
+                for (Map.Entry<String, String> entry : functionSignaturesMap.entrySet()) {
+                    String language = entry.getKey();
+                    String jsonString = entry.getValue();
+                    Map<String, Object> signatureData = objectMapper.readValue(jsonString, Map.class);
+                    String functionName = (String) signatureData.get("functionName");
+                    List<String> parameterTypes = (List<String>) signatureData.get("parameterTypes");
+                    String returnType = (String) signatureData.get("returnType");
+                    Problem.FunctionSignature signature = new Problem.FunctionSignature(functionName, parameterTypes, returnType);
+                    functionSignatures.put(language, signature);
+                }
+                
+                problem.setFunctionSignatures(functionSignatures);
+            }
+
+            // Update contest associations
+            List<Long> contestIds = (List<Long>) problemData.get("contestIds");
+            if (contestIds != null) {
+                List<Contest> contests = contestIds.stream()
+                        .map(contestId -> contestRepository.findById(contestId)
+                                .orElseThrow(() -> new RuntimeException("Contest not found with id: " + contestId)))
+                        .collect(Collectors.toList());
+                problem.setContests(contests);
+            }
+
+            // Process test cases
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> testCasesData = (List<Map<String, Object>>) requestBody.get("createTestCases");
+
+            if (testCasesData != null) {
+                // Clear existing test cases and add new ones
+                problem.getTestCases().clear();
+                
+                for (Map<String, Object> testCaseData : testCasesData) {
+                    TestCase testCase = new TestCase();
+                    testCase.setInputData((String) testCaseData.get("inputData"));
+                    testCase.setInputType((String) testCaseData.get("inputType"));
+                    testCase.setOutputType((String) testCaseData.get("outputType"));
+                    testCase.setExpectedOutputData((String) testCaseData.get("expectedOutputData"));
+                    testCase.setDescription((String) testCaseData.get("description"));
+                    testCase.setIsExample(Boolean.TRUE.equals(testCaseData.get("isExample")));
+                    testCase.setIsHidden(Boolean.TRUE.equals(testCaseData.get("isHidden")));
+
+                    if (testCaseData.get("timeLimit") != null) {
+                        testCase.setTimeLimit(((Number) testCaseData.get("timeLimit")).intValue());
+                    } else {
+                        testCase.setTimeLimit(1000); // Default
+                    }
+                    
+                    if (testCaseData.get("memoryLimit") != null) {
+                        testCase.setMemoryLimit(((Number) testCaseData.get("memoryLimit")).intValue());
+                    } else {
+                        testCase.setMemoryLimit(262144); // Default
+                    }
+                    
+                    if (testCaseData.get("weight") != null) {
+                        testCase.setWeight(((Number) testCaseData.get("weight")).doubleValue());
+                    } else {
+                        testCase.setWeight(1.0); // Default
+                    }
+                    
+                    if (testCaseData.get("testOrder") != null) {
+                        testCase.setTestOrder(((Number) testCaseData.get("testOrder")).intValue());
+                    }
+                    
+                    testCase.setComparisonMode((String) testCaseData.get("comparisonMode"));
+                    
+                    if (testCaseData.get("epsilon") != null) {
+                        testCase.setEpsilon(((Number) testCaseData.get("epsilon")).doubleValue());
+                    }
+                    
+                    testCase.setProblem(problem);
+                    problem.getTestCases().add(testCase);
+                }
+            }
+
+            Problem updatedProblem = problemService.updateProblemWithTestCases(problem);
+            return ResponseEntity.ok(problemService.convertToDTO(updatedProblem));
+
+        } catch (Exception e) {
+            log.error("Error updating problem with test cases: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(null);
+        }
+    }
 }

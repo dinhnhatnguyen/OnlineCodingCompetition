@@ -20,10 +20,16 @@ export const createContest = async (data, token) => {
 };
 
 export const updateContest = async (id, data, token) => {
-  const response = await axios.put(`${API_URL}/${id}`, data, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return response.data;
+  console.log("Contest update data:", JSON.stringify(data, null, 2));
+  try {
+    const response = await axios.put(`${API_URL}/${id}`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Contest update error:", error.response?.data);
+    throw error;
+  }
 };
 
 export const deleteContest = async (id, token) => {

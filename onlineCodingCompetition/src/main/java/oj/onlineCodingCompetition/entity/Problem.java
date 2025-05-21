@@ -70,6 +70,8 @@ public class Problem {
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     @Column(name = "default_time_limit")
     private Integer defaultTimeLimit = 5000;

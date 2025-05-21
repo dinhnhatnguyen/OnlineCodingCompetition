@@ -1,25 +1,20 @@
 import React, { useState } from "react";
-import { Layout, Menu, Typography, Avatar } from "antd";
+import { Layout, Menu } from "antd";
 import { useNavigate, Outlet, useLocation } from "react-router-dom";
 import {
-  AppstoreOutlined,
   CodeOutlined,
   TrophyOutlined,
-  UserOutlined,
   DashboardOutlined,
   PlusOutlined,
   UnorderedListOutlined,
-  EditOutlined,
 } from "@ant-design/icons";
-import { useAuth } from "../../contexts/AuthContext";
+import Header from "../../components/layout/Header";
 
-const { Header, Content, Sider } = Layout;
-const { Title } = Typography;
+const { Content, Sider } = Layout;
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
 
   // Get current selected key based on path
@@ -94,18 +89,7 @@ const Dashboard = () => {
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      <Header className="bg-white flex items-center justify-between px-6 shadow-sm">
-        <div className="flex items-center">
-          <AppstoreOutlined className="text-2xl mr-3 text-primary-pink" />
-          <Title level={4} style={{ margin: 0 }}>
-            {user?.role === "admin" ? "Admin" : "Instructor"} Portal
-          </Title>
-        </div>
-        <div className="flex items-center">
-          <Avatar icon={<UserOutlined />} className="mr-2" />
-          <span>{user?.username}</span>
-        </div>
-      </Header>
+      <Header />
       <Layout>
         <Sider
           collapsible

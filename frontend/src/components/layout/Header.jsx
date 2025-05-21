@@ -11,7 +11,6 @@ const Header = () => {
   const [authMode, setAuthMode] = useState("signin");
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
-  const [isDarkMode, setIsDarkMode] = useState(true);
 
   const handleShow = (mode) => {
     setAuthMode(mode);
@@ -31,11 +30,6 @@ const Header = () => {
     setMessage("Signed out successfully");
     setMessageType("success");
     setTimeout(() => setMessage(""), 3000);
-  };
-
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-    // Add your theme toggle logic here
   };
 
   // Kiểm tra xem user có phải là admin hoặc instructor không
@@ -65,9 +59,9 @@ const Header = () => {
           {isAdminOrInstructor && (
             <Link
               to="/admin"
-              className="text-primary-pink hover:text-pink-400 transition-colors"
+              className="text-gray-400 hover:text-pink-400 transition-colors"
             >
-              Quản lý
+              Manage
             </Link>
           )}
         </nav>
@@ -114,10 +108,6 @@ const Header = () => {
             </button>
           </>
         )}
-        {/* <button
-          onClick={toggleTheme}
-          className="text-gray-400 hover:text-primary-pink transition-colors"
-        ></button> */}
       </div>
 
       <AuthModal

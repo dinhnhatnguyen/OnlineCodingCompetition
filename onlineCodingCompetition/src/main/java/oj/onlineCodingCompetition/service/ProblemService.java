@@ -324,26 +324,6 @@ public class ProblemService {
         return convertToDTO(problem);
     }
 
-//    @Transactional
-//    public void deleteProblem(Long id) {
-//        log.debug("Deleting problem with ID: {}", id);
-//        if (!problemRepository.existsById(id)) {
-//            log.error("Problem not found with ID: {}", id);
-//            throw new EntityNotFoundException("Problem not found with id: " + id);
-//        }
-//
-//
-//
-//        List<TestCase> testCases = testCaseRepository.findByProblemIdOrderByTestOrderAsc(id);
-//        if (!testCases.isEmpty()) {
-//            testCaseRepository.deleteAll(testCases);
-//            log.info("Deleted {} test cases for problem ID: {}", testCases.size(), id);
-//        }
-//
-//        problemRepository.deleteById(id);
-//        log.info("Problem deleted successfully with ID: {}", id);
-//    }
-
     @Transactional
     public void deleteProblem(Long id) {
         log.debug("Deleting problem with ID: {}", id);
@@ -396,22 +376,6 @@ public class ProblemService {
         return problemRepository.findAllTopics();
     }
 
-    // Thêm problem vào contest
-//    @Transactional
-//    public void addProblemToContest(Long problemId, Long contestId) {
-//        log.debug("Adding problem {} to contest {}", problemId, contestId);
-//        Problem problem = problemRepository.findById(problemId)
-//                .orElseThrow(() -> new EntityNotFoundException("Problem not found with id: " + problemId));
-//        Contest contest = contestRepository.findById(contestId)
-//                .orElseThrow(() -> new EntityNotFoundException("Contest not found with id: " + contestId));
-//
-//        problem.getContests().add(contest);
-//        contest.getProblemIds().add(problemId);
-//
-//        problemRepository.save(problem);
-//        contestRepository.save(contest);
-//        log.info("Successfully added problem {} to contest {}", problemId, contestId);
-//    }
     @Transactional
     public void addProblemToContest(Long problemId, Long contestId) {
         log.debug("Adding problem {} to contest {}", problemId, contestId);
@@ -440,7 +404,6 @@ public class ProblemService {
         }
     }
 
-    // Xóa problem khỏi contest
     @Transactional
     public void removeProblemFromContest(Long problemId, Long contestId) {
         log.debug("Removing problem {} from contest {}", problemId, contestId);
@@ -502,5 +465,46 @@ public class ProblemService {
         List<TestCase> testCases = testCaseRepository.findByProblemIdOrderByTestOrderAsc(id);
         problem.setTestCases(testCases);
         return convertToDTO(problem);
+    }
+
+    @Transactional(readOnly = true)
+    public Problem getProblemEntityById(Long id) {
+        log.debug("Fetching problem entity by ID: {}", id);
+        return problemRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.error("Problem entity not found with ID: {}", id);
+                    return new EntityNotFoundException("Problem not found with id: " + id);
+                });
+    }
+
+    @Transactional
+    public Problem updateProblemWithTestCases(Problem problem) {
+        log.debug("Updating problem with ID: {} and test cases", problem.getId());
+        
+        // Validate problem data
+        validateProblem(problem);
+        
+        // Set updated timestamp
+        problem.setUpdatedAt(LocalDateTime.now());
+        
+        // Save the problem entity with its test cases
+        Problem savedProblem = problemRepository.save(problem);
+        log.info("Problem updated successfully with ID: {}", savedProblem.getId());
+        
+        // Update contest associations if needed
+        if (savedProblem.getContests() != null) {
+            for (Contest contest : savedProblem.getContests()) {
+                if (contest.getProblems() == null) {
+                    contest.setProblems(new ArrayList<>());
+                }
+                if (!contest.getProblems().contains(savedProblem)) {
+                    contest.getProblems().add(savedProblem);
+                    contestRepository.save(contest);
+                    log.info("Updated problem {} association with contest {}", savedProblem.getId(), contest.getId());
+                }
+            }
+        }
+        
+        return savedProblem;
     }
 }

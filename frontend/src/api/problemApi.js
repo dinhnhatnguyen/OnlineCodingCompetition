@@ -41,3 +41,24 @@ export const createProblemWithTestCases = async (data, token) => {
   );
   return response.data;
 };
+
+export const updateProblemWithTestCases = async (id, data, token) => {
+  console.log(
+    "Updating problem with test cases:",
+    JSON.stringify(data, null, 2)
+  );
+  try {
+    const response = await axios.put(
+      `http://localhost:8080/api/problems/${id}/with-test-cases`,
+      data,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return response.data;
+  } catch (error) {
+    console.error(
+      "Error updating problem with test cases:",
+      error.response?.data
+    );
+    throw error;
+  }
+};

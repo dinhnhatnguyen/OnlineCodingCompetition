@@ -248,6 +248,8 @@ const SubmissionDetails = () => {
               className={`p-4 rounded ${
                 testCases[currentTestIndex].status === "PASSED"
                   ? "bg-green-900/30 border border-green-700"
+                  : testCases[currentTestIndex].status === "TIME_LIMIT_EXCEEDED"
+                  ? "bg-yellow-900/30 border border-yellow-700"
                   : "bg-red-900/30 border border-red-700"
               }`}
             >
@@ -257,10 +259,16 @@ const SubmissionDetails = () => {
                     className={`px-2 py-1 text-xs rounded ${
                       testCases[currentTestIndex].status === "PASSED"
                         ? "bg-green-700"
+                        : testCases[currentTestIndex].status ===
+                          "TIME_LIMIT_EXCEEDED"
+                        ? "bg-yellow-700"
                         : "bg-red-700"
                     }`}
                   >
-                    {testCases[currentTestIndex].status}
+                    {testCases[currentTestIndex].status ===
+                    "TIME_LIMIT_EXCEEDED"
+                      ? "THỜI GIAN VƯỢT QUÁ"
+                      : testCases[currentTestIndex].status}
                   </span>
                 </div>
                 <div className="text-sm">

@@ -56,7 +56,7 @@ const ContestForm = ({ initialValues, onSubmit, loading }) => {
 
       setProblems(filteredProblems);
     } catch (error) {
-      console.error("Error fetching problems:", error);
+      console.error("Lỗi khi tải danh sách bài toán:", error);
     } finally {
       setLoadingProblems(false);
     }
@@ -75,6 +75,21 @@ const ContestForm = ({ initialValues, onSubmit, loading }) => {
     // Remove the dateRange field
     delete contestData.dateRange;
 
+    // Ensure problemIds is correctly formatted as an array of numbers
+    if (contestData.problemIds && Array.isArray(contestData.problemIds)) {
+      contestData.problemIds = contestData.problemIds.map((id) =>
+        typeof id === "string" ? parseInt(id, 10) : id
+      );
+    }
+
+    // Convert numeric values to proper types
+    if (contestData.maxParticipants) {
+      contestData.maxParticipants = parseInt(contestData.maxParticipants, 10);
+    }
+
+    // Ensure boolean values are properly formatted
+    contestData.isPublic = Boolean(contestData.isPublic);
+
     onSubmit(contestData);
   };
 
@@ -89,63 +104,67 @@ const ContestForm = ({ initialValues, onSubmit, loading }) => {
         problemIds: [],
       }}
     >
-      <Card title="Basic Information" className="mb-4">
+      <Card title="Thông tin cuộc thi" className="mb-4">
         <Form.Item
           name="title"
-          label="Contest Title"
+          label="Tiêu đề cuộc thi"
           rules={[
-            { required: true, message: "Please enter the contest title" },
+            { required: true, message: "Vui lòng nhập tiêu đề cuộc thi" },
           ]}
         >
-          <Input placeholder="Enter contest title" />
+          <Input placeholder="Nhập tiêu đề cuộc thi" />
         </Form.Item>
 
         <Form.Item
           name="description"
-          label="Description"
-          rules={[{ required: true, message: "Please enter a description" }]}
+          label="Mô tả"
+          rules={[{ required: true, message: "Vui lòng nhập mô tả cuộc thi" }]}
         >
-          <TextArea rows={4} placeholder="Describe the contest" />
+          <TextArea rows={4} placeholder="Mô tả chi tiết về cuộc thi" />
         </Form.Item>
 
         <Form.Item
           name="dateRange"
-          label="Contest Duration"
+          label="Thời gian diễn ra"
           rules={[
-            { required: true, message: "Please select the contest duration" },
+            {
+              required: true,
+              message: "Vui lòng chọn thời gian diễn ra cuộc thi",
+            },
           ]}
         >
           <RangePicker
             showTime
             format="YYYY-MM-DD HH:mm:ss"
             className="w-full"
+            placeholder={["Thời gian bắt đầu", "Thời gian kết thúc"]}
           />
         </Form.Item>
 
         <Space className="w-full">
           <Form.Item
             name="status"
-            label="Status"
-            rules={[{ required: true }]}
+            label="Trạng thái"
+            rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
             className="w-full"
           >
-            <Select placeholder="Select status">
-              <Option value="DRAFT">Draft</Option>
-              <Option value="UPCOMING">Upcoming</Option>
-              <Option value="ONGOING">Ongoing</Option>
-              <Option value="COMPLETED">Completed</Option>
-              <Option value="CANCELLED">Cancelled</Option>
+            <Select placeholder="Chọn trạng thái">
+              <Option value="DRAFT">Nháp</Option>
+              <Option value="UPCOMING">Sắp diễn ra</Option>
+              <Option value="ONGOING">Đang diễn ra</Option>
+              <Option value="COMPLETED">Đã kết thúc</Option>
+              <Option value="CANCELLED">Đã hủy</Option>
             </Select>
           </Form.Item>
 
           <Form.Item
             name="maxParticipants"
-            label="Max Participants"
+            label="Số người tham gia tối đa"
             className="w-full"
           >
             <InputNumber
               min={1}
-              placeholder="Unlimited if empty"
+              placeholder="Không giới hạn nếu bỏ trống"
               className="w-full"
             />
           </Form.Item>
@@ -153,18 +172,18 @@ const ContestForm = ({ initialValues, onSubmit, loading }) => {
 
         <Form.Item
           name="isPublic"
-          label="Public Contest"
+          label="Cuộc thi công khai"
           valuePropName="checked"
         >
           <Switch />
         </Form.Item>
       </Card>
 
-      <Card title="Problems" className="mb-4">
+      <Card title="Bài toán trong cuộc thi" className="mb-4">
         {problems.length === 0 && !loadingProblems ? (
           <Alert
-            message="No problems available"
-            description="You need to create problems before you can add them to a contest."
+            message="Không có bài toán nào"
+            description="Bạn cần tạo các bài toán trước khi thêm vào cuộc thi."
             type="info"
             className="mb-4"
           />
@@ -172,21 +191,27 @@ const ContestForm = ({ initialValues, onSubmit, loading }) => {
 
         <Form.Item
           name="problemIds"
-          label="Select Problems"
+          label="Chọn bài toán"
           rules={[
-            { required: true, message: "Please select at least one problem" },
+            { required: true, message: "Vui lòng chọn ít nhất một bài toán" },
           ]}
         >
           <Select
             mode="multiple"
-            placeholder="Select problems for this contest"
+            placeholder="Chọn các bài toán cho cuộc thi này"
             loading={loadingProblems}
             className="w-full"
             optionFilterProp="children"
           >
             {problems.map((problem) => (
               <Option key={problem.id} value={problem.id}>
-                {problem.title} ({problem.difficulty})
+                {problem.title} (
+                {problem.difficulty === "EASY"
+                  ? "Dễ"
+                  : problem.difficulty === "MEDIUM"
+                  ? "Trung bình"
+                  : "Khó"}
+                )
               </Option>
             ))}
           </Select>
@@ -197,7 +222,7 @@ const ContestForm = ({ initialValues, onSubmit, loading }) => {
 
       <Form.Item>
         <Button type="primary" htmlType="submit" loading={loading}>
-          {initialValues ? "Update Contest" : "Create Contest"}
+          {initialValues ? "Cập nhật cuộc thi" : "Tạo cuộc thi"}
         </Button>
       </Form.Item>
     </Form>

@@ -11,6 +11,8 @@ import {
   Tooltip,
   Space,
   Badge,
+  Dropdown,
+  Menu,
 } from "antd";
 import {
   EditOutlined,
@@ -19,6 +21,8 @@ import {
   ExclamationCircleOutlined,
   ClockCircleOutlined,
   DatabaseOutlined,
+  MoreOutlined,
+  CodeOutlined,
 } from "@ant-design/icons";
 
 const ProblemManagement = () => {
@@ -56,14 +60,22 @@ const ProblemManagement = () => {
     navigate(`/admin/problems/edit/${problem.id}`);
   };
 
+  const handleEditAdvanced = (problem) => {
+    navigate(`/admin/problems/edit-advanced/${problem.id}`);
+  };
+
+  const handleManageTestCases = (problem) => {
+    navigate(`/admin/problems/testcases/${problem.id}`);
+  };
+
   const showDeleteConfirm = (problem) => {
     confirm({
-      title: "Are you sure you want to delete this problem?",
+      title: "Bạn có chắc chắn muốn xóa bài toán này không?",
       icon: <ExclamationCircleOutlined />,
-      content: "This action cannot be undone.",
-      okText: "Yes, Delete",
+      content: "Hành động này không thể hoàn tác.",
+      okText: "Đồng ý, Xóa",
       okType: "danger",
-      cancelText: "Cancel",
+      cancelText: "Hủy",
       onOk: () => handleDelete(problem.id),
     });
   };
@@ -71,7 +83,7 @@ const ProblemManagement = () => {
   const handleDelete = async (id) => {
     try {
       await deleteProblem(id, token);
-      message.success("Problem deleted successfully");
+      message.success("Bài toán đã được xóa thành công");
       fetchProblems();
     } catch (err) {
       console.error("Error deleting problem:", err);
@@ -88,6 +100,41 @@ const ProblemManagement = () => {
 
     return <Tag color={colors[difficulty] || "default"}>{difficulty}</Tag>;
   };
+
+  const getActionsMenu = (record) => (
+    <Menu>
+      <Menu.Item
+        key="1"
+        onClick={() => handleEdit(record)}
+        icon={<EditOutlined />}
+      >
+        Chỉnh sửa cơ bản
+      </Menu.Item>
+      <Menu.Item
+        key="2"
+        onClick={() => handleEditAdvanced(record)}
+        icon={<EditOutlined />}
+      >
+        Chỉnh sửa nâng cao
+      </Menu.Item>
+      <Menu.Item
+        key="3"
+        onClick={() => handleManageTestCases(record)}
+        icon={<CodeOutlined />}
+      >
+        Quản lý test cases
+      </Menu.Item>
+      <Menu.Divider />
+      <Menu.Item
+        key="4"
+        onClick={() => showDeleteConfirm(record)}
+        icon={<DeleteOutlined />}
+        danger
+      >
+        Xóa bài toán
+      </Menu.Item>
+    </Menu>
+  );
 
   const columns = [
     {
@@ -166,7 +213,11 @@ const ProblemManagement = () => {
       title: "Test Cases",
       dataIndex: "testCases",
       key: "testCases",
-      render: (testCases) => <Badge count={testCases?.length || 0} showZero />,
+      render: (testCases, record) => (
+        <Button type="link" onClick={() => handleManageTestCases(record)}>
+          <Badge count={testCases?.length || 0} showZero />
+        </Button>
+      ),
       width: 100,
       align: "center",
     },
@@ -174,40 +225,26 @@ const ProblemManagement = () => {
       title: "Actions",
       key: "actions",
       render: (_, record) => (
-        <Space>
-          <Tooltip title="Edit Problem">
-            <Button
-              icon={<EditOutlined />}
-              onClick={() => handleEdit(record)}
-              type="primary"
-              size="small"
-            />
-          </Tooltip>
-          <Tooltip title="Delete Problem">
-            <Button
-              icon={<DeleteOutlined />}
-              onClick={() => showDeleteConfirm(record)}
-              danger
-              size="small"
-            />
-          </Tooltip>
-        </Space>
+        <Dropdown overlay={getActionsMenu(record)} trigger={["click"]}>
+          <Button icon={<MoreOutlined />} />
+        </Dropdown>
       ),
-      width: 100,
+      width: 80,
+      align: "center",
     },
   ];
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Problem Management</h1>
+        <h1 className="text-2xl font-bold">Quản lý bài toán</h1>
         <Space>
           <Button
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => navigate("/admin/problems/create")}
           >
-            Create Problem
+            Tạo bài toán
           </Button>
           <Button
             type="primary"
@@ -215,7 +252,7 @@ const ProblemManagement = () => {
             onClick={() => navigate("/admin/problems/create-advanced")}
             className="bg-blue-600 hover:bg-blue-700"
           >
-            Create with Test Cases
+            Tạo bài toán nâng cao
           </Button>
         </Space>
       </div>

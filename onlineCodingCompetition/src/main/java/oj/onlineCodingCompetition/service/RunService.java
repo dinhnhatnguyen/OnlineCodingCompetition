@@ -53,6 +53,219 @@ public class RunService {
             "javascript", "solution"
     );
     
+    // New DTO for scratch pad code execution
+    public static class ScratchCodeDTO {
+        private String code;
+        private String language;
+        private String input;
+        
+        // Getters and setters
+        public String getCode() {
+            return code;
+        }
+        
+        public void setCode(String code) {
+            this.code = code;
+        }
+        
+        public String getLanguage() {
+            return language;
+        }
+        
+        public void setLanguage(String language) {
+            this.language = language;
+        }
+        
+        public String getInput() {
+            return input;
+        }
+        
+        public void setInput(String input) {
+            this.input = input;
+        }
+    }
+    
+    // New DTO for scratch pad execution result
+    public static class ScratchResultDTO {
+        private String status;
+        private String output;
+        private String errorMessage;
+        private Integer runtime;
+        private Integer memory;
+        
+        public ScratchResultDTO() {
+        }
+        
+        public ScratchResultDTO(String status, String output, String errorMessage, Integer runtime, Integer memory) {
+            this.status = status;
+            this.output = output;
+            this.errorMessage = errorMessage;
+            this.runtime = runtime;
+            this.memory = memory;
+        }
+        
+        // Getters and setters
+        public String getStatus() {
+            return status;
+        }
+        
+        public void setStatus(String status) {
+            this.status = status;
+        }
+        
+        public String getOutput() {
+            return output;
+        }
+        
+        public void setOutput(String output) {
+            this.output = output;
+        }
+        
+        public String getErrorMessage() {
+            return errorMessage;
+        }
+        
+        public void setErrorMessage(String errorMessage) {
+            this.errorMessage = errorMessage;
+        }
+        
+        public Integer getRuntime() {
+            return runtime;
+        }
+        
+        public void setRuntime(Integer runtime) {
+            this.runtime = runtime;
+        }
+        
+        public Integer getMemory() {
+            return memory;
+        }
+        
+        public void setMemory(Integer memory) {
+            this.memory = memory;
+        }
+    }
+    
+    public ScratchResultDTO runScratchCode(ScratchCodeDTO scratchCodeDTO) {
+        try {
+            // Create a temporary directory for compilation and execution
+            String tempDirPath = System.getProperty("java.io.tmpdir") + "/scratch_" + UUID.randomUUID();
+            Path tempDir = Files.createDirectory(Paths.get(tempDirPath));
+            
+            try {
+                // Save source code to file
+                String language = scratchCodeDTO.getLanguage();
+                String extension = LANGUAGE_EXTENSION_MAP.getOrDefault(language, ".txt");
+                
+                // For C++ specifically, use Main.cpp instead of solution.cpp
+                String filename = "solution";
+                if ("cpp".equals(language)) {
+                    filename = "Main";
+                }
+                
+                File sourceFile = new File(tempDirPath, filename + extension);
+                try (BufferedWriter writer = new BufferedWriter(new FileWriter(sourceFile))) {
+                    writer.write(scratchCodeDTO.getCode());
+                }
+                
+                // Save input to file
+                File inputFile = new File(tempDirPath, "input.txt");
+                try (BufferedWriter writer = new BufferedWriter(new FileWriter(inputFile))) {
+                    writer.write(scratchCodeDTO.getInput());
+                }
+                
+                // Run Docker container
+                ProcessBuilder pb;
+                String containerName = "scratch_" + UUID.randomUUID().toString().replace("-", "");
+                String imageToUse = LANGUAGE_IMAGE_MAP.getOrDefault(language, "java-runner");
+                
+                // Use -v to mount the source file and input file
+                pb = new ProcessBuilder(
+                        "docker", "run", "--name", containerName, "-m", "1024m", "--cpus=1", 
+                        "-v", sourceFile.getAbsolutePath() + ":/app/code/" + filename + extension, 
+                        "-v", inputFile.getAbsolutePath() + ":/app/input.txt",
+                        imageToUse, "scratch"  // Add "scratch" mode flag to indicate direct execution
+                );
+                
+                pb.redirectErrorStream(true);
+                Process process = pb.start();
+                
+                // Read output
+                String output = new String(process.getInputStream().readAllBytes());
+                int exitCode = process.waitFor();
+                
+                // Measure memory usage
+                long memoryUsedKb = measureMemoryUsage(containerName);
+                
+                // Clean up container
+                new ProcessBuilder("docker", "rm", "-f", containerName).start().waitFor();
+                
+                ScratchResultDTO result = new ScratchResultDTO();
+                
+                if (exitCode != 0) {
+                    // If exit code is not 0, there was an error
+                    if (output.toLowerCase().contains("compilation failed") || 
+                        output.toLowerCase().contains("syntaxerror") ||
+                        output.toLowerCase().contains("compile error")) {
+                        
+                        result.setStatus("COMPILE_ERROR");
+                        result.setErrorMessage(output);
+                    } else {
+                        result.setStatus("ERROR");
+                        // Check if error is OOM
+                        if (output.toLowerCase().contains("out of memory") || 
+                            output.toLowerCase().contains("oom") || 
+                            output.toLowerCase().contains("fatal process oom")) {
+                            result.setErrorMessage("Vượt quá giới hạn bộ nhớ cho phép. Vui lòng tối ưu code của bạn.");
+                        } else {
+                            result.setErrorMessage("Runtime error: " + output);
+                        }
+                    }
+                    result.setRuntime(0);
+                    result.setMemory((int) memoryUsedKb);
+                    return result;
+                }
+                
+                // Parse JSON from output - for scratch mode, expect direct output
+                try {
+                    // First try to parse as JSON (for backward compatibility)
+                    Map<String, Object> outputMap = objectMapper.readValue(output, Map.class);
+                    String userOutput = (String) outputMap.get("output");
+                    int runtimeMs = (Integer) outputMap.getOrDefault("runtime_ms", 0);
+                    
+                    result.setStatus("SUCCESS");
+                    result.setOutput(userOutput);
+                    result.setRuntime(runtimeMs);
+                    result.setMemory((int) memoryUsedKb);
+                } catch (Exception e) {
+                    // If not JSON, assume it's direct output
+                    result.setStatus("SUCCESS");
+                    result.setOutput(output);
+                    result.setRuntime(0); // Runtime measurement will require updates to runners
+                    result.setMemory((int) memoryUsedKb);
+                }
+                
+                return result;
+                
+            } finally {
+                // Clean up temp directory
+                try {
+                    Files.walk(tempDir)
+                            .sorted(Comparator.reverseOrder())
+                            .map(Path::toFile)
+                            .forEach(File::delete);
+                } catch (Exception e) {
+                    log.error("Error cleaning up temp directory: {}", e.getMessage());
+                }
+            }
+            
+        } catch (Exception e) {
+            log.error("Error running scratch code: {}", e.getMessage(), e);
+            return new ScratchResultDTO("ERROR", null, 
+                    "System error: " + e.getMessage(), 0, 0);
+        }
+    }
+    
     public RunCodeResultDTO runCode(RunCodeDTO runCodeDTO) {
         try {
             Problem problem = problemRepository.findById(runCodeDTO.getProblemId())
@@ -164,7 +377,7 @@ public class RunService {
             String imageToUse = LANGUAGE_IMAGE_MAP.getOrDefault(language, "java-runner");
             
             pb = new ProcessBuilder(
-                    "docker", "run", "--name", containerName, "-m", "512m", "--cpus=1", 
+                    "docker", "run", "--name", containerName, "-m", "1024m", "--cpus=1", 
                     "-v", sourceFilePath + ":/app/solution" + LANGUAGE_EXTENSION_MAP.getOrDefault(language, ".txt"), 
                     "-v", inputFile.getAbsolutePath() + ":/app/input.json",
                     imageToUse
@@ -194,7 +407,14 @@ public class RunService {
                     return result;
                 } else {
                     result.setStatus("ERROR");
-                    result.setErrorMessage("Runtime error: " + output);
+                    // Kiểm tra nếu lỗi là OOM
+                    if (output.toLowerCase().contains("out of memory") || 
+                        output.toLowerCase().contains("oom") || 
+                        output.toLowerCase().contains("fatal process oom")) {
+                        result.setErrorMessage("Runtime error: Vượt quá giới hạn bộ nhớ cho phép. Vui lòng tối ưu code của bạn.");
+                    } else {
+                        result.setErrorMessage("Runtime error: " + output);
+                    }
                     result.setRuntime(0);
                     result.setMemory((int) memoryUsedKb);
                     return result;

@@ -45,30 +45,59 @@ const CodeEditor = ({
   problem,
   contestId = null,
   onSubmissionComplete = null,
+  language,
+  value,
+  onChange,
+  height = "500px",
+  options = {},
+  hideLanguageSelector = false,
 }) => {
-  const [language, setLanguage] = useState("java");
-  const [code, setCode] = useState(defaultCode[language]);
+  const [editorLanguage, setEditorLanguage] = useState(language || "java");
+  const [code, setCode] = useState(value || defaultCode[language || "java"]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState(null);
-  const { user, token } = useAuth();
-  const [editorHeight, setEditorHeight] = useState("500px");
+  const { token } = useAuth();
+  const editorHeight = height;
 
   useEffect(() => {
-    // Cung cấp mã mẫu từ problem hoặc sử dụng mã mặc định
-    if (problem?.solutionTemplate) {
-      setCode(problem.solutionTemplate);
-    } else {
-      setCode(defaultCode[language]);
+    // Nếu có value được truyền vào từ prop, sử dụng nó
+    if (value !== undefined) {
+      setCode(value);
     }
-  }, [language, problem]);
+    // Nếu có language được truyền vào từ prop, sử dụng nó
+    if (language) {
+      setEditorLanguage(language);
+    }
+  }, [value, language]);
+
+  useEffect(() => {
+    // Chỉ áp dụng logic cũ khi đang sử dụng trong context của problem
+    if (problem) {
+      // Cung cấp mã mẫu từ problem hoặc sử dụng mã mặc định
+      if (problem?.solutionTemplate) {
+        setCode(problem.solutionTemplate);
+      } else {
+        setCode(defaultCode[editorLanguage]);
+      }
+    }
+  }, [editorLanguage, problem]);
 
   const handleLanguageChange = (value) => {
-    setLanguage(value);
+    setEditorLanguage(value);
+    // Nếu có hàm onChange được truyền vào, gọi nó với editorLanguage mới
+    if (onChange && value !== code) {
+      setCode(defaultCode[value]);
+      onChange(defaultCode[value]);
+    }
   };
 
   const handleCodeChange = (value) => {
     setCode(value);
+    // Nếu có hàm onChange được truyền vào, gọi nó với code mới
+    if (onChange && value !== undefined) {
+      onChange(value);
+    }
   };
 
   const handleRun = async () => {
@@ -79,7 +108,7 @@ const CodeEditor = ({
       // Tạo submission object với cờ đánh dấu chỉ là test run, không tính điểm
       const submissionData = {
         problemId: problem.id,
-        language,
+        language: editorLanguage,
         sourceCode: code,
         isTest: true,
         contestId: contestId,
@@ -124,7 +153,7 @@ const CodeEditor = ({
       // Tạo submission object
       const submissionData = {
         problemId: problem.id,
-        language,
+        language: editorLanguage,
         sourceCode: code,
         isTest: false,
         contestId: contestId,
@@ -199,62 +228,67 @@ const CodeEditor = ({
 
   return (
     <div className="code-editor-container">
-      <Card className="mb-4">
-        <div className="flex justify-between items-center mb-4">
-          <Select
-            value={language}
-            onChange={handleLanguageChange}
-            style={{ width: 150 }}
-            disabled={isSubmitting || isRunning}
-          >
-            {problem?.allowedLanguages?.map((lang) => (
-              <Option key={lang} value={lang}>
-                {lang.charAt(0).toUpperCase() + lang.slice(1)}
-              </Option>
-            ))}
-          </Select>
-          <Space>
-            <Tooltip title="Chạy thử với ví dụ">
-              <Button
-                type="primary"
-                icon={<PlayCircleOutlined />}
-                onClick={handleRun}
-                loading={isRunning}
-                className="bg-blue-500 hover:bg-blue-600"
-              >
-                Chạy thử
-              </Button>
-            </Tooltip>
-            <Tooltip title="Nộp bài để chấm điểm">
-              <Button
-                type="primary"
-                icon={<SendOutlined />}
-                onClick={handleSubmit}
-                loading={isSubmitting}
-                className="bg-green-500 hover:bg-green-600"
-              >
-                Nộp bài
-              </Button>
-            </Tooltip>
-          </Space>
-        </div>
+      {!hideLanguageSelector && problem && (
+        <Card className="mb-4">
+          <div className="flex justify-between items-center mb-4">
+            <Select
+              value={editorLanguage}
+              onChange={handleLanguageChange}
+              style={{ width: 150 }}
+              disabled={isSubmitting || isRunning}
+            >
+              {problem?.allowedLanguages?.map((lang) => (
+                <Option key={lang} value={lang}>
+                  {lang.charAt(0).toUpperCase() + lang.slice(1)}
+                </Option>
+              ))}
+            </Select>
+            <Space>
+              <Tooltip title="Chạy thử với ví dụ">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  onClick={handleRun}
+                  loading={isRunning}
+                  className="bg-blue-500 hover:bg-blue-600"
+                >
+                  Chạy thử
+                </Button>
+              </Tooltip>
+              <Tooltip title="Nộp bài để chấm điểm">
+                <Button
+                  type="primary"
+                  icon={<SendOutlined />}
+                  onClick={handleSubmit}
+                  loading={isSubmitting}
+                  className="bg-green-500 hover:bg-green-600"
+                >
+                  Nộp bài
+                </Button>
+              </Tooltip>
+            </Space>
+          </div>
+        </Card>
+      )}
 
-        <div className="border rounded-md overflow-hidden">
-          <Editor
-            height={editorHeight}
-            language={language}
-            value={code}
-            onChange={handleCodeChange}
-            theme="vs-dark"
-            options={{
-              fontSize: 14,
-              minimap: { enabled: false },
-              scrollBeyondLastLine: false,
-              automaticLayout: true,
-            }}
-          />
-        </div>
-      </Card>
+      <div className="border rounded-md overflow-hidden">
+        <Editor
+          height={editorHeight}
+          language={editorLanguage}
+          value={code}
+          onChange={handleCodeChange}
+          theme="vs-dark"
+          options={{
+            fontSize: 14,
+            formatOnPaste: true,
+            formatOnType: true,
+            autoClosingBrackets: "always",
+            minimap: { enabled: false },
+            scrollBeyondLastLine: false,
+            ...options,
+          }}
+        />
+      </div>
 
       {isSubmitting && !result && (
         <Card className="mb-4">

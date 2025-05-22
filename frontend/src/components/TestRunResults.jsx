@@ -165,6 +165,21 @@ const TestRunResults = ({ results }) => {
                 <pre className="bg-red-900/50 p-2 rounded text-xs overflow-auto max-h-32">
                   {results.results[currentTestIndex].errorMessage}
                 </pre>
+                {(
+                  results.results[currentTestIndex].errorMessage || ""
+                ).includes("Vượt quá giới hạn bộ nhớ") && (
+                  <div className="mt-2 text-yellow-400 text-sm">
+                    <strong>Gợi ý:</strong> Mã của bạn có thể đang sử dụng quá
+                    nhiều bộ nhớ. Hãy xem xét:
+                    <ul className="list-disc pl-4 mt-1">
+                      <li>Tránh tạo mảng hoặc chuỗi rất lớn</li>
+                      <li>
+                        Tránh đệ quy sâu mà không có điều kiện dừng phù hợp
+                      </li>
+                      <li>Giải phóng tài nguyên không cần thiết</li>
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -175,8 +190,35 @@ const TestRunResults = ({ results }) => {
 
       {results.status === "ERROR" && (
         <div className="bg-red-900/50 p-3 rounded mb-3">
-          <h4 className="font-bold">System Error:</h4>
-          <p>{results.compileError || "An unknown error occurred"}</p>
+          <h4 className="font-bold">Lỗi hệ thống:</h4>
+          <p className="whitespace-pre-wrap text-sm mb-1">
+            {results.compileError || "Đã xảy ra lỗi không xác định"}
+          </p>
+          {(results.compileError || "").includes("đăng nhập") && (
+            <p className="text-yellow-400 mt-2 text-sm">
+              <strong>Gợi ý:</strong> Bạn cần đăng nhập để chạy code. Nếu đã
+              đăng nhập, có thể phiên đăng nhập đã hết hạn, vui lòng đăng nhập
+              lại.
+            </p>
+          )}
+          {((results.compileError || "")
+            .toLowerCase()
+            .includes("out of memory") ||
+            (results.compileError || "").toLowerCase().includes("oom") ||
+            (results.compileError || "").includes(
+              "Vượt quá giới hạn bộ nhớ"
+            )) && (
+            <div className="mt-2 text-yellow-400 text-sm">
+              <strong>Gợi ý:</strong> Code của bạn đã vượt quá giới hạn bộ nhớ.
+              Hãy xem xét:
+              <ul className="list-disc pl-4 mt-1">
+                <li>Tránh tạo mảng hoặc chuỗi rất lớn</li>
+                <li>Tránh đệ quy sâu mà không có điều kiện dừng phù hợp</li>
+                <li>Giải phóng tài nguyên không cần thiết</li>
+                <li>Sử dụng thuật toán hiệu quả hơn về bộ nhớ</li>
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>

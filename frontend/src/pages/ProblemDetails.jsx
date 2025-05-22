@@ -104,6 +104,10 @@ const ProblemDetails = () => {
         .filter((tc) => tc.isExample)
         .map((tc) => tc.id);
 
+      if (!exampleTestCaseIds || exampleTestCaseIds.length === 0) {
+        throw new Error("Không tìm thấy test case ví dụ để chạy thử");
+      }
+
       const payload = {
         problemId: problem.id,
         language,
@@ -118,7 +122,7 @@ const ProblemDetails = () => {
       setRunResults({
         status: "ERROR",
         results: [],
-        compileError: error.message || "Failed to run code",
+        compileError: error.message || "Lỗi khi chạy code",
       });
     } finally {
       setRunning(false);

@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.*;
 import oj.onlineCodingCompetition.dto.RunCodeDTO;
 import oj.onlineCodingCompetition.dto.RunCodeResultDTO;
 import oj.onlineCodingCompetition.service.RunService;
+import oj.onlineCodingCompetition.service.RunService.ScratchCodeDTO;
+import oj.onlineCodingCompetition.service.RunService.ScratchResultDTO;
 
 @RestController
 @RequestMapping("/api/run")
@@ -24,5 +26,11 @@ public class RunController {
             @Valid @RequestBody RunCodeDTO runCodeDTO,
             @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(runService.runCode(runCodeDTO));
+    }
+
+    @PostMapping("/scratch")
+    public ResponseEntity<ScratchResultDTO> runScratchCode(@RequestBody ScratchCodeDTO scratchCodeDTO) {
+        ScratchResultDTO result = runService.runScratchCode(scratchCodeDTO);
+        return ResponseEntity.ok(result);
     }
 } 

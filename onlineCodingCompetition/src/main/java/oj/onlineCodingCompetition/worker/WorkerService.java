@@ -55,7 +55,7 @@ public class WorkerService {
     private static final Map<String, String> LANGUAGE_IMAGE_MAP = Map.of(
             "java", "java-runner",
             "python", "python-runner",
-            "cpp", "cpp-runner",
+            "cpp", "docker build -t cpp-runner .\n",
             "javascript", "js-runner"
     );
 

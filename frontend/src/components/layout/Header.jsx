@@ -56,6 +56,12 @@ const Header = () => {
           >
             Contests
           </Link>
+          <Link
+            to="/scratchpad"
+            className="text-gray-400 hover:text-primary-pink transition-colors"
+          >
+            Scratch Pad
+          </Link>
           {isAdminOrInstructor && (
             <Link
               to="/admin"

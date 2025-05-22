@@ -52,16 +52,16 @@ const Dashboard = () => {
           label: "Danh sách bài tập",
           onClick: () => navigate("/admin/problems"),
         },
+        // {
+        //   key: "2-1",
+        //   icon: <PlusOutlined />,
+        //   label: "Tạo bài tập mới",
+        //   onClick: () => navigate("/admin/problems/create"),
+        // },
         {
           key: "2-1",
           icon: <PlusOutlined />,
-          label: "Tạo bài tập mới",
-          onClick: () => navigate("/admin/problems/create"),
-        },
-        {
-          key: "2-2",
-          icon: <PlusOutlined />,
-          label: "Tạo bài tập nâng cao",
+          label: "Tạo bài tập ",
           onClick: () => navigate("/admin/problems/create-advanced"),
         },
       ],

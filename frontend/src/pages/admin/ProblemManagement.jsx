@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getProblems, deleteProblem } from "../../api/problemApi";
+import {
+  getProblems,
+  deleteProblem,
+  getMyProblems,
+} from "../../api/problemApi";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   Button,
@@ -36,14 +40,13 @@ const ProblemManagement = () => {
   const fetchProblems = async () => {
     setLoading(true);
     try {
-      const data = await getProblems();
-
-      // Filter problems for instructors (only show their own)
-      const filteredData = isAdmin
-        ? data
-        : data.filter((problem) => problem.createdById === user?.id);
-
-      setProblems(filteredData);
+      let data;
+      if (isAdmin) {
+        data = await getProblems();
+      } else {
+        data = await getMyProblems(token);
+      }
+      setProblems(data);
     } catch (err) {
       console.error("Error fetching problems:", err);
       message.error(err.response?.data?.message || "Failed to fetch problems");
@@ -229,7 +232,7 @@ const ProblemManagement = () => {
           <Button icon={<MoreOutlined />} />
         </Dropdown>
       ),
-      width: 80,
+      width: 100,
       align: "center",
     },
   ];
@@ -239,20 +242,20 @@ const ProblemManagement = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Quản lý bài toán</h1>
         <Space>
-          <Button
+          {/* <Button
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => navigate("/admin/problems/create")}
           >
             Tạo bài toán
-          </Button>
+          </Button> */}
           <Button
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => navigate("/admin/problems/create-advanced")}
             className="bg-blue-600 hover:bg-blue-700"
           >
-            Tạo bài toán nâng cao
+            Tạo bài toán mới
           </Button>
         </Space>
       </div>

@@ -289,13 +289,25 @@ public class ProblemService {
 
     @Transactional(readOnly = true)
     public List<ProblemDTO> getAllProblems() {
-        log.debug("Fetching all problems");
+        log.debug("Request to get all Problems");
         return problemRepository.findAll().stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<ProblemDTO> getProblemsByCreatedBy(Long userId) {
+        log.debug("Request to get all Problems created by user: {}", userId);
+        User creator = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+        return problemRepository.findByCreatedBy(creator).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public Problem.FunctionSignature getFunctionSignature(Long problemId, String language) {
+        log.debug("Request to get function signature for problem {} and language {}", problemId, language);
         Problem problem = problemRepository.findByIdWithFunctionSignatures(problemId)
                 .orElseThrow(() -> new EntityNotFoundException("Problem not found with id: " + problemId));
         Problem.FunctionSignature signature = problem.getFunctionSignatures().get(language.toLowerCase());

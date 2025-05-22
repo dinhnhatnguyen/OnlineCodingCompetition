@@ -38,3 +38,30 @@ export const deleteContest = async (id, token) => {
   });
   return response.data;
 };
+
+export const getAvailableProblemsForContest = async (contestId, token) => {
+  try {
+    const response = await axios.get(
+      `${API_URL}/${contestId}/available-problems`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching available problems:", error);
+    throw error;
+  }
+};
+
+export const getMyContests = async (token) => {
+  try {
+    const response = await axios.get(`${API_URL}/my-contests`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching my contests:", error);
+    throw error;
+  }
+};

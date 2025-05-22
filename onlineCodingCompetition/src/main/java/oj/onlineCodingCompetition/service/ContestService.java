@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import oj.onlineCodingCompetition.dto.ContestDTO;
 import oj.onlineCodingCompetition.dto.ContestRegistrationDTO;
+import oj.onlineCodingCompetition.dto.ProblemDTO;
 import oj.onlineCodingCompetition.entity.Contest;
 import oj.onlineCodingCompetition.entity.ContestRegistration;
 import oj.onlineCodingCompetition.entity.Problem;
@@ -23,8 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -421,5 +424,89 @@ public class ContestService {
         if (contestDTO.getMaxParticipants() != null && contestDTO.getMaxParticipants() <= 0) {
             throw new IllegalArgumentException("Số lượng người tham gia tối đa phải lớn hơn 0");
         }
+    }
+
+    /**
+     * Lấy danh sách các bài toán có thể thêm vào cuộc thi
+     * @param contestId ID của cuộc thi
+     * @return Danh sách các bài toán có thể thêm vào
+     */
+    @Transactional(readOnly = true)
+    public List<ProblemDTO> getAvailableProblemsForContest(Long contestId) {
+        log.debug("Lấy danh sách bài toán có thể thêm vào cuộc thi ID: {}", contestId);
+        
+        // Kiểm tra cuộc thi tồn tại
+        Contest contest = contestRepository.findById(contestId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cuộc thi với ID: " + contestId));
+        
+        // Lấy danh sách ID các bài toán đã có trong cuộc thi
+        Set<Long> existingProblemIds = contest.getProblems().stream()
+                .map(Problem::getId)
+                .collect(Collectors.toSet());
+        
+        // Lấy tất cả bài toán và lọc ra những bài toán chưa có trong cuộc thi
+        List<Problem> availableProblems = problemRepository.findAll().stream()
+                .filter(problem -> !existingProblemIds.contains(problem.getId()))
+                .collect(Collectors.toList());
+        
+        // Chuyển đổi sang DTO và trả về
+        return availableProblems.stream()
+                .map(this::convertToProblemDTO)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Chuyển đổi Problem entity sang ProblemDTO
+     * @param problem Problem entity cần chuyển đổi
+     * @return ProblemDTO đã được chuyển đổi
+     */
+    private ProblemDTO convertToProblemDTO(Problem problem) {
+        if (problem == null) {
+            return null;
+        }
+        
+        ProblemDTO dto = modelMapper.map(problem, ProblemDTO.class);
+        
+        // Chuyển đổi topics nếu cần
+        if (problem.getTopics() != null) {
+            dto.setTopics(new HashSet<>(problem.getTopics()));
+        } else {
+            dto.setTopics(new HashSet<>());
+        }
+        
+        // Chuyển đổi contestIds nếu cần
+        if (problem.getContests() != null) {
+            dto.setContestIds(problem.getContests().stream()
+                    .map(Contest::getId)
+                    .collect(Collectors.toSet()));
+        } else {
+            dto.setContestIds(new HashSet<>());
+        }
+        
+        dto.setContestId(problem.getContestId());
+        
+        return dto;
+    }
+    
+    /**
+     * Lấy danh sách các cuộc thi do người dùng cụ thể tạo ra
+     * @param userId ID của người dùng cần lấy danh sách cuộc thi
+     * @return Danh sách các cuộc thi do người dùng tạo ra
+     */
+    @Transactional(readOnly = true)
+    public List<ContestDTO> getContestsByCreatedBy(Long userId) {
+        log.debug("Lấy danh sách cuộc thi do người dùng ID: {} tạo", userId);
+        
+        // Tìm user
+        User creator = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy user với ID: " + userId));
+        
+        // Lấy danh sách cuộc thi theo người tạo
+        List<Contest> contests = contestRepository.findByCreatedBy(creator);
+        
+        // Chuyển đổi sang DTO và trả về
+        return contests.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
     }
 }

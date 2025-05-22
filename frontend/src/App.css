@@ -1,38 +1,102 @@
-.App {
-  text-align: center;
+:root {
+  --primary-pink: #722055;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+body,
+#root,
+.app {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  background: #0a0a12;
+  color: #fff;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
-}
-
-.App-link {
-  color: #61dafb;
-}
-
-@keyframes App-logo-spin {
+@keyframes logo-spin {
   from {
     transform: rotate(0deg);
   }
   to {
     transform: rotate(360deg);
   }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+.home-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 60px;
+  background: transparent;
+}
+
+.home-page h1 {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  color: #fff;
+}
+
+.home-page p {
+  font-size: 1.3rem;
+  color: #ccc;
+}
+
+.logo,
+.logo-text {
+  color: var(--primary-pink) !important;
+}
+
+.button,
+.btn,
+.primary-btn {
+  background: var(--primary-pink) !important;
+  color: #fff !important;
+  border: none;
+  border-radius: 999px;
+  padding: 0.5em 1.5em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.button:hover,
+.btn:hover,
+.primary-btn:hover {
+  background: #50153a !important;
+}
+
+.feature-icon {
+  color: var(--primary-pink) !important;
+}
+
+.hover\:text-primary-pink:hover {
+  color: var(--primary-pink) !important;
 }

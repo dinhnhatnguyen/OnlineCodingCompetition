@@ -1,38 +1,41 @@
 #!/bin/bash
 set -e
 
-# Lấy tên file từ tham số dòng lệnh
-CODE_FILE=$1
+ulimit -u 1000
+ulimit -t 10
+ulimit -v 262144
 
-cd /app/code
+# Check if running in scratch mode
+if [ "$1" = "scratch" ]; then
+  cd /app/code
+  
+  # Increase memory limit for Node.js
+  NODE_OPTS=${NODE_OPTS:-"--max-old-space-size=256"}
+  
+  if [ -f "/app/input.txt" ]; then
+    node $NODE_OPTS solution.js < /app/input.txt
+  else
+    node $NODE_OPTS solution.js
+  fi
+  
+  EXIT_CODE=$?
+  exit $EXIT_CODE
+else
+  # Original behavior for normal mode
+  CODE_FILE=$1
+  INPUT_FILE=$2
 
-# Chạy mã nguồn JavaScript với Node.js
-#echo "Running JavaScript code..."
-node $CODE_FILE > output.txt 2> error.txt
+  cd /app/code
 
-# Trả về exit code từ lệnh Node.js
-EXIT_CODE=$?
-cat output.txt
-cat error.txt >&2
-exit $EXIT_CODE
+  # Increase memory limit for Node.js
+  NODE_OPTS=${NODE_OPTS:-"--max-old-space-size=256"}
+  
+  if [ -n "$INPUT_FILE" ] && [ -f "$INPUT_FILE" ]; then
+    node $NODE_OPTS $CODE_FILE < $INPUT_FILE
+  else
+    node $NODE_OPTS $CODE_FILE
+  fi
 
-
-
-##!/bin/bash
-#set -e
-#
-## Lấy tên file và file test cases từ tham số dòng lệnh
-#CODE_FILE=$1
-#TEST_CASES_FILE=$2
-#
-#cd /app/code
-#
-## Chạy mã nguồn JavaScript với Node.js
-#echo "Running JavaScript code..."
-#node $CODE_FILE < $TEST_CASES_FILE > output.txt 2> error.txt
-#
-## Trả về exit code từ lệnh Node.js
-#EXIT_CODE=$?
-#cat output.txt
-#cat error.txt >&2
-#exit $EXIT_CODE
+  EXIT_CODE=$?
+  exit $EXIT_CODE
+fi

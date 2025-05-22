@@ -1,21 +1,51 @@
 #!/bin/bash
 set -e
 
-# Get code file from command line parameter
-CODE_FILE=$1
+# Set resource limits
+ulimit -u 1000
+ulimit -t 10
+ulimit -v 262144
 
-cd /app/code
+# Check if running in scratch mode
+if [ "$1" = "scratch" ]; then
+  cd /app/code
+  
+  # Compile C++ code - use Main.cpp for scratch mode
+  if ! g++ -std=c++17 -O2 -Wall -Wextra -g -o solution Main.cpp 2> error.txt; then
+    cat error.txt >&2
+    exit 1
+  fi
+  
+  # Run with input.txt
+  if [ -f "/app/input.txt" ]; then
+    ./solution < /app/input.txt
+  else
+    ./solution
+  fi
+  
+  EXIT_CODE=$?
+  exit $EXIT_CODE
+else
+  # Original behavior for normal mode
+  # Get code file from command line parameter
+  CODE_FILE=$1
+  INPUT_FILE=$2
 
-# Compile C++ code
-#echo "Compiling C++ code..."
-g++ -std=c++17 -o solution $CODE_FILE
+  cd /app/code
 
-# Run the compiled program
-#echo "Running C++ code..."
-./solution > output.txt 2> error.txt
+  # Compile C++ code
+  if ! g++ -std=c++17 -O2 -Wall -Wextra -g -o solution $CODE_FILE 2> error.txt; then
+    cat error.txt >&2
+    exit 1
+  fi
 
-# Return exit code from execution
-EXIT_CODE=$?
-cat output.txt
-cat error.txt >&2
-exit $EXIT_CODE
+  # Run the compiled program
+  if [ -n "$INPUT_FILE" ] && [ -f "$INPUT_FILE" ]; then
+    ./solution < $INPUT_FILE
+  else
+    ./solution
+  fi
+
+  EXIT_CODE=$?
+  exit $EXIT_CODE
+fi

@@ -1,40 +1,39 @@
 #!/bin/bash
 set -e
 
-# Lấy tên file từ tham số dòng lệnh
-CODE_FILE=$1
+# Set resource limits
+ulimit -u 1000
+ulimit -t 10
+ulimit -v 262144
 
-cd /app/code
+# Check if running in scratch mode
+if [ "$1" = "scratch" ]; then
+  cd /app/code
+  
+  # Run Python code with input.txt
+  if [ -f "/app/input.txt" ]; then
+    python3 -u solution.py < /app/input.txt
+  else
+    python3 -u solution.py
+  fi
+  
+  EXIT_CODE=$?
+  exit $EXIT_CODE
+else
+  # Original behavior for normal mode
+  # Get file name from command line parameters
+  CODE_FILE=$1
+  INPUT_FILE=$2
 
-# Chạy mã nguồn Python
-#echo "Running Python code..."
-python3 -u $CODE_FILE > output.txt 2> error.txt
+  cd /app/code
 
-# Trả về exit code từ lệnh Python
-EXIT_CODE=$?
-cat output.txt
-cat error.txt >&2
-exit $EXIT_CODE
+  # Run Python code
+  if [ -n "$INPUT_FILE" ] && [ -f "$INPUT_FILE" ]; then
+    python3 -u $CODE_FILE < $INPUT_FILE
+  else
+    python3 -u $CODE_FILE
+  fi
 
-
-
-##!/bin/bash
-#set -e
-#
-## Lấy tên file và file test cases từ tham số dòng lệnh
-#CODE_FILE=$1
-#TEST_CASES_FILE=$2
-#
-#cd /app/code
-#
-## Chạy mã nguồn Python
-#echo "Running Python code..."
-#python3 -u $CODE_FILE < $TEST_CASES_FILE > output.txt 2> error.txt
-#
-## Trả về exit code từ lệnh Python
-#EXIT_CODE=$?
-#cat output.txt
-#cat error.txt >&2
-#exit $EXIT_CODE
-
-
+  EXIT_CODE=$?
+  exit $EXIT_CODE
+fi

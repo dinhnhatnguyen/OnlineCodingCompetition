@@ -10,7 +10,7 @@ const Problems = () => {
   const [loading, setLoading] = useState(true);
   const [solvedProblems, setSolvedProblems] = useState(new Set());
   const [searchQuery, setSearchQuery] = useState("");
-  const [difficultyFilter, setDifficultyFilter] = useState("All Difficulties");
+  const [difficultyFilter, setDifficultyFilter] = useState("all");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -45,11 +45,25 @@ const Problems = () => {
 
     // Difficulty filter
     const matchesDifficulty =
-      difficultyFilter === "All Difficulties" ||
-      problem.difficulty === difficultyFilter.toUpperCase();
+      difficultyFilter === "all" ||
+      problem.difficulty.toLowerCase() === difficultyFilter;
 
     return matchesSearch && matchesDifficulty;
   });
+
+  // Get difficulty badge style
+  const getDifficultyBadge = (difficulty) => {
+    switch (difficulty.toLowerCase()) {
+      case "easy":
+        return "bg-green-600 text-white";
+      case "medium":
+        return "bg-yellow-600 text-white";
+      case "hard":
+        return "bg-red-600 text-white";
+      default:
+        return "bg-gray-600 text-white";
+    }
+  };
 
   if (loading)
     return (
@@ -99,10 +113,10 @@ const Problems = () => {
               onChange={(e) => setDifficultyFilter(e.target.value)}
               className="bg-zinc-900 text-white px-4 py-2 rounded border border-zinc-700 focus:outline-none appearance-none"
             >
-              <option>All Difficulties</option>
-              <option>Easy</option>
-              <option>Medium</option>
-              <option>Hard</option>
+              <option value="all">All Difficulties</option>
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
             </select>
           </div>
         </div>
@@ -157,15 +171,11 @@ const Problems = () => {
                   </td>
                   <td className="py-4 px-6">
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        problem.difficulty === "EASY"
-                          ? "bg-green-600"
-                          : problem.difficulty === "MEDIUM"
-                          ? "bg-yellow-600"
-                          : "bg-red-600"
-                      }`}
+                      className={`px-3 py-1 rounded-full text-xs font-medium ${getDifficultyBadge(
+                        problem.difficulty
+                      )}`}
                     >
-                      {problem.difficulty}
+                      {problem.difficulty.toLowerCase()}
                     </span>
                   </td>
                   <td className="py-4 px-6">

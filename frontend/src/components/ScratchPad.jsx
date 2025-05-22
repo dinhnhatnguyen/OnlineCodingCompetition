@@ -187,9 +187,9 @@ const ScratchPad = () => {
             className="bg-zinc-700 border border-zinc-600 rounded px-3 py-1.5 text-sm text-white"
           >
             <option value="cpp">C++</option>
-            <option value="java">Java</option>
+            {/* <option value="java">Java</option> */}
             <option value="python">Python</option>
-            <option value="javascript">JavaScript</option>
+            {/* <option value="javascript">JavaScript</option> */}
           </select>
 
           <button
@@ -341,7 +341,7 @@ const ScratchPad = () => {
                 </>
               ) : (
                 <>
-                  <FaPlay className="mr-2" /> Chạy code
+                  <FaPlay className="mr-2" /> Run Code
                 </>
               )}
             </button>

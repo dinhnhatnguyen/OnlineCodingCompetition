@@ -11,6 +11,7 @@ import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import { useAuth } from "../contexts/AuthContext";
 import { useNotification } from "../contexts/NotificationContext";
+import LeaderboardTab from "../components/contest/LeaderboardTab";
 
 export default function ContestDetails() {
   const { id } = useParams();
@@ -58,7 +59,9 @@ export default function ContestDetails() {
     const tabParam = urlParams.get("tab");
     if (
       tabParam &&
-      ["overview", "problems", "registrations"].includes(tabParam)
+      ["overview", "problems", "registrations", "leaderboard"].includes(
+        tabParam
+      )
     ) {
       setTab(tabParam);
     }
@@ -263,7 +266,7 @@ export default function ContestDetails() {
             }`}
             onClick={() => setTab("overview")}
           >
-            Overview
+            Tổng quan
           </button>
           <button
             className={`px-4 py-2 rounded ${
@@ -292,25 +295,38 @@ export default function ContestDetails() {
                 setTab("problems");
               } else if (contest.status !== "ONGOING") {
                 showNotification(
-                  "This contest is not currently ongoing",
+                  "Cuộc thi chưa bắt đầu hoặc đã kết thúc",
                   "warning"
                 );
               } else if (!user) {
-                showNotification("Please sign in to view problems", "warning");
+                showNotification(
+                  "Vui lòng đăng nhập để xem bài thi",
+                  "warning"
+                );
               } else if (!userRegistration) {
                 showNotification(
-                  "You must register for this contest first",
+                  "Bạn phải đăng ký cuộc thi này trước",
                   "warning"
                 );
               } else if (userRegistration.status !== "APPROVED") {
                 showNotification(
-                  "Your registration must be approved to view problems",
+                  "Đăng ký của bạn phải được chấp nhận để xem bài thi",
                   "warning"
                 );
               }
             }}
           >
-            Problems
+            Bài tập
+          </button>
+          <button
+            className={`px-4 py-2 rounded ${
+              tab === "leaderboard"
+                ? "bg-zinc-800 text-white"
+                : "bg-zinc-900 text-gray-400"
+            }`}
+            onClick={() => setTab("leaderboard")}
+          >
+            Bảng xếp hạng
           </button>
           {(user?.role === "admin" ||
             (user?.role === "instructor" &&
@@ -323,7 +339,7 @@ export default function ContestDetails() {
               }`}
               onClick={() => setTab("registrations")}
             >
-              Registrations
+              Đăng ký
             </button>
           )}
         </div>
@@ -394,7 +410,11 @@ export default function ContestDetails() {
                         <li key={p.id}>
                           <button
                             className="text-primary-pink hover:underline"
-                            onClick={() => navigate(`/problems/${p.id}`)}
+                            onClick={() =>
+                              navigate(`/contests/${id}/problems/${p.id}`, {
+                                state: { contestTitle: contest.title },
+                              })
+                            }
                           >
                             {p.title}
                           </button>
@@ -500,7 +520,11 @@ export default function ContestDetails() {
                   <li key={p.id}>
                     <button
                       className="text-primary-pink hover:underline"
-                      onClick={() => navigate(`/problems/${p.id}`)}
+                      onClick={() =>
+                        navigate(`/contests/${id}/problems/${p.id}`, {
+                          state: { contestTitle: contest.title },
+                        })
+                      }
                     >
                       {p.title}
                     </button>
@@ -512,21 +536,25 @@ export default function ContestDetails() {
             )}
           </div>
         )}
+        {tab === "leaderboard" && (
+          <LeaderboardTab contestId={id} token={token} />
+        )}
+
         {tab === "registrations" && (
           <div className="bg-zinc-900 rounded-lg p-6 mb-4">
-            <h2 className="text-lg font-bold mb-2">Registrations</h2>
+            <h2 className="text-lg font-bold mb-2">Quản lý đăng ký</h2>
             {regLoading ? (
-              <div className="text-white">Loading...</div>
+              <div className="text-white">Đang tải...</div>
             ) : regError ? (
               <div className="text-red-500">{regError}</div>
             ) : (
               <table className="min-w-full text-sm text-left">
                 <thead>
                   <tr className="text-gray-400">
-                    <th className="py-2 px-2">Username</th>
+                    <th className="py-2 px-2">Tên người dùng</th>
                     <th className="py-2 px-2">Email</th>
-                    <th className="py-2 px-2">Status</th>
-                    <th className="py-2 px-2">Action</th>
+                    <th className="py-2 px-2">Trạng thái</th>
+                    <th className="py-2 px-2">Hành động</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -544,7 +572,11 @@ export default function ContestDetails() {
                               : "bg-yellow-700 text-white"
                           }`}
                         >
-                          {r.status}
+                          {r.status === "APPROVED"
+                            ? "Đã duyệt"
+                            : r.status === "REJECTED"
+                            ? "Từ chối"
+                            : "Chờ duyệt"}
                         </span>
                       </td>
                       <td className="py-2 px-2">
@@ -554,21 +586,21 @@ export default function ContestDetails() {
                               className="bg-green-600 text-white px-2 py-1 rounded mr-2"
                               onClick={() => handleApprove(r.id)}
                             >
-                              Approve
+                              Duyệt
                             </button>
                             <button
                               className="bg-red-600 text-white px-2 py-1 rounded"
                               onClick={() => handleReject(r.id)}
                             >
-                              Reject
+                              Từ chối
                             </button>
                           </>
                         )}
                         {r.status === "APPROVED" && (
-                          <span className="text-green-500">Approved</span>
+                          <span className="text-green-500">Đã duyệt</span>
                         )}
                         {r.status === "REJECTED" && (
-                          <span className="text-red-500">Rejected</span>
+                          <span className="text-red-500">Đã từ chối</span>
                         )}
                       </td>
                     </tr>

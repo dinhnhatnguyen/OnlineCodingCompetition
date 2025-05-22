@@ -8,6 +8,7 @@ export default function ContestsList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(0);
   const pageSize = 6;
 
@@ -23,11 +24,29 @@ export default function ContestsList() {
       });
   }, []);
 
-  const filteredContests = contests.filter(
-    (contest) =>
+  const getContestStatus = (contest) => {
+    const now = new Date();
+    const startTime = new Date(contest.startTime);
+    const endTime = new Date(contest.endTime);
+
+    if (now < startTime) return "upcoming";
+    if (now >= startTime && now <= endTime) return "ongoing";
+    return "completed";
+  };
+
+  const filteredContests = contests.filter((contest) => {
+    // Search filter
+    const matchesSearch =
       contest.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contest.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      contest.description.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Status filter
+    const contestStatus = getContestStatus(contest);
+    const matchesStatus =
+      statusFilter === "all" || contestStatus === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
 
   const totalPages = Math.ceil(filteredContests.length / pageSize);
   const paginatedContests = filteredContests.slice(
@@ -46,19 +65,32 @@ export default function ContestsList() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold text-white">Contests</h1>
-        <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+        <div className="w-full md:w-auto mb-4 md:mb-0">
           <div className="relative w-full md:w-64">
             <input
               type="text"
               placeholder="Search contests..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 bg-zinc-800 border-zinc-700 text-white rounded-md w-full md:w-64"
+              className="bg-zinc-900 text-white pl-10 pr-3 py-2 rounded w-72 focus:outline-none border border-zinc-700"
             />
             <div className="absolute inset-y-0 left-0 flex items-center pl-3">
               <Search className="h-4 w-4 text-gray-400" />
             </div>
           </div>
+        </div>
+
+        <div className="w-full md:w-auto">
+          <select
+            className="bg-zinc-900 text-white px-4 py-2 rounded border border-zinc-700 focus:outline-none appearance-none"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="all">All Status</option>
+            <option value="upcoming">Upcoming</option>
+            <option value="ongoing">Ongoing</option>
+            <option value="completed">Completed</option>
+          </select>
         </div>
       </div>
 

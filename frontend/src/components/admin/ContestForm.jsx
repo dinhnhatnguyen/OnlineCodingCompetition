@@ -68,8 +68,10 @@ const ContestForm = ({ initialValues, onSubmit, loading }) => {
 
     const contestData = {
       ...values,
-      startTime: startTime ? startTime.format() : undefined,
-      endTime: endTime ? endTime.format() : undefined,
+      startTime: startTime
+        ? startTime.format("YYYY-MM-DDTHH:mm:ss")
+        : undefined,
+      endTime: endTime ? endTime.format("YYYY-MM-DDTHH:mm:ss") : undefined,
     };
 
     // Remove the dateRange field

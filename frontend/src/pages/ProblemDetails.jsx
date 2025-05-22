@@ -4,10 +4,8 @@ import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import { getProblems } from "../api/problemsApi";
 import { submitCode, pollSubmissionStatus } from "../api/submissionApi";
-import { runCode } from "../api/runCodeApi";
 import MonacoEditor from "@monaco-editor/react";
 import ReactMarkdown from "react-markdown";
-import TestRunResults from "../components/TestRunResults";
 import axios from "axios";
 
 const languageMap = {
@@ -65,10 +63,8 @@ const ProblemDetails = () => {
   const [language, setLanguage] = useState("javascript");
   const [code, setCode] = useState("");
 
-  // New states for Run and Submit
-  const [runResults, setRunResults] = useState(null);
+  // States for submission
   const [submitResults, setSubmitResults] = useState(null);
-  const [running, setRunning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submissionId, setSubmissionId] = useState(null);
 
@@ -94,40 +90,7 @@ const ProblemDetails = () => {
     }
   }, [problem, language]);
 
-  // Run code with example test cases
-  const handleRun = async () => {
-    setRunning(true);
-    setRunResults(null);
-    try {
-      // Get example test case IDs
-      const exampleTestCaseIds = (problem.testCases || [])
-        .filter((tc) => tc.isExample)
-        .map((tc) => tc.id);
-
-      if (!exampleTestCaseIds || exampleTestCaseIds.length === 0) {
-        throw new Error("Không tìm thấy test case ví dụ để chạy thử");
-      }
-
-      const payload = {
-        problemId: problem.id,
-        language,
-        sourceCode: code,
-        testCaseIds: exampleTestCaseIds,
-      };
-
-      const result = await runCode(payload);
-      setRunResults(result);
-    } catch (error) {
-      console.error("Run code error:", error);
-      setRunResults({
-        status: "ERROR",
-        results: [],
-        compileError: error.message || "Lỗi khi chạy code",
-      });
-    } finally {
-      setRunning(false);
-    }
-  };
+  // Removed run code functionality
 
   // Submit solution
   const handleSubmit = async () => {
@@ -330,20 +293,9 @@ const ProblemDetails = () => {
             </div>
             <div className="mt-4 flex gap-3">
               <button
-                onClick={handleRun}
-                disabled={running}
-                className={`px-4 py-2 rounded ${
-                  running
-                    ? "bg-indigo-800 text-gray-300"
-                    : "bg-indigo-600 hover:bg-indigo-700 text-white"
-                }`}
-              >
-                {running ? "Running..." : "Run Code"}
-              </button>
-              <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className={`px-4 py-2 rounded ${
+                className={`w-full px-4 py-2 rounded ${
                   submitting
                     ? "bg-green-800 text-gray-300"
                     : "bg-green-600 hover:bg-green-700 text-white"
@@ -353,13 +305,6 @@ const ProblemDetails = () => {
               </button>
             </div>
           </div>
-
-          {/* Display Run Results */}
-          {runResults && (
-            <div className="bg-zinc-900 p-4 rounded-lg">
-              <TestRunResults results={runResults} />
-            </div>
-          )}
 
           {/* Display Submit Results */}
           {submitResults && (

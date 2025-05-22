@@ -16,6 +16,15 @@ export const getContestById = async (id, token) => {
   return response.data;
 };
 
+export const getContestLeaderboard = async (id, token) => {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+  const response = await axios.get(`${API_URL}/${id}/leaderboard`, {
+    headers: headers,
+  });
+  return response.data;
+};
+
 export const registerContest = async (contestId, token) => {
   try {
     console.log("Sending registration request with:", {

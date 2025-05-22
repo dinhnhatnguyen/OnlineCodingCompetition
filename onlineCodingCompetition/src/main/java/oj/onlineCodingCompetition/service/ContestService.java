@@ -8,9 +8,11 @@ import oj.onlineCodingCompetition.dto.ContestRegistrationDTO;
 import oj.onlineCodingCompetition.entity.Contest;
 import oj.onlineCodingCompetition.entity.ContestRegistration;
 import oj.onlineCodingCompetition.entity.Problem;
+import oj.onlineCodingCompetition.entity.Submission;
 import oj.onlineCodingCompetition.repository.ContestRegistrationRepository;
 import oj.onlineCodingCompetition.repository.ContestRepository;
 import oj.onlineCodingCompetition.repository.ProblemRepository;
+import oj.onlineCodingCompetition.repository.SubmissionRepository;
 import oj.onlineCodingCompetition.security.entity.User;
 import oj.onlineCodingCompetition.security.repository.UserRepository;
 import org.modelmapper.ModelMapper;
@@ -20,7 +22,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,6 +36,7 @@ public class ContestService {
     private final ContestRegistrationRepository contestRegistrationRepository;
     private final UserRepository userRepository;
     private final ProblemRepository problemRepository;
+    private final SubmissionRepository submissionRepository;
     private final ModelMapper modelMapper;
 
     @Transactional
@@ -305,6 +310,74 @@ public class ContestService {
         return contestRegistrationRepository.findByContestIdOrderByTotalScoreDesc(contestId).stream()
                 .map(this::convertToRegistrationDTO)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Cập nhật điểm số cho người tham gia trong cuộc thi
+     * @param contestId ID của cuộc thi
+     * @param userId ID của người dùng
+     * @param problemId ID của bài toán
+     * @param score Điểm số cho bài toán này
+     */
+    @Transactional
+    public void updateContestScore(Long contestId, Long userId, Long problemId, Double score) {
+        log.debug("Cập nhật điểm cho cuộc thi ID: {}, user ID: {}, problem ID: {}, điểm: {}", 
+                contestId, userId, problemId, score);
+        
+        // Tìm đăng ký của user trong cuộc thi
+        ContestRegistration registration = contestRegistrationRepository
+                .findByContestIdAndUserId(contestId, userId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                    "Không tìm thấy đăng ký cho user " + userId + " trong cuộc thi " + contestId));
+        
+        // Kiểm tra trạng thái đăng ký
+        if (registration.getStatus() != ContestRegistration.RegistrationStatus.APPROVED) {
+            log.warn("User {} không được phép tham gia cuộc thi {}, trạng thái: {}", 
+                    userId, contestId, registration.getStatus());
+            return;
+        }
+        
+        // Lấy điểm tối đa cho bài toán này từ submission của user
+        List<Submission> submissions = submissionRepository
+                .findByContestIdAndUserIdAndProblemIdOrderByScoreDescSubmittedAtAsc(contestId, userId, problemId);
+        
+        if (submissions.isEmpty()) {
+            log.debug("Không tìm thấy bài nộp nào cho bài toán {} của user {} trong cuộc thi {}", 
+                    problemId, userId, contestId);
+            return;
+        }
+        
+        // Sử dụng điểm số mới nhất và cao nhất
+        Double highestScore = score;
+        
+        // Tính tổng điểm cho tất cả các bài toán user đã giải trong cuộc thi
+        List<Submission> allUserContestSubmissions = submissionRepository
+                .findByContestIdAndUserIdOrderBySubmittedAtDesc(contestId, userId);
+        
+        // Dùng Map để theo dõi điểm số cao nhất cho mỗi bài toán
+        Map<Long, Double> problemScores = new HashMap<>();
+        
+        // Đặt điểm cho bài toán hiện tại
+        problemScores.put(problemId, highestScore);
+        
+        // Thêm điểm cao nhất của các bài toán khác đã giải
+        for (Submission submission : allUserContestSubmissions) {
+            Long subProblemId = submission.getProblem().getId();
+            if (!problemId.equals(subProblemId) && submission.getScore() != null) {
+                problemScores.put(subProblemId, 
+                        Math.max(problemScores.getOrDefault(subProblemId, 0.0), submission.getScore()));
+            }
+        }
+        
+        // Tính tổng điểm
+        double totalScore = problemScores.values().stream().mapToDouble(Double::doubleValue).sum();
+        
+        // Cập nhật điểm tổng cho registration
+        registration.setTotalScore(totalScore);
+        contestRegistrationRepository.save(registration);
+        
+        log.info("Đã cập nhật điểm cho user {} trong cuộc thi {} thành {}", 
+                userId, contestId, totalScore);
     }
 
     private ContestDTO convertToDTO(Contest contest) {

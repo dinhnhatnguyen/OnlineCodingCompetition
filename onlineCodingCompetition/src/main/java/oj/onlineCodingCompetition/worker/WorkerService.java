@@ -55,7 +55,7 @@ public class WorkerService {
     private static final Map<String, String> LANGUAGE_IMAGE_MAP = Map.of(
             "java", "java-runner",
             "python", "python-runner",
-            "cpp", "docker build -t cpp-runner .\n",
+            "cpp", "cpp-runner",
             "javascript", "js-runner"
     );
 
@@ -302,7 +302,9 @@ public class WorkerService {
             log.info("Using execution environment: {}", executionEnvironment);
 
             String extension = LANGUAGE_EXTENSION_MAP.get(language);
-            String solutionFilePath = tempDir + "/Solution" + extension;
+            String solutionFilePath = language.equals("python") 
+                ? tempDir + "/solution" + extension
+                : tempDir + "/Solution" + extension;
             Files.writeString(Paths.get(solutionFilePath), submission.getSourceCode());
             log.info("Written solution code to: {}", solutionFilePath);
 
@@ -476,7 +478,7 @@ public class WorkerService {
 
             case "python":
                 StringBuilder pythonMain = new StringBuilder();
-                pythonMain.append("from ").append(mainClassName).append(" import ").append(functionName).append("\n\n");
+                pythonMain.append("import ").append(mainClassName).append("\n\n");
 
                 StringBuilder paramListPy = new StringBuilder();
                 for (int i = 0; i < paramTypes.size(); i++) {
@@ -495,7 +497,7 @@ public class WorkerService {
                     if (i < paramTypes.size() - 1) paramListPy.append(", ");
                 }
 
-                pythonMain.append("result = ").append(functionName).append("(").append(paramListPy.toString()).append(")\n");
+                pythonMain.append("result = ").append(mainClassName).append(".").append(functionName).append("(").append(paramListPy.toString()).append(")\n");
                 pythonMain.append("print(result)\n");
                 return pythonMain.toString();
 

@@ -10,6 +10,7 @@ public class SubmissionDTO {
     private Long id;
     private Long problemId;
     private Long userId;
+    private Long contestId;
     private String language;
     private String sourceCode;
     private String status;

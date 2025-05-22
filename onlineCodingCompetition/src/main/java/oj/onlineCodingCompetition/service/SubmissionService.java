@@ -15,10 +15,12 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import oj.onlineCodingCompetition.dto.SubmissionDTO;
 import oj.onlineCodingCompetition.dto.TestCaseResultDTO;
+import oj.onlineCodingCompetition.entity.Contest;
 import oj.onlineCodingCompetition.entity.Problem;
 import oj.onlineCodingCompetition.entity.Submission;
 import oj.onlineCodingCompetition.entity.TestCaseResult;
 import oj.onlineCodingCompetition.entity.UserSolvedProblem;
+import oj.onlineCodingCompetition.repository.ContestRepository;
 import oj.onlineCodingCompetition.repository.ProblemRepository;
 import oj.onlineCodingCompetition.repository.SubmissionRepository;
 import oj.onlineCodingCompetition.repository.TestCaseRepository;
@@ -45,8 +47,10 @@ public class SubmissionService {
     private final TestCaseRepository testCaseRepository;
     private final TestCaseResultRepository testCaseResultRepository;
     private final UserSolvedProblemRepository userSolvedProblemRepository;
+    private final ContestRepository contestRepository;
     private final ModelMapper modelMapper;
     private final AmazonSQS amazonSQS;
+    private final ContestService contestService;
 
     @Value("${aws.sqs.queue-url}")
     private String queueUrl;
@@ -69,6 +73,14 @@ public class SubmissionService {
         submission.setSubmittedAt(LocalDateTime.now());
         submission.setTotalTestCases(testCaseRepository.countByProblemId(submissionDTO.getProblemId()));
         submission.setCompileError("");
+        
+        // Nếu có contestId, liên kết submission với contest
+        if (submissionDTO.getContestId() != null) {
+            Contest contest = contestRepository.findById(submissionDTO.getContestId())
+                .orElseThrow(() -> new RuntimeException("Contest not found: " + submissionDTO.getContestId()));
+            submission.setContest(contest);
+            log.info("Submission associated with contest ID: {}", contest.getId());
+        }
 
         Submission savedSubmission = submissionRepository.save(submission);
 
@@ -164,6 +176,22 @@ public class SubmissionService {
             // Nếu submission thành công, đánh dấu bài đã giải
             if (Submission.SubmissionStatus.ACCEPTED.equals(savedSubmission.getStatus())) {
                 markProblemSolved(savedSubmission.getProblem().getId(), savedSubmission.getUser().getId());
+            }
+            
+            // Nếu submission thuộc về một cuộc thi, cập nhật điểm cho leaderboard
+            if (savedSubmission.getContest() != null && savedSubmission.getScore() != null) {
+                try {
+                    contestService.updateContestScore(
+                        savedSubmission.getContest().getId(),
+                        savedSubmission.getUser().getId(),
+                        savedSubmission.getProblem().getId(),
+                        savedSubmission.getScore()
+                    );
+                    log.info("Cập nhật điểm cho cuộc thi {} thành công", savedSubmission.getContest().getId());
+                } catch (Exception e) {
+                    log.error("Lỗi khi cập nhật điểm cho cuộc thi: {}", e.getMessage(), e);
+                    // Không throw exception để quá trình xử lý submission tiếp tục
+                }
             }
         } catch (Exception e) {
             log.error("Error updating submission {}: {}", submission.getId(), e.getMessage(), e);

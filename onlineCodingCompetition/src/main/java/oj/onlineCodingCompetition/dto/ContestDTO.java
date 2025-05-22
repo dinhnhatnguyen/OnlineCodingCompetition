@@ -15,11 +15,11 @@ public class ContestDTO {
     private String description;
 
     @NotNull(message = "Thời gian bắt đầu không được để trống")
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss", timezone = "Asia/Ho_Chi_Minh")
     private LocalDateTime startTime;
 
     @NotNull(message = "Thời gian kết thúc không được để trống")
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss", timezone = "Asia/Ho_Chi_Minh")
     private LocalDateTime endTime;
 
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")

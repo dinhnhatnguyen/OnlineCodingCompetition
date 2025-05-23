@@ -14,6 +14,10 @@ import ContestDetails from "./pages/ContestDetails";
 import ContestProblemDetails from "./pages/ContestProblemDetails";
 import SubmissionDetails from "./pages/SubmissionDetails";
 import ScratchPadPage from "./pages/ScratchPadPage";
+import ProfilePage from "./pages/user/ProfilePage";
+import ChangePasswordPage from "./pages/user/ChangePasswordPage";
+import ResetPasswordPage from "./pages/user/ResetPasswordPage";
+import ForgotPasswordPage from "./pages/user/ForgotPasswordPage";
 import { AuthProvider } from "./contexts/AuthContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import PrivateRoute from "./components/PrivateRoute";
@@ -49,6 +53,27 @@ function App() {
           />
           <Route path="/submissions/:id" element={<SubmissionDetails />} />
           <Route path="/scratchpad" element={<ScratchPadPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+          {/* Protected User routes */}
+          <Route
+            path="/profile"
+            element={
+              <PrivateRoute>
+                <ProfilePage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/change-password"
+            element={
+              <PrivateRoute>
+                <ChangePasswordPage />
+              </PrivateRoute>
+            }
+          />
+
           {/* Admin routes */}
           <Route
             path="/admin"

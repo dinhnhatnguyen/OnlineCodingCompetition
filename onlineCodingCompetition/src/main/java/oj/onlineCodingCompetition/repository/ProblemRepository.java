@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import oj.onlineCodingCompetition.entity.Problem;
+import oj.onlineCodingCompetition.security.entity.User;
 
 import java.util.List;
 import java.util.Optional;
@@ -31,4 +32,7 @@ public interface ProblemRepository extends JpaRepository<Problem, Long> {
     // Add method to fetch the problem with function signatures eagerly loaded
     @Query("SELECT p FROM Problem p LEFT JOIN FETCH p.functionSignatures WHERE p.id = :id")
     Optional<Problem> findByIdWithFunctionSignatures(@Param("id") Long id);
+    
+    // Tìm problem theo người tạo
+    List<Problem> findByCreatedBy(User creator);
 }

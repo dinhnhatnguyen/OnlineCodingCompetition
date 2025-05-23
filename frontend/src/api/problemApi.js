@@ -3,8 +3,13 @@ import axios from "axios";
 const API_URL = "http://localhost:8080/api/problems";
 
 export const getProblems = async () => {
-  const response = await axios.get(API_URL);
-  return response.data;
+  try {
+    const response = await axios.get(`${API_URL}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching problems:", error);
+    throw error;
+  }
 };
 
 export const getProblemById = async (id) => {
@@ -59,6 +64,18 @@ export const updateProblemWithTestCases = async (id, data, token) => {
       "Error updating problem with test cases:",
       error.response?.data
     );
+    throw error;
+  }
+};
+
+export const getMyProblems = async (token) => {
+  try {
+    const response = await axios.get(`${API_URL}/my-problems`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching my problems:", error);
     throw error;
   }
 };

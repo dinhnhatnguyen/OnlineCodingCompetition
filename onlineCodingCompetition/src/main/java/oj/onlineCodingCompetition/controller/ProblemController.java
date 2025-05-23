@@ -80,11 +80,21 @@ public class ProblemController {
         return ResponseEntity.ok(problemService.searchProblemsByTitle(keyword));
     }
 
+    @GetMapping("/my-problems")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
+    public ResponseEntity<List<ProblemDTO>> getMyProblems(@AuthenticationPrincipal UserDetails userDetails) {
+        log.debug("REST request to get problems created by current user");
+        User user = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return ResponseEntity.ok(problemService.getProblemsByCreatedBy(user.getId()));
+    }
+
     @GetMapping("/{id}/with-test-cases")
     public ResponseEntity<ProblemDTO> getProblemWithTestCases(@PathVariable Long id) {
         log.debug("REST request to get problem with test cases by ID: {}", id);
         return ResponseEntity.ok(problemService.getProblemWithTestCases(id));
     }
+
     @PostMapping
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<ProblemDTO> createProblem(

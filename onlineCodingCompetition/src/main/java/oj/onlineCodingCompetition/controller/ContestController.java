@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import oj.onlineCodingCompetition.dto.ContestDTO;
 import oj.onlineCodingCompetition.dto.ContestRegistrationDTO;
+import oj.onlineCodingCompetition.dto.ProblemDTO;
 import oj.onlineCodingCompetition.security.entity.User;
 import oj.onlineCodingCompetition.security.repository.UserRepository;
 import oj.onlineCodingCompetition.service.ContestService;
@@ -111,5 +112,22 @@ public class ContestController {
         log.debug("Yêu cầu từ chối đăng ký với ID: {}", registrationId);
         contestService.rejectRegistration(registrationId);
         return ResponseEntity.ok().build();
+    }
+
+    // Endpoint để lấy tất cả các bài toán có thể thêm vào cuộc thi
+    @GetMapping("/{contestId}/available-problems")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
+    public ResponseEntity<List<ProblemDTO>> getAvailableProblems(@PathVariable Long contestId) {
+        log.debug("Yêu cầu lấy tất cả bài toán có thể thêm vào cuộc thi ID: {}", contestId);
+        return ResponseEntity.ok(contestService.getAvailableProblemsForContest(contestId));
+    }
+
+    @GetMapping("/my-contests")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
+    public ResponseEntity<List<ContestDTO>> getMyContests(@AuthenticationPrincipal UserDetails userDetails) {
+        log.debug("Yêu cầu lấy cuộc thi do người dùng hiện tại tạo");
+        User user = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
+        return ResponseEntity.ok(contestService.getContestsByCreatedBy(user.getId()));
     }
 }

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { FaEye, FaEyeSlash, FaSun, FaMoon } from "react-icons/fa";
+import { Link } from "react-router-dom";
 
 const AuthModal = ({
   mode = "signin",
@@ -130,6 +131,17 @@ const AuthModal = ({
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
             </div>
+            {mode === "signin" && (
+              <div className="text-right mt-1">
+                <Link
+                  to="/forgot-password"
+                  className="text-primary-pink hover:underline text-sm"
+                  onClick={onClose}
+                >
+                  Quên mật khẩu?
+                </Link>
+              </div>
+            )}
           </div>
           {mode === "signup" && (
             <div>

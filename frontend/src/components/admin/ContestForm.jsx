@@ -13,6 +13,7 @@ import {
   Alert,
 } from "antd";
 import { getProblems } from "../../api/problemApi";
+import { getAvailableProblemsForContest } from "../../api/contestCrudApi";
 import { useAuth } from "../../contexts/AuthContext";
 import moment from "moment";
 
@@ -24,12 +25,18 @@ const ContestForm = ({ initialValues, onSubmit, loading }) => {
   const [form] = Form.useForm();
   const [problems, setProblems] = useState([]);
   const [loadingProblems, setLoadingProblems] = useState(false);
-  const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const { token } = useAuth();
+  const isEditing = !!initialValues;
 
   useEffect(() => {
-    fetchProblems();
-  }, []);
+    if (isEditing && initialValues?.id) {
+      // Nếu đang chỉnh sửa cuộc thi, lấy danh sách bài toán có thể thêm vào
+      fetchAvailableProblems(initialValues.id);
+    } else {
+      // Nếu đang tạo mới, lấy tất cả bài toán
+      fetchProblems();
+    }
+  }, [initialValues]);
 
   useEffect(() => {
     if (initialValues) {
@@ -45,16 +52,46 @@ const ContestForm = ({ initialValues, onSubmit, loading }) => {
     }
   }, [initialValues, form]);
 
+  const fetchAvailableProblems = async (contestId) => {
+    setLoadingProblems(true);
+    try {
+      const data = await getAvailableProblemsForContest(contestId, token);
+
+      // Nếu đang chỉnh sửa, kết hợp bài toán đã có và bài toán có thể thêm
+      let combinedProblems = [...data];
+
+      // Thêm những bài toán đã được chọn từ initialValues (nếu có)
+      if (
+        initialValues &&
+        initialValues.problemIds &&
+        initialValues.problemIds.length > 0
+      ) {
+        const existingProblems = await getProblems();
+        const selectedProblems = existingProblems.filter(
+          (p) =>
+            initialValues.problemIds.includes(p.id) &&
+            !combinedProblems.some((cp) => cp.id === p.id)
+        );
+        combinedProblems = [...combinedProblems, ...selectedProblems];
+      }
+
+      // Show all problems to instructors when editing contests
+      setProblems(combinedProblems);
+    } catch (error) {
+      console.error("Lỗi khi tải danh sách bài toán:", error);
+      // Nếu API mới lỗi, sử dụng API cũ để lấy tất cả bài toán
+      fetchProblems();
+    } finally {
+      setLoadingProblems(false);
+    }
+  };
+
   const fetchProblems = async () => {
     setLoadingProblems(true);
     try {
       const data = await getProblems();
-      // Filter problems for instructors (only show their own)
-      const filteredProblems = isAdmin
-        ? data
-        : data.filter((problem) => problem.createdById === user?.id);
-
-      setProblems(filteredProblems);
+      // Don't filter problems for instructors - show all system problems when creating contests
+      setProblems(data);
     } catch (error) {
       console.error("Lỗi khi tải danh sách bài toán:", error);
     } finally {

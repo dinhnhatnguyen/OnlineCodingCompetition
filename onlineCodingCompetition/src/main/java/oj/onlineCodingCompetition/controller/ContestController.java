@@ -28,6 +28,7 @@ public class ContestController {
     private final ContestService contestService;
     private final UserRepository userRepository;
 
+    // Lấy tất cả Contest
     @GetMapping
     public ResponseEntity<Map<String, Object>> getAllContests(
             @RequestParam(defaultValue = "0") int page,
@@ -50,6 +51,7 @@ public class ContestController {
         return ResponseEntity.ok(response);
     }
 
+    // Lấy contest theo id
     @GetMapping("/{id}")
     public ResponseEntity<ContestDTO> getContestById(@PathVariable Long id) {
         return ResponseEntity.ok(contestService.getContestById(id));

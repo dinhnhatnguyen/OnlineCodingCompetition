@@ -32,10 +32,39 @@ export const updateProblem = async (id, data, token) => {
 };
 
 export const deleteProblem = async (id, token) => {
-  const response = await axios.delete(`${API_URL}/${id}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return response.data;
+  try {
+    if (!id) {
+      throw new Error("Problem ID is required");
+    }
+
+    if (!token) {
+      throw new Error("Authorization token is required");
+    }
+
+    console.log(`Attempting to delete problem with ID: ${id}`);
+    console.log(`Using token: ${token.substring(0, 20)}...`);
+
+    const response = await axios.delete(`${API_URL}/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    console.log("Delete response:", response);
+
+    if (response.status === 204 || response.status === 200) {
+      return { success: true };
+    }
+
+    throw new Error(`Unexpected response status: ${response.status}`);
+  } catch (error) {
+    console.error("Error details:", {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+    });
+    throw error;
+  }
 };
 
 export const createProblemWithTestCases = async (data, token) => {

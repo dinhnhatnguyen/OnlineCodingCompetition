@@ -81,9 +81,29 @@ const TestCaseManager = ({ problemId, token, onTestCasesChanged }) => {
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTestCase, setEditingTestCase] = useState(null);
-  const [selectedInputType, setSelectedInputType] = useState("array");
-  const [selectedOutputType, setSelectedOutputType] = useState("array");
   const [activeTab, setActiveTab] = useState("1");
+
+  // Get example value based on type
+  const getExampleValue = (type) => {
+    switch (type) {
+      case "int":
+      case "Integer":
+        return "42";
+      case "int[]":
+      case "Integer[]":
+        return "[1, 2, 3]";
+      case "String":
+        return '"hello"';
+      case "boolean":
+      case "Boolean":
+        return "true";
+      case "float":
+      case "double":
+        return "3.14";
+      default:
+        return "";
+    }
+  };
 
   // Tải danh sách test cases
   useEffect(() => {
@@ -106,81 +126,25 @@ const TestCaseManager = ({ problemId, token, onTestCasesChanged }) => {
     }
   };
 
-  // Thêm test case mẫu
-  const insertTestCaseExample = (type) => {
-    if (type === "input") {
-      form.setFieldsValue({
-        inputData: JSON.stringify(
-          [
-            { input: "[1, 2, 3, 4, 5]", dataType: "int[]" },
-            { input: "10", dataType: "int" },
-          ],
-          null,
-          2
-        ),
-      });
-    } else if (type === "output") {
-      form.setFieldsValue({
-        expectedOutputData: JSON.stringify(
-          {
-            expectedOutput: "15",
-            dataType: "int",
-          },
-          null,
-          2
-        ),
-      });
-    }
+  const updateInputData = (fields) => {
+    const inputs = fields.map((field) => ({
+      input: form.getFieldValue([field.name, "value"]),
+      dataType: form.getFieldValue([field.name, "type"]),
+    }));
+    form.setFieldValue("inputData", JSON.stringify(inputs));
   };
 
-  // Xác thực dữ liệu đầu vào
-  const validateInputData = (_, value) => {
-    try {
-      if (!value)
-        return Promise.reject(new Error("Dữ liệu đầu vào là bắt buộc"));
-
-      const parsed = JSON.parse(value);
-
-      // Kiểm tra nếu đó là một mảng cho nhiều tham số
-      if (!Array.isArray(parsed)) {
-        return Promise.reject(
-          new Error("Dữ liệu đầu vào phải là một mảng các đối tượng")
-        );
-      }
-
-      // Kiểm tra từng đối tượng tham số
-      for (const param of parsed) {
-        if (!param.input || !param.dataType) {
-          return Promise.reject(
-            new Error("Mỗi tham số phải có 'input' và 'dataType'")
-          );
-        }
-      }
-
-      return Promise.resolve();
-    } catch {
-      return Promise.reject(new Error("Định dạng JSON không hợp lệ"));
-    }
-  };
-
-  // Xác thực dữ liệu đầu ra
-  const validateOutputData = (_, value) => {
-    try {
-      if (!value)
-        return Promise.reject(new Error("Dữ liệu đầu ra là bắt buộc"));
-
-      const parsed = JSON.parse(value);
-
-      // Kiểm tra cấu trúc của kết quả đầu ra
-      if (!parsed.expectedOutput || !parsed.dataType) {
-        return Promise.reject(
-          new Error("Dữ liệu đầu ra phải có 'expectedOutput' và 'dataType'")
-        );
-      }
-
-      return Promise.resolve();
-    } catch {
-      return Promise.reject(new Error("Định dạng JSON không hợp lệ"));
+  const updateOutputData = () => {
+    const outputType = form.getFieldValue(["output", "type"]);
+    const outputValue = form.getFieldValue(["output", "value"]);
+    if (outputType && outputValue) {
+      form.setFieldValue(
+        "expectedOutputData",
+        JSON.stringify({
+          expectedOutput: outputValue,
+          dataType: outputType,
+        })
+      );
     }
   };
 
@@ -189,20 +153,45 @@ const TestCaseManager = ({ problemId, token, onTestCasesChanged }) => {
 
     if (testCase) {
       setEditingTestCase(testCase);
-      form.setFieldsValue({
-        ...testCase,
-        isExample: testCase.isExample || false,
-        isHidden: testCase.isHidden || false,
-        timeLimit: testCase.timeLimit || 1000,
-        memoryLimit: testCase.memoryLimit || 262144,
-        weight: testCase.weight || 1.0,
-        testOrder: testCase.testOrder || 0,
-      });
-      setSelectedInputType(testCase.inputType || "array");
-      setSelectedOutputType(testCase.outputType || "array");
+      try {
+        // Parse input data
+        const inputs = JSON.parse(testCase.inputData);
+        form.setFieldValue(
+          "inputs",
+          inputs.map((input) => ({
+            type: input.dataType,
+            value: input.input,
+          }))
+        );
+
+        // Parse output data
+        const output = JSON.parse(testCase.expectedOutputData);
+        form.setFieldValue("output", {
+          type: output.dataType,
+          value: output.expectedOutput,
+        });
+
+        // Set other fields
+        form.setFieldsValue({
+          description: testCase.description,
+          isExample: testCase.isExample || false,
+          isHidden: testCase.isHidden || false,
+          timeLimit: testCase.timeLimit || 1000,
+          memoryLimit: testCase.memoryLimit || 262144,
+          weight: testCase.weight || 1.0,
+          testOrder: testCase.testOrder || 0,
+          comparisonMode: testCase.comparisonMode || "EXACT",
+          epsilon: testCase.epsilon,
+        });
+      } catch (error) {
+        console.error("Error parsing test case data:", error);
+        message.error("Lỗi khi tải dữ liệu test case");
+      }
     } else {
       setEditingTestCase(null);
       form.setFieldsValue({
+        inputs: [{ type: undefined, value: undefined }],
+        output: { type: undefined, value: undefined },
         isExample: false,
         isHidden: false,
         timeLimit: 1000,
@@ -226,10 +215,28 @@ const TestCaseManager = ({ problemId, token, onTestCasesChanged }) => {
       const values = await form.validateFields();
       setLoading(true);
 
+      // Prepare input data
+      const inputData = values.inputs.map((input) => ({
+        input: input.value,
+        dataType: input.type,
+      }));
+
+      // Prepare output data
+      const outputData = {
+        expectedOutput: values.output.value,
+        dataType: values.output.type,
+      };
+
       const testCaseData = {
         ...values,
+        inputData: JSON.stringify(inputData),
+        expectedOutputData: JSON.stringify(outputData),
         problemId,
       };
+
+      // Remove temporary form fields
+      delete testCaseData.inputs;
+      delete testCaseData.output;
 
       if (editingTestCase) {
         await testCaseApi.updateTestCase(
@@ -237,10 +244,22 @@ const TestCaseManager = ({ problemId, token, onTestCasesChanged }) => {
           testCaseData,
           token
         );
-        message.success("Test case cập nhật thành công!");
+        message.success({
+          content: "Test case đã được cập nhật thành công!",
+          duration: 5,
+          style: {
+            marginTop: "20vh",
+          },
+        });
       } else {
         await testCaseApi.createTestCase(testCaseData, token);
-        message.success("Test case tạo thành công!");
+        message.success({
+          content: "Test case mới đã được tạo thành công!",
+          duration: 5,
+          style: {
+            marginTop: "20vh",
+          },
+        });
       }
 
       setModalVisible(false);
@@ -250,7 +269,13 @@ const TestCaseManager = ({ problemId, token, onTestCasesChanged }) => {
       }
     } catch (error) {
       console.error("Error submitting form:", error);
-      message.error("Lỗi: " + (error.response?.data?.message || error.message));
+      message.error({
+        content: "Lỗi: " + (error.response?.data?.message || error.message),
+        duration: 5,
+        style: {
+          marginTop: "20vh",
+        },
+      });
     } finally {
       setLoading(false);
     }
@@ -260,13 +285,25 @@ const TestCaseManager = ({ problemId, token, onTestCasesChanged }) => {
     try {
       setLoading(true);
       await testCaseApi.deleteTestCase(id, token);
-      message.success("Test case xóa thành công!");
+      message.success({
+        content: "Test case đã được xóa thành công!",
+        duration: 5,
+        style: {
+          marginTop: "20vh",
+        },
+      });
       fetchTestCases();
       if (onTestCasesChanged) {
         onTestCasesChanged();
       }
     } catch (error) {
-      message.error("Không thể xóa test case: " + error.message);
+      message.error({
+        content: "Không thể xóa test case: " + error.message,
+        duration: 5,
+        style: {
+          marginTop: "20vh",
+        },
+      });
     } finally {
       setLoading(false);
     }
@@ -386,6 +423,96 @@ const TestCaseManager = ({ problemId, token, onTestCasesChanged }) => {
     },
   ];
 
+  const TestCaseInputForm = ({ form, field }) => {
+    const [inputCount, setInputCount] = useState(1);
+
+    const handleAddInput = () => {
+      setInputCount((prev) => prev + 1);
+    };
+
+    const handleRemoveInput = (index) => {
+      setInputCount((prev) => prev - 1);
+      // Remove the input from form
+      const currentInputs = form.getFieldValue([field.name, "inputs"]) || [];
+      currentInputs.splice(index, 1);
+      form.setFieldValue([field.name, "inputs"], currentInputs);
+      updateInputData();
+    };
+
+    const updateInputData = () => {
+      const inputs = form.getFieldValue([field.name, "inputs"]) || [];
+      const inputData = inputs.map((input) => ({
+        input: input.value,
+        dataType: input.type,
+      }));
+      form.setFieldValue([field.name, "inputData"], JSON.stringify(inputData));
+    };
+
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: inputCount }).map((_, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <Form.Item
+              className="flex-1 mb-0"
+              name={[field.name, "inputs", index, "type"]}
+              rules={[
+                { required: true, message: "Vui lòng chọn kiểu dữ liệu" },
+              ]}
+            >
+              <Select
+                placeholder="Chọn kiểu dữ liệu"
+                onChange={(value) => {
+                  // Set example value when type changes
+                  form.setFieldValue(
+                    [field.name, "inputs", index, "value"],
+                    getExampleValue(value)
+                  );
+                  updateInputData();
+                }}
+              >
+                {Object.entries(DATA_TYPES.java).map(([key, types]) => (
+                  <Select.OptGroup key={key} label={key.toUpperCase()}>
+                    {types.split(", ").map((type) => (
+                      <Option key={`${key}-${type}`} value={type}>
+                        {type}
+                      </Option>
+                    ))}
+                  </Select.OptGroup>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item
+              className="flex-1 mb-0"
+              name={[field.name, "inputs", index, "value"]}
+              rules={[{ required: true, message: "Vui lòng nhập giá trị" }]}
+            >
+              <Input
+                placeholder="Nhập giá trị"
+                onChange={() => updateInputData()}
+              />
+            </Form.Item>
+            {index === inputCount - 1 ? (
+              <Button
+                type="dashed"
+                onClick={handleAddInput}
+                icon={<PlusOutlined />}
+              >
+                Thêm
+              </Button>
+            ) : (
+              <Button
+                type="text"
+                danger
+                icon={<DeleteOutlined />}
+                onClick={() => handleRemoveInput(index)}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="test-case-manager">
       <div className="header-actions mb-4 flex justify-between items-center">
@@ -443,155 +570,139 @@ const TestCaseManager = ({ problemId, token, onTestCasesChanged }) => {
           <Tabs activeKey={activeTab} onChange={setActiveTab}>
             <TabPane tab="Dữ liệu" key="1">
               <Card title="Dữ liệu đầu vào" className="mb-4">
-                <Form.Item name="inputType" label="Loại dữ liệu đầu vào">
-                  <Select
-                    onChange={(value) => setSelectedInputType(value)}
-                    placeholder="Chọn kiểu dữ liệu đầu vào"
-                  >
-                    <Option value="array">Mảng</Option>
-                    <Option value="string">Chuỗi</Option>
-                    <Option value="integer">Số nguyên</Option>
-                    <Option value="object">Đối tượng</Option>
-                  </Select>
-                </Form.Item>
-
-                <Form.Item
-                  name="inputData"
-                  label={
-                    <div className="flex items-center">
-                      Dữ liệu đầu vào (JSON)
-                      <Tooltip
-                        title={
-                          <div>
-                            <p>
-                              <strong>Định dạng mẫu:</strong>{" "}
-                              <code>
-                                [
-                                {`{"input":"giá_trị","dataType":"kiểu_dữ_liệu"}`}
-                                ]
-                              </code>
-                            </p>
-                            <p>
-                              Các ví dụ cho <strong>{selectedInputType}</strong>
-                              :
-                            </p>
-                            <div className="mt-1">
-                              {Object.keys(DATA_TYPES).map((lang) => (
-                                <div key={lang} className="mb-1">
-                                  <strong>{lang}:</strong>{" "}
-                                  {DATA_TYPES[lang]?.[selectedInputType] ||
-                                    "Kiểu không khả dụng"}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        }
-                      >
-                        <InfoCircleOutlined className="ml-2 text-gray-400" />
-                      </Tooltip>
-                    </div>
-                  }
-                  rules={[
-                    {
-                      required: true,
-                      message: "Dữ liệu đầu vào là bắt buộc",
-                    },
-                    { validator: validateInputData },
-                  ]}
-                  help={
-                    <div className="flex justify-between">
-                      <span>
-                        Ví dụ: [{"{'input':'[1,2,3,4,5]','dataType':'int[]'}"},{" "}
-                        {"{'input':'10','dataType':'int'}"}]
-                      </span>
+                <Form.List name="inputs">
+                  {(fields, { add, remove }) => (
+                    <>
+                      {fields.map((field, index) => (
+                        <div
+                          key={field.key}
+                          className="flex items-center gap-2 mb-4"
+                        >
+                          <Form.Item
+                            className="flex-1 mb-0"
+                            name={[field.name, "type"]}
+                            rules={[
+                              {
+                                required: true,
+                                message: "Vui lòng chọn kiểu dữ liệu",
+                              },
+                            ]}
+                          >
+                            <Select
+                              placeholder="Chọn kiểu dữ liệu"
+                              onChange={(value) => {
+                                form.setFieldValue(
+                                  [field.name, "value"],
+                                  getExampleValue(value)
+                                );
+                                updateInputData(fields);
+                              }}
+                            >
+                              {Object.entries(DATA_TYPES.java).map(
+                                ([key, types]) => (
+                                  <Select.OptGroup
+                                    key={key}
+                                    label={key.toUpperCase()}
+                                  >
+                                    {types.split(", ").map((type) => (
+                                      <Option
+                                        key={`${key}-${type}`}
+                                        value={type}
+                                      >
+                                        {type}
+                                      </Option>
+                                    ))}
+                                  </Select.OptGroup>
+                                )
+                              )}
+                            </Select>
+                          </Form.Item>
+                          <Form.Item
+                            className="flex-1 mb-0"
+                            name={[field.name, "value"]}
+                            rules={[
+                              {
+                                required: true,
+                                message: "Vui lòng nhập giá trị",
+                              },
+                            ]}
+                          >
+                            <Input
+                              placeholder="Nhập giá trị"
+                              onChange={() => updateInputData(fields)}
+                            />
+                          </Form.Item>
+                          {fields.length > 1 && (
+                            <Button
+                              type="text"
+                              danger
+                              icon={<DeleteOutlined />}
+                              onClick={() => {
+                                remove(field.name);
+                                updateInputData(
+                                  fields.filter((_, i) => i !== index)
+                                );
+                              }}
+                            />
+                          )}
+                        </div>
+                      ))}
                       <Button
-                        type="link"
-                        size="small"
-                        onClick={() => insertTestCaseExample("input")}
+                        type="dashed"
+                        onClick={() => add()}
+                        block
+                        icon={<PlusOutlined />}
                       >
-                        Chèn ví dụ
+                        Thêm tham số
                       </Button>
-                    </div>
-                  }
-                >
-                  <TextArea rows={5} />
-                </Form.Item>
+                    </>
+                  )}
+                </Form.List>
               </Card>
 
               <Card title="Kết quả mong đợi">
-                <Form.Item name="outputType" label="Loại dữ liệu đầu ra">
-                  <Select
-                    onChange={(value) => setSelectedOutputType(value)}
-                    placeholder="Chọn kiểu dữ liệu đầu ra"
+                <div className="flex items-center gap-2">
+                  <Form.Item
+                    name={["output", "type"]}
+                    className="flex-1 mb-0"
+                    rules={[
+                      { required: true, message: "Vui lòng chọn kiểu dữ liệu" },
+                    ]}
                   >
-                    <Option value="integer">Số nguyên</Option>
-                    <Option value="array">Mảng</Option>
-                    <Option value="string">Chuỗi</Option>
-                    <Option value="boolean">Boolean</Option>
-                    <Option value="object">Đối tượng</Option>
-                  </Select>
-                </Form.Item>
-
-                <Form.Item
-                  name="expectedOutputData"
-                  label={
-                    <div className="flex items-center">
-                      Dữ liệu đầu ra (JSON)
-                      <Tooltip
-                        title={
-                          <div>
-                            <p>
-                              <strong>Định dạng mẫu:</strong>{" "}
-                              <code>
-                                {
-                                  "{'expectedOutput':'giá_trị','dataType':'kiểu_dữ_liệu'}"
-                                }
-                              </code>
-                            </p>
-                            <p>
-                              Các ví dụ cho{" "}
-                              <strong>{selectedOutputType}</strong>:
-                            </p>
-                            <div className="mt-1">
-                              {Object.keys(DATA_TYPES).map((lang) => (
-                                <div key={lang} className="mb-1">
-                                  <strong>{lang}:</strong>{" "}
-                                  {DATA_TYPES[lang]?.[selectedOutputType] ||
-                                    "Kiểu không khả dụng"}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        }
-                      >
-                        <InfoCircleOutlined className="ml-2 text-gray-400" />
-                      </Tooltip>
-                    </div>
-                  }
-                  rules={[
-                    {
-                      required: true,
-                      message: "Dữ liệu đầu ra là bắt buộc",
-                    },
-                    { validator: validateOutputData },
-                  ]}
-                  help={
-                    <div className="flex justify-between">
-                      <span>
-                        Ví dụ: {"{'expectedOutput':'15','dataType':'int'}"}
-                      </span>
-                      <Button
-                        type="link"
-                        size="small"
-                        onClick={() => insertTestCaseExample("output")}
-                      >
-                        Chèn ví dụ
-                      </Button>
-                    </div>
-                  }
-                >
-                  <TextArea rows={5} />
-                </Form.Item>
+                    <Select
+                      placeholder="Chọn kiểu dữ liệu"
+                      onChange={(value) => {
+                        form.setFieldValue(
+                          ["output", "value"],
+                          getExampleValue(value)
+                        );
+                        updateOutputData();
+                      }}
+                    >
+                      {Object.entries(DATA_TYPES.java).map(([key, types]) => (
+                        <Select.OptGroup key={key} label={key.toUpperCase()}>
+                          {types.split(", ").map((type) => (
+                            <Option key={`${key}-${type}`} value={type}>
+                              {type}
+                            </Option>
+                          ))}
+                        </Select.OptGroup>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                  <Form.Item
+                    name={["output", "value"]}
+                    className="flex-1 mb-0"
+                    rules={[
+                      { required: true, message: "Vui lòng nhập giá trị" },
+                    ]}
+                  >
+                    <Input
+                      placeholder="Nhập giá trị"
+                      onChange={() => updateOutputData()}
+                    />
+                  </Form.Item>
+                </div>
               </Card>
             </TabPane>
             <TabPane tab="Cài đặt" key="2">

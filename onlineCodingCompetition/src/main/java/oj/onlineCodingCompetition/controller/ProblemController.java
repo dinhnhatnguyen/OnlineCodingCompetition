@@ -22,6 +22,7 @@ import oj.onlineCodingCompetition.security.entity.User;
 import oj.onlineCodingCompetition.security.repository.UserRepository;
 import oj.onlineCodingCompetition.service.ProblemService;
 
+
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -148,12 +149,17 @@ public class ProblemController {
                 for (Map.Entry<String, String> entry : functionSignaturesMap.entrySet()) {
                     String language = entry.getKey();
                     String jsonString = entry.getValue();
-                    Map<String, Object> signatureData = objectMapper.readValue(jsonString, Map.class);
-                    String functionName = (String) signatureData.get("functionName");
-                    List<String> parameterTypes = (List<String>) signatureData.get("parameterTypes");
-                    String returnType = (String) signatureData.get("returnType");
-                    Problem.FunctionSignature signature = new Problem.FunctionSignature(functionName, parameterTypes, returnType);
-                    functionSignatures.put(language, signature);
+                    try {
+                        Map<String, Object> signatureData = objectMapper.readValue(jsonString, Map.class);
+                        String functionName = (String) signatureData.get("functionName");
+                        List<String> parameterTypes = (List<String>) signatureData.get("parameterTypes");
+                        String returnType = (String) signatureData.get("returnType");
+                        Problem.FunctionSignature signature = new Problem.FunctionSignature(functionName, parameterTypes, returnType);
+                        functionSignatures.put(language, signature);
+                    } catch (Exception e) {
+                        log.error("Error parsing function signature for language {}: {}", language, e.getMessage());
+                        throw new RuntimeException("Invalid function signature format for " + language);
+                    }
                 }
             }
             problem.setFunctionSignatures(functionSignatures);
@@ -238,9 +244,14 @@ public class ProblemController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<Void> deleteProblem(@PathVariable Long id) {
-        log.debug("REST request to delete problem with ID: {}", id);
-        problemService.deleteProblem(id);
-        return ResponseEntity.noContent().build();
+        log.debug("REST request to delete Problem : {}", id);
+        try {
+            problemService.deleteProblem(id);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            log.error("Problem not found with id: {}", id);
+            return ResponseEntity.notFound().build();
+        }
     }
 
     //Thêm problem vào contest
@@ -266,12 +277,11 @@ public class ProblemController {
     }
 
     @PutMapping("/{id}/with-test-cases")
-    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
-    public ResponseEntity<ProblemDTO> updateProblemWithTestCases(
+    public ResponseEntity<?> updateProblemWithTestCases(
             @PathVariable Long id,
             @RequestBody Map<String, Object> requestBody,
             @AuthenticationPrincipal UserDetails userDetails) {
-        log.debug("REST request to update problem with test cases: {}", id);
+        log.info("Updating problem with test cases. ID: {}", id);
 
         try {
             User user = userRepository.findByUsername(userDetails.getUsername())
@@ -322,77 +332,24 @@ public class ProblemController {
                 for (Map.Entry<String, String> entry : functionSignaturesMap.entrySet()) {
                     String language = entry.getKey();
                     String jsonString = entry.getValue();
-                    Map<String, Object> signatureData = objectMapper.readValue(jsonString, Map.class);
-                    String functionName = (String) signatureData.get("functionName");
-                    List<String> parameterTypes = (List<String>) signatureData.get("parameterTypes");
-                    String returnType = (String) signatureData.get("returnType");
-                    Problem.FunctionSignature signature = new Problem.FunctionSignature(functionName, parameterTypes, returnType);
-                    functionSignatures.put(language, signature);
+                    try {
+                        Map<String, Object> signatureData = objectMapper.readValue(jsonString, Map.class);
+                        String functionName = (String) signatureData.get("functionName");
+                        List<String> parameterTypes = (List<String>) signatureData.get("parameterTypes");
+                        String returnType = (String) signatureData.get("returnType");
+                        Problem.FunctionSignature signature = new Problem.FunctionSignature(functionName, parameterTypes, returnType);
+                        functionSignatures.put(language, signature);
+                    } catch (Exception e) {
+                        log.error("Error parsing function signature for language {}: {}", language, e.getMessage());
+                        throw new RuntimeException("Invalid function signature format for " + language);
+                    }
                 }
                 
                 problem.setFunctionSignatures(functionSignatures);
             }
 
-            // Update contest associations
-            List<Long> contestIds = (List<Long>) problemData.get("contestIds");
-            if (contestIds != null) {
-                List<Contest> contests = contestIds.stream()
-                        .map(contestId -> contestRepository.findById(contestId)
-                                .orElseThrow(() -> new RuntimeException("Contest not found with id: " + contestId)))
-                        .collect(Collectors.toList());
-                problem.setContests(contests);
-            }
-
-            // Process test cases
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> testCasesData = (List<Map<String, Object>>) requestBody.get("createTestCases");
-
-            if (testCasesData != null) {
-                // Clear existing test cases and add new ones
-                problem.getTestCases().clear();
-                
-                for (Map<String, Object> testCaseData : testCasesData) {
-                    TestCase testCase = new TestCase();
-                    testCase.setInputData((String) testCaseData.get("inputData"));
-                    testCase.setInputType((String) testCaseData.get("inputType"));
-                    testCase.setOutputType((String) testCaseData.get("outputType"));
-                    testCase.setExpectedOutputData((String) testCaseData.get("expectedOutputData"));
-                    testCase.setDescription((String) testCaseData.get("description"));
-                    testCase.setIsExample(Boolean.TRUE.equals(testCaseData.get("isExample")));
-                    testCase.setIsHidden(Boolean.TRUE.equals(testCaseData.get("isHidden")));
-
-                    if (testCaseData.get("timeLimit") != null) {
-                        testCase.setTimeLimit(((Number) testCaseData.get("timeLimit")).intValue());
-                    } else {
-                        testCase.setTimeLimit(1000); // Default
-                    }
-                    
-                    if (testCaseData.get("memoryLimit") != null) {
-                        testCase.setMemoryLimit(((Number) testCaseData.get("memoryLimit")).intValue());
-                    } else {
-                        testCase.setMemoryLimit(262144); // Default
-                    }
-                    
-                    if (testCaseData.get("weight") != null) {
-                        testCase.setWeight(((Number) testCaseData.get("weight")).doubleValue());
-                    } else {
-                        testCase.setWeight(1.0); // Default
-                    }
-                    
-                    if (testCaseData.get("testOrder") != null) {
-                        testCase.setTestOrder(((Number) testCaseData.get("testOrder")).intValue());
-                    }
-                    
-                    testCase.setComparisonMode((String) testCaseData.get("comparisonMode"));
-                    
-                    if (testCaseData.get("epsilon") != null) {
-                        testCase.setEpsilon(((Number) testCaseData.get("epsilon")).doubleValue());
-                    }
-                    
-                    testCase.setProblem(problem);
-                    problem.getTestCases().add(testCase);
-                }
-            }
+            // Keep existing test cases unchanged
+            // Test cases will not be modified in this endpoint anymore
 
             Problem updatedProblem = problemService.updateProblemWithTestCases(problem);
             return ResponseEntity.ok(problemService.convertToDTO(updatedProblem));

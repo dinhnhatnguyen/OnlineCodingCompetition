@@ -10,21 +10,21 @@ const Home = () => {
   const features = [
     {
       icon: "lightbulb",
-      title: "Curated Problems",
+      title: "Bài tập chọn lọc",
       description:
-        "Practice with a diverse collection of algorithm problems, ranging from easy to hard difficulty.",
+        "Luyện tập với bộ sưu tập đa dạng các bài toán thuật toán, từ mức độ dễ đến khó.",
     },
     {
       icon: "clock",
-      title: "Weekly Contests",
+      title: "Cuộc thi hàng tuần",
       description:
-        "Test your skills in weekly coding contests and compete with other developers globally.",
+        "Kiểm tra kỹ năng của bạn trong các cuộc thi lập trình hàng tuần và cạnh tranh với những lập trình viên khác trên toàn cầu.",
     },
     {
       icon: "check",
-      title: "Real-time Feedback",
+      title: "Phản hồi thời gian thực",
       description:
-        "Get immediate feedback on your solutions with detailed test cases and performance metrics.",
+        "Nhận phản hồi ngay lập tức về giải pháp của bạn với các test case chi tiết và các chỉ số hiệu suất.",
     },
   ];
 

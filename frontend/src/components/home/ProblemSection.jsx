@@ -6,28 +6,30 @@ const ProblemSection = () => {
       <div className="max-w-4xl mx-auto flex items-start">
         <div className="w-1/2 pr-8">
           <h2 className="text-2xl font-bold mb-4">
-            Prepare for Technical Interviews
+            Chuẩn bị cho các cuộc phỏng vấn kỹ thuật
           </h2>
           <p className="mb-4">
-            Our platform is designed to help you excel in technical interviews
-            at top tech companies. With problems similar to those asked in real
-            interviews, you'll be well-prepared to showcase your algorithmic
-            skills.
+            Nền tảng của chúng tôi được thiết kế để giúp bạn thành công trong
+            các cuộc phỏng vấn kỹ thuật tại các công ty công nghệ hàng đầu. Với
+            các bài toán tương tự như những câu hỏi trong phỏng vấn thực tế, bạn
+            sẽ được chuẩn bị tốt để thể hiện kỹ năng thuật toán của mình.
           </p>
           <ul className="list-disc pl-5 mb-4 text-gray-400">
-            <li>Over 500 algorithm problems across multiple categories</li>
-            <li>Support for multiple programming languages</li>
-            <li>Detailed explanations and optimal solutions</li>
+            <li>Hơn 500 bài toán thuật toán trên nhiều danh mục</li>
+            <li>Hỗ trợ nhiều ngôn ngữ lập trình</li>
+            <li>Giải thích chi tiết và giải pháp tối ưu</li>
           </ul>
           <a
             href="/problems"
             className="primary-btn text-white px-6 py-2 rounded-full hover:bg-pink-600"
           >
-            Browse Problems
+            Xem tất cả bài tập
           </a>
         </div>
         <div className="w-1/2 bg-gray-800 p-4 rounded-lg">
-          <p className="text-gray-400 mb-2">Example Problem: Two Sum</p>
+          <p className="text-gray-400 mb-2">
+            Bài tập mẫu: Two Sum (Tổng hai số)
+          </p>
           <pre className="text-sm bg-gray-900 p-4 rounded">
             {`function twoSum(nums, target) {
   const map = new Map();

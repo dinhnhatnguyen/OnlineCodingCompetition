@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2024-03-20T10:00:00.000Z" agent="Mozilla/5.0" version="21.1.9" type="device">
+  <diagram id="problem-use-case" name="Problem Use Cases">
+    <mxGraphModel dx="1000" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Actors -->
+        <!-- Student -->
+        <mxCell id="student" value="Student" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;" vertex="1" parent="1">
+          <mxGeometry x="100" y="300" width="30" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Instructor -->
+        <mxCell id="instructor" value="Instructor" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;" vertex="1" parent="1">
+          <mxGeometry x="100" y="500" width="30" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Admin -->
+        <mxCell id="admin" value="Admin" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;" vertex="1" parent="1">
+          <mxGeometry x="100" y="700" width="30" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- System Boundary -->
+        <mxCell id="system" value="Problem Management System" style="shape=rect;html=1;verticalAlign=top;fontStyle=1;whiteSpace=wrap;align=center;" vertex="1" parent="1">
+          <mxGeometry x="200" y="200" width="500" height="600" as="geometry"/>
+        </mxCell>
+
+        <!-- Student Use Cases -->
+        <mxCell id="uc1" value="View Problem List" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="250" width="140" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="uc2" value="View Problem Details" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="350" width="140" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Instructor Use Cases -->
+        <mxCell id="uc3" value="Create Problem" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="450" width="140" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="uc4" value="Edit Problem" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="550" width="140" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="uc5" value="Manage Test Cases" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="450" width="140" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Admin Use Cases -->
+        <mxCell id="uc6" value="Delete Problem" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="650" width="140" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="uc7" value="Manage Problem Access" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="650" width="140" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Include Relationships -->
+        <mxCell id="inc1" value="&lt;&lt;include&gt;&gt;" style="endArrow=open;endSize=12;dashed=1;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="uc3" target="uc5">
+          <mxGeometry width="160" relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Student Relationships -->
+        <mxCell id="rel1" value="" style="endArrow=none;html=1;exitX=1;exitY=0.3333333333333333;exitDx=0;exitDy=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="student" target="uc1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rel2" value="" style="endArrow=none;html=1;exitX=1;exitY=0.3333333333333333;exitDx=0;exitDy=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="student" target="uc2">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Instructor Relationships -->
+        <mxCell id="rel3" value="" style="endArrow=none;html=1;exitX=1;exitY=0.3333333333333333;exitDx=0;exitDy=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="instructor" target="uc3">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rel4" value="" style="endArrow=none;html=1;exitX=1;exitY=0.3333333333333333;exitDx=0;exitDy=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="instructor" target="uc4">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Instructor inherits from Student -->
+        <mxCell id="inh1" value="" style="endArrow=block;endSize=16;endFill=0;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" edge="1" parent="1" source="instructor" target="student">
+          <mxGeometry width="160" relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Admin Relationships -->
+        <mxCell id="rel5" value="" style="endArrow=none;html=1;exitX=1;exitY=0.3333333333333333;exitDx=0;exitDy=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="admin" target="uc6">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rel6" value="" style="endArrow=none;html=1;exitX=1;exitY=0.3333333333333333;exitDx=0;exitDy=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="admin" target="uc7">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Admin inherits from Instructor -->
+        <mxCell id="inh2" value="" style="endArrow=block;endSize=16;endFill=0;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" edge="1" parent="1" source="admin" target="instructor">
+          <mxGeometry width="160" relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile> 

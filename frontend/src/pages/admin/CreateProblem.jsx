@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { message } from "antd";
+import { Modal } from "antd";
 import ProblemForm from "../../components/admin/ProblemForm";
 import { createProblemWithTestCases } from "../../api/problemApi";
 import { useAuth } from "../../contexts/AuthContext";
@@ -14,11 +14,17 @@ const CreateProblem = () => {
     try {
       setLoading(true);
       await createProblemWithTestCases(values, token);
-      message.success("Problem created successfully");
-      navigate("/admin/problems");
+      Modal.success({
+        title: "Thành công",
+        content: "Bài toán đã được tạo thành công!",
+        onOk: () => navigate("/admin/problems"),
+      });
     } catch (err) {
       console.error("Error creating problem:", err);
-      message.error(err.response?.data?.message || "Failed to create problem");
+      Modal.error({
+        title: "Lỗi",
+        content: err.response?.data?.message || "Không thể tạo bài toán mới",
+      });
     } finally {
       setLoading(false);
     }

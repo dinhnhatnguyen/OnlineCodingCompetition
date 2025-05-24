@@ -4,18 +4,18 @@ const HeroSection = () => {
   return (
     <section className="bg-black text-white text-center py-20 px-4">
       <h1 className="text-5xl font-bold mb-4">
-        Master Algorithms, Ace Your Coding Interviews
+        Làm chủ thuật toán, chinh phục các cuộc phỏng vấn lập trình
       </h1>
       <p className="text-lg mb-6">
-        Enhance your problem-solving skills with our collection of algorithm
-        challenges. Practice, compete, and learn with AlgoPractice.
+        Nâng cao kỹ năng giải quyết vấn đề với bộ sưu tập thử thách thuật toán
+        của chúng tôi. Thực hành, thi đấu và học hỏi cùng chúng tôi.
       </p>
       <div className="space-x-4">
         <a href="/problems" className="primary-btn px-6 py-3">
-          Start Practicing
+          Bắt đầu luyện tập
         </a>
         <a href="/contests" className="text-white hover:text-primary-pink">
-          View Contests
+          Xem các cuộc thi
         </a>
       </div>
     </section>

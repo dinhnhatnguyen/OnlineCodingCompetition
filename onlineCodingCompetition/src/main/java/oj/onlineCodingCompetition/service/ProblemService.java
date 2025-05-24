@@ -342,19 +342,27 @@ public class ProblemService {
         Problem problem = problemRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Problem not found with id: " + id));
 
-        // NEW: Kiểm tra contests
-        if (!problem.getContests().isEmpty()) {
-            throw new IllegalStateException("Cannot delete problem used in active contests: " +
-                    problem.getContests().stream().map(Contest::getId).collect(Collectors.toList()));
+        // Remove problem from all contests first
+        if (problem.getContests() != null && !problem.getContests().isEmpty()) {
+            for (Contest contest : new ArrayList<>(problem.getContests())) {
+                if (contest.getProblems() != null) {
+                    contest.getProblems().remove(problem);
+                    contestRepository.save(contest);
+                }
+            }
+            problem.getContests().clear();
+            problemRepository.save(problem);
         }
 
+        // Delete all test cases
         List<TestCase> testCases = testCaseRepository.findByProblemIdOrderByTestOrderAsc(id);
         if (!testCases.isEmpty()) {
             testCaseRepository.deleteAll(testCases);
             log.info("Deleted {} test cases for problem ID: {}", testCases.size(), id);
         }
 
-        problemRepository.deleteById(id);
+        // Finally delete the problem
+        problemRepository.delete(problem);
         log.info("Problem deleted successfully with ID: {}", id);
     }
 

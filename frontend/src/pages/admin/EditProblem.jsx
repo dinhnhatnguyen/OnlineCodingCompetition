@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { message, Form, Input, Select, Button, Card, Space } from "antd";
+import { message, Form, Input, Select, Button, Card, Space, Modal } from "antd";
 import { getProblemById, updateProblem } from "../../api/problemApi";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -14,6 +15,7 @@ const EditProblem = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { token } = useAuth();
+  const { showSuccess, showError } = useToast();
 
   useEffect(() => {
     const fetchProblem = async () => {
@@ -42,22 +44,40 @@ const EditProblem = () => {
   const handleSubmit = async (values) => {
     try {
       setLoading(true);
-      // Chỉ cập nhật các thông tin cơ bản, giữ nguyên test cases và function signatures
+      // Format the request data to match the expected structure
       const updateData = {
         ...initialValues,
         title: values.title,
         description: values.description,
-        difficulty: values.difficulty,
-        topics: values.topics,
+        difficulty: values.difficulty.toUpperCase(),
+        topics: values.topics || [],
         constraints: values.constraints,
+        // Preserve existing data
+        testCases: initialValues.testCases || [],
+        functionSignatures: initialValues.functionSignatures || {},
+        supportedLanguages: initialValues.supportedLanguages || {},
+        defaultTimeLimit: initialValues.defaultTimeLimit || 1000,
+        defaultMemoryLimit: initialValues.defaultMemoryLimit || 262144,
       };
 
       await updateProblem(id, updateData, token);
-      message.success("Problem updated successfully");
+      showSuccess("Bài toán đã được cập nhật thành công!");
       navigate("/admin/problems");
-    } catch (err) {
-      console.error("Error updating problem:", err);
-      message.error(err.response?.data?.message || "Failed to update problem");
+    } catch (error) {
+      console.error("Error updating problem:", error);
+      let errorMessage = "Không thể cập nhật bài toán";
+
+      if (error.response?.status === 403) {
+        errorMessage = "Bạn không có quyền cập nhật bài toán này";
+      } else if (error.response?.status === 404) {
+        errorMessage = "Không tìm thấy bài toán để cập nhật";
+      } else if (error.response?.status === 400) {
+        errorMessage = "Dữ liệu không hợp lệ, vui lòng kiểm tra lại";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      showError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -70,12 +90,12 @@ const EditProblem = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">
-        Edit Basic Problem Information
+        Chỉnh sửa thông tin bài toán cơ bản
       </h1>
       <p className="text-gray-500 mb-4">
-        Use this form to edit basic information of the problem. For advanced
-        edits like test cases and function signatures, please use the Advanced
-        Edit option.
+        Sử dụng biểu mẫu này để chỉnh sửa thông tin cơ bản của bài toán. Đối với
+        các chỉnh sửa nâng cao như test case và function signature, vui lòng sử
+        dụng tùy chọn Chỉnh sửa nâng cao.
       </p>
 
       <Form
@@ -138,7 +158,7 @@ const EditProblem = () => {
 
         <Space>
           <Button type="primary" htmlType="submit" loading={loading}>
-            Update Problem
+            Cập nhật bài toán
           </Button>
           <Button onClick={() => navigate("/admin/problems")}>Cancel</Button>
         </Space>

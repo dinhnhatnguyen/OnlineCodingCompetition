@@ -14,6 +14,34 @@ export const getUserProfile = async (token) => {
   }
 };
 
+export const getAllUsers = async (token) => {
+  try {
+    const response = await axios.get(`${API_URL}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    throw error;
+  }
+};
+
+export const updateUserRole = async (userId, role, token) => {
+  try {
+    const response = await axios.patch(
+      `${API_URL}/${userId}/role`,
+      { role },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error updating user role:", error);
+    throw error;
+  }
+};
+
 export const updateProfile = async (data, token) => {
   try {
     const response = await axios.put(`${API_URL}/profile`, data, {

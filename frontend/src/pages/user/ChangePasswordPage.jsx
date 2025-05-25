@@ -1,33 +1,39 @@
 import React, { useState } from "react";
-import { Card, Form, Input, Button, message } from "antd";
+import { Card, Form, Input, Button } from "antd";
 import { LockOutlined } from "@ant-design/icons";
 import { changePassword } from "../../api/userApi";
 import { useAuth } from "../../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "../../contexts/ToastContext";
 
 const ChangePasswordPage = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const { token } = useAuth();
+  const navigate = useNavigate();
+  const { showSuccess, showError } = useToast();
 
   const handleSubmit = async (values) => {
     // Validate password confirmation
     if (values.newPassword !== values.confirmPassword) {
-      message.error("Mật khẩu mới và xác nhận mật khẩu không khớp");
+      showError("Mật khẩu mới và xác nhận mật khẩu không khớp");
       return;
     }
 
     setLoading(true);
     try {
       await changePassword(values, token);
-      message.success("Đổi mật khẩu thành công");
+      showSuccess(
+        "Đổi mật khẩu thành công! Vui lòng sử dụng mật khẩu mới trong lần đăng nhập tới."
+      );
       form.resetFields();
+      // Redirect to home page after successful password change
+      navigate("/");
     } catch (error) {
       if (error.response?.status === 400) {
-        message.error(
-          error.response.data.message || "Mật khẩu hiện tại không đúng"
-        );
+        showError(error.response.data.message || "Đặt lại mật khẩu thất bại");
       } else {
-        message.error("Đổi mật khẩu thất bại. Vui lòng thử lại sau.");
+        showError("Đặt lại mật khẩu thất bại. Vui lòng thử lại sau.");
       }
     } finally {
       setLoading(false);

@@ -1,15 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Table,
-  Button,
-  Space,
-  Modal,
-  message,
-  Tag,
-  Tooltip,
-  Badge,
-} from "antd";
+import { Table, Button, Space, Modal, Tag, Tooltip, Badge } from "antd";
 import {
   EditOutlined,
   DeleteOutlined,
@@ -23,15 +14,58 @@ import {
 } from "@ant-design/icons";
 import { getContests, deleteContest } from "../../api/contestCrudApi";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import moment from "moment";
+
+const DeleteConfirmPopup = ({ isOpen, onClose, onConfirm, contest }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="flex items-center mb-4">
+          <ExclamationCircleOutlined className="text-red-500 text-2xl mr-2" />
+          <h3 className="text-lg font-semibold">Xác nhận xóa cuộc thi</h3>
+        </div>
+
+        <p className="text-gray-600 mb-2">
+          Bạn có chắc chắn muốn xóa cuộc thi:
+        </p>
+        <p className="font-medium mb-4">{contest?.title}</p>
+
+        <div className="text-sm text-gray-500 mb-6">
+          Hành động này không thể hoàn tác và sẽ xóa tất cả dữ liệu liên quan
+          đến cuộc thi này.
+        </div>
+
+        <div className="flex justify-end space-x-2">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg transition-colors"
+          >
+            Hủy
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+          >
+            Xóa
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const ContestManagement = () => {
   const [contests, setContests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deletePopupOpen, setDeletePopupOpen] = useState(false);
+  const [contestToDelete, setContestToDelete] = useState(null);
   const { user, token } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.role === "admin";
-  const { confirm } = Modal;
+  const { showSuccess, showError } = useToast();
 
   useEffect(() => {
     fetchContests();
@@ -48,9 +82,10 @@ const ContestManagement = () => {
         : data.filter((contest) => contest.createdById === user?.id);
 
       setContests(filteredData);
+      showSuccess("Tải danh sách cuộc thi thành công");
     } catch (error) {
       console.error("Error fetching contests:", error);
-      message.error("Failed to load contests");
+      showError("Không thể tải danh sách cuộc thi");
     } finally {
       setLoading(false);
     }
@@ -65,26 +100,26 @@ const ContestManagement = () => {
   };
 
   const showDeleteConfirm = (contest) => {
-    confirm({
-      title: "Are you sure you want to delete this contest?",
-      icon: <ExclamationCircleOutlined />,
-      content: "This action cannot be undone.",
-      okText: "Yes, Delete",
-      okType: "danger",
-      cancelText: "Cancel",
-      onOk: () => handleDeleteContest(contest.id),
-    });
+    setContestToDelete(contest);
+    setDeletePopupOpen(true);
   };
 
-  const handleDeleteContest = async (id) => {
+  const handleDeleteConfirm = async () => {
     try {
-      await deleteContest(id, token);
-      message.success("Contest deleted successfully");
+      await deleteContest(contestToDelete.id, token);
+      showSuccess("Xóa cuộc thi thành công");
+      setDeletePopupOpen(false);
+      setContestToDelete(null);
       fetchContests(); // Refresh the list
     } catch (error) {
       console.error("Error deleting contest:", error);
-      message.error("Failed to delete contest");
+      showError("Không thể xóa cuộc thi");
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeletePopupOpen(false);
+    setContestToDelete(null);
   };
 
   const getStatusTag = (status) => {
@@ -263,6 +298,13 @@ const ContestManagement = () => {
         loading={loading}
         pagination={{ pageSize: 10 }}
         scroll={{ x: 1200 }}
+      />
+
+      <DeleteConfirmPopup
+        isOpen={deletePopupOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        contest={contestToDelete}
       />
     </div>
   );

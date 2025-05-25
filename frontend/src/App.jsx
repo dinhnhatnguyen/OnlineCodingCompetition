@@ -36,6 +36,7 @@ import TestCaseManagerPage from "./pages/admin/TestCaseManagerPage";
 import ContestManagement from "./pages/admin/ContestManagement";
 import CreateContest from "./pages/admin/CreateContest";
 import EditContest from "./pages/admin/EditContest";
+import UserManagement from "./pages/admin/UserManagement";
 
 function App() {
   return (
@@ -104,6 +105,7 @@ function App() {
               <Route path="contests" element={<ContestManagement />} />
               <Route path="contests/create" element={<CreateContest />} />
               <Route path="contests/edit/:id" element={<EditContest />} />
+              <Route path="users" element={<UserManagement />} />
             </Route>
 
             {/* Instructor routes */}

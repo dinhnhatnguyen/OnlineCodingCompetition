@@ -3,15 +3,15 @@ package oj.onlineCodingCompetition.security.service;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import oj.onlineCodingCompetition.security.dto.ChangePasswordRequest;
-import oj.onlineCodingCompetition.security.dto.ResetPasswordRequest;
-import oj.onlineCodingCompetition.security.dto.UpdateProfileRequest;
-import oj.onlineCodingCompetition.security.dto.UserProfileResponse;
+import oj.onlineCodingCompetition.security.dto.*;
 import oj.onlineCodingCompetition.security.entity.User;
 import oj.onlineCodingCompetition.security.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +20,40 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserProfileResponse> getAllUsers() {
+        log.debug("Lấy danh sách tất cả người dùng");
+        return userRepository.findAll().stream()
+                .map(this::convertToUserProfileResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public UserProfileResponse updateUserRole(Long userId, UpdateRoleRequest request) {
+        log.debug("Cập nhật role cho người dùng ID {}: {}", userId, request.getRole());
+        
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với ID: " + userId));
+        
+        // Validate role
+        String newRole = request.getRole().toUpperCase();
+        if (!isValidRole(newRole)) {
+            throw new IllegalArgumentException("Role không hợp lệ: " + newRole);
+        }
+        
+        user.setRole(newRole);
+        User updatedUser = userRepository.save(user);
+        log.info("Đã cập nhật role cho người dùng ID {}: {}", userId, newRole);
+        
+        return convertToUserProfileResponse(updatedUser);
+    }
+
+    private boolean isValidRole(String role) {
+        return role.equals("ADMIN") || role.equals("INSTRUCTOR") || role.equals("USER");
+    }
 
     @Override
     @Transactional(readOnly = true)

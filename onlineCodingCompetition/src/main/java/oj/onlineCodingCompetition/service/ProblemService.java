@@ -1,8 +1,12 @@
 package oj.onlineCodingCompetition.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import oj.onlineCodingCompetition.entity.Contest;
+import oj.onlineCodingCompetition.repository.ContestRepository;
+import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -17,8 +21,7 @@ import oj.onlineCodingCompetition.security.entity.User;
 import oj.onlineCodingCompetition.security.repository.UserRepository;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,28 +32,38 @@ public class ProblemService {
     private final ProblemRepository problemRepository;
     private final UserRepository userRepository;
     private final TestCaseRepository testCaseRepository;
+    private final ObjectMapper objectMapper;
+    private final ModelMapper modelMapper;
+
+    private final ContestRepository contestRepository;
 
     public ProblemDTO convertToDTO(Problem problem) {
         if (problem == null) {
             return null;
         }
 
-        ProblemDTO dto = new ProblemDTO();
-        dto.setId(problem.getId());
-        dto.setTitle(problem.getTitle());
-        dto.setDescription(problem.getDescription());
-        dto.setDifficulty(problem.getDifficulty());
-        dto.setTopics(problem.getTopics());
-        dto.setConstraints(problem.getConstraints());
-        dto.setInputFormat(problem.getInputFormat());
-        dto.setOutputFormat(problem.getOutputFormat());
-        dto.setExamples(problem.getExamples());
-        dto.setCreatedAt(problem.getCreatedAt());
-
-        if (problem.getCreatedBy() != null) {
-            dto.setCreatedById(problem.getCreatedBy().getId());
-            dto.setCreatedByUsername(problem.getCreatedBy().getUsername());
+        ProblemDTO dto = modelMapper.map(problem, ProblemDTO.class);
+        if (problem.getTestCases() != null) {
+            dto.setTestCases(problem.getTestCases().stream()
+                    .map(testCase -> modelMapper.map(testCase, TestCaseDTO.class))
+                    .collect(Collectors.toList()));
         }
+
+        if (problem.getTopics() != null) {
+            dto.setTopics(new HashSet<>(problem.getTopics()));
+        } else {
+            dto.setTopics(new HashSet<>());
+        }
+
+        if (problem.getContests() != null) {
+            dto.setContestIds(problem.getContests().stream()
+                    .map(Contest::getId)
+                    .collect(Collectors.toSet()));
+        } else {
+            dto.setContestIds(new HashSet<>());
+        }
+
+        dto.setContestId(problem.getContestId());
 
         return dto;
     }
@@ -60,27 +73,35 @@ public class ProblemService {
             return null;
         }
 
-        Problem problem = new Problem();
+        Problem problem = modelMapper.map(dto, Problem.class);
 
         if (dto.getId() != null) {
             problem.setId(dto.getId());
         }
 
-        problem.setTitle(dto.getTitle());
-        problem.setDescription(dto.getDescription());
-        problem.setDifficulty(dto.getDifficulty().toLowerCase());
-        problem.setTopics(dto.getTopics());
-        problem.setConstraints(dto.getConstraints());
-        problem.setInputFormat(dto.getInputFormat());
-        problem.setOutputFormat(dto.getOutputFormat());
-        problem.setExamples(dto.getExamples());
         problem.setCreatedBy(creator);
 
-        // Set creation time only for new problems
+        if (dto.getTopics() != null) {
+            problem.setTopics(new HashSet<>(dto.getTopics()));
+        } else {
+            problem.setTopics(new HashSet<>());
+        }
+
+        if (dto.getContestIds() != null && !dto.getContestIds().isEmpty()) {
+            List<Contest> contests = dto.getContestIds().stream()
+                    .map(contestId -> contestRepository.findById(contestId)
+                            .orElseThrow(() -> new EntityNotFoundException("Contest not found with id: " + contestId)))
+                    .collect(Collectors.toList());
+            problem.setContests(contests);
+        } else {
+            problem.setContests(new ArrayList<>());
+        }
+
+        problem.setContestId(dto.getContestId());
+
         if (dto.getId() == null) {
             problem.setCreatedAt(LocalDateTime.now());
         } else {
-            // For updates, preserve the original creation time
             Problem existingProblem = problemRepository.findById(dto.getId()).orElse(null);
             if (existingProblem != null) {
                 problem.setCreatedAt(existingProblem.getCreatedAt());
@@ -92,13 +113,210 @@ public class ProblemService {
         return problem;
     }
 
+    @Transactional
+    public ProblemDTO createProblem(ProblemDTO problemDTO, Long creatorId) {
+        log.debug("Creating problem with creator ID: {}", creatorId);
+        User creator = userRepository.findById(creatorId)
+                .orElseThrow(() -> {
+                    log.error("User not found with ID: {}", creatorId);
+                    return new EntityNotFoundException("User not found with id: " + creatorId);
+                });
+
+        validateProblemDTO(problemDTO);
+
+        if (problemDTO.getContestId() != null) {
+            contestRepository.findById(problemDTO.getContestId())
+                    .orElseThrow(() -> new EntityNotFoundException("Contest not found with id: " + problemDTO.getContestId()));
+        }
+
+        Problem problem = convertToEntity(problemDTO, creator);
+        Problem savedProblem = problemRepository.save(problem);
+        log.info("Problem created successfully with ID: {}", savedProblem.getId());
+
+        if (problem.getContests() != null) {
+            for (Contest contest : problem.getContests()) {
+                if (contest.getProblems() == null) {
+                    contest.setProblems(new ArrayList<>());
+                }
+                if (!contest.getProblems().contains(savedProblem)) {
+                    contest.getProblems().add(savedProblem);
+                    contestRepository.save(contest);
+                    log.info("Added problem {} to contest {}", savedProblem.getId(), contest.getId());
+                }
+            }
+        }
+
+        return convertToDTO(savedProblem);
+    }
+
+    @Transactional
+    public Problem createProblemWithTestCases(Problem problem) {
+        log.debug("Creating problem with constraints: {}", problem.getConstraints());
+        log.debug("Creating problem with {} test cases", problem.getTestCases().size());
+        log.debug("Creating problem with topics: {}", problem.getTopics());
+
+        validateProblem(problem);
+
+        if (problem.getContestId() != null) {
+            contestRepository.findById(problem.getContestId())
+                    .orElseThrow(() -> new EntityNotFoundException("Contest not found with id: " + problem.getContestId()));
+        }
+
+        if (problem.getContests() != null && !problem.getContests().isEmpty()) {
+            Set<Contest> validContests = problem.getContests().stream()
+                    .map(contest -> contestRepository.findById(contest.getId())
+                            .orElseThrow(() -> new EntityNotFoundException("Contest not found with id: " + contest.getId())))
+                    .collect(Collectors.toSet());
+            problem.setContests(new ArrayList<>(validContests));
+        }
+
+        Problem savedProblem = problemRepository.save(problem);
+        log.info("Problem created successfully with ID: {}", savedProblem.getId());
+
+        if (savedProblem.getContests() != null) {
+            for (Contest contest : savedProblem.getContests()) {
+                if (contest.getProblems() == null) {
+                    contest.setProblems(new ArrayList<>());
+                }
+                if (!contest.getProblems().contains(savedProblem)) {
+                    contest.getProblems().add(savedProblem);
+                    contestRepository.save(contest);
+                    log.info("Added problem {} to contest {}", savedProblem.getId(), contest.getId());
+                }
+            }
+        }
+
+        if (!problem.getTestCases().isEmpty()) {
+            try {
+                if (savedProblem.getTestCases() == null) {
+                    savedProblem.setTestCases(new ArrayList<>());
+                } else {
+                    savedProblem.getTestCases().clear();
+                }
+
+                List<TestCase> testCasesToAdd = new ArrayList<>(problem.getTestCases());
+
+                for (TestCase testCase : testCasesToAdd) {
+                    if (testCase.getProblem() == null) {
+                        testCase.setProblem(savedProblem);
+                    }
+
+                    testCase.setTimeLimit(testCase.getTimeLimit() != null ? testCase.getTimeLimit() :
+                            savedProblem.getDefaultTimeLimit() != null ? savedProblem.getDefaultTimeLimit() : 1000);
+                    testCase.setMemoryLimit(testCase.getMemoryLimit() != null ? testCase.getMemoryLimit() :
+                            savedProblem.getDefaultMemoryLimit() != null ? savedProblem.getDefaultMemoryLimit() : 262144);
+
+                    TestCase savedTestCase = testCaseRepository.save(testCase);
+                    savedProblem.getTestCases().add(savedTestCase);
+                }
+
+                problemRepository.save(savedProblem);
+
+                log.info("Successfully created {} test cases for problem ID: {}",
+                        testCasesToAdd.size(), savedProblem.getId());
+            } catch (Exception e) {
+                log.error("Error creating test cases for problem ID: {}", savedProblem.getId(), e);
+                throw new RuntimeException("Failed to create test cases for problem ID: " + savedProblem.getId(), e);
+            }
+        }
+
+        return savedProblem;
+    }
+
+    @Transactional
+    public ProblemDTO updateProblem(Long id, ProblemDTO problemDTO) {
+        log.debug("Updating problem with ID: {}", id);
+        Problem existingProblem = problemRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.error("Problem not found with ID: {}", id);
+                    return new EntityNotFoundException("Problem not found with id: " + id);
+                });
+
+        validateProblemDTO(problemDTO);
+
+        // Save topics before mapping
+        Set<String> topics = problemDTO.getTopics();
+
+        Set<Long> currentContestIds = existingProblem.getContests().stream()
+                .map(Contest::getId)
+                .collect(Collectors.toSet());
+        Set<Long> newContestIds = problemDTO.getContestIds() != null ? problemDTO.getContestIds() : new HashSet<>();
+
+
+        modelMapper.map(problemDTO, existingProblem);
+        existingProblem.setId(id);
+
+        // Restore topics
+        existingProblem.setTopics(topics);
+
+        List<Contest> newContests = newContestIds.stream()
+                .map(contestId -> contestRepository.findById(contestId)
+                        .orElseThrow(() -> new EntityNotFoundException("Contest not found with id: " + contestId)))
+                .collect(Collectors.toList());
+        existingProblem.setContests(newContests);
+
+        Problem updatedProblem = problemRepository.save(existingProblem);
+        log.info("Problem updated successfully with ID: {}", updatedProblem.getId());
+
+        // Đồng bộ problemIds trong Contest
+        for (Long newContestId : newContestIds) {
+            if (!currentContestIds.contains(newContestId)) {
+                Contest contest = contestRepository.findById(newContestId).orElse(null);
+                if (contest != null) {
+                    if (contest.getProblems() == null) {
+                        contest.setProblems(new ArrayList<>());
+                    }
+                    if (!contest.getProblems().contains(updatedProblem)) {
+                        contest.getProblems().add(updatedProblem);
+                        contestRepository.save(contest);
+                        log.info("Added problem {} to contest {}", updatedProblem.getId(), newContestId);
+                    }
+                }
+            }
+        }
+        for (Long oldContestId : currentContestIds) {
+            if (!newContestIds.contains(oldContestId)) {
+                Contest contest = contestRepository.findById(oldContestId).orElse(null);
+                if (contest != null && contest.getProblems() != null) {
+                    contest.getProblems().remove(updatedProblem);
+                    contestRepository.save(contest);
+                    log.info("Removed problem {} from contest {}", updatedProblem.getId(), oldContestId);
+                }
+            }
+        }
+        return convertToDTO(updatedProblem);
+    }
+
     @Transactional(readOnly = true)
     public List<ProblemDTO> getAllProblems() {
-        log.debug("Fetching all problems");
+        log.debug("Request to get all Problems");
         return problemRepository.findAll().stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
+
+    @Transactional(readOnly = true)
+    public List<ProblemDTO> getProblemsByCreatedBy(Long userId) {
+        log.debug("Request to get all Problems created by user: {}", userId);
+        User creator = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+        return problemRepository.findByCreatedBy(creator).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public Problem.FunctionSignature getFunctionSignature(Long problemId, String language) {
+        log.debug("Request to get function signature for problem {} and language {}", problemId, language);
+        Problem problem = problemRepository.findByIdWithFunctionSignatures(problemId)
+                .orElseThrow(() -> new EntityNotFoundException("Problem not found with id: " + problemId));
+        Problem.FunctionSignature signature = problem.getFunctionSignatures().get(language.toLowerCase());
+        if (signature == null) {
+            throw new RuntimeException("Function signature not found for language: " + language);
+        }
+        return signature;
+    }
+
 
     @Transactional(readOnly = true)
     public Page<ProblemDTO> getProblemsPage(Pageable pageable) {
@@ -119,102 +337,32 @@ public class ProblemService {
     }
 
     @Transactional
-    public ProblemDTO createProblem(ProblemDTO problemDTO, Long creatorId) {
-        log.debug("Creating problem with creator ID: {}", creatorId);
-        User creator = userRepository.findById(creatorId)
-                .orElseThrow(() -> {
-                    log.error("User not found with ID: {}", creatorId);
-                    return new EntityNotFoundException("User not found with id: " + creatorId);
-                });
-
-        Problem problem = convertToEntity(problemDTO, creator);
-        Problem savedProblem = problemRepository.save(problem);
-        log.info("Problem created successfully with ID: {}", savedProblem.getId());
-
-        return convertToDTO(savedProblem);
-    }
-
-    @Transactional
-    public ProblemDTO createProblemWithTestCases(ProblemDTO problemDTO, List<TestCaseDTO> testCaseDTOs, Long creatorId) {
-        log.debug("Creating problem with {} test cases and creator ID: {}",
-                testCaseDTOs != null ? testCaseDTOs.size() : 0, creatorId);
-
-        User creator = userRepository.findById(creatorId)
-                .orElseThrow(() -> {
-                    log.error("User not found with ID: {}", creatorId);
-                    return new EntityNotFoundException("User not found with id: " + creatorId);
-                });
-
-        Problem problem = convertToEntity(problemDTO, creator);
-        Problem savedProblem = problemRepository.save(problem);
-        log.info("Problem created successfully with ID: {}", savedProblem.getId());
-
-        if (testCaseDTOs != null && !testCaseDTOs.isEmpty()) {
-            try {
-                testCaseDTOs.forEach(testCaseDTO -> {
-                    TestCase testCase = new TestCase();
-                    testCase.setProblem(savedProblem);
-                    testCase.setInput(testCaseDTO.getInput());
-                    testCase.setExpectedOutput(testCaseDTO.getExpectedOutput());
-                    testCase.setIsExample(testCaseDTO.getIsExample() != null ? testCaseDTO.getIsExample() : false);
-                    testCase.setIsHidden(testCaseDTO.getIsHidden() != null ? testCaseDTO.getIsHidden() : false);
-                    testCase.setTimeLimit(testCaseDTO.getTimeLimit() != null ? testCaseDTO.getTimeLimit() : 1000);
-                    testCase.setMemoryLimit(testCaseDTO.getMemoryLimit() != null ? testCaseDTO.getMemoryLimit() : 262144);
-                    testCase.setTestOrder(testCaseDTO.getOrder() != null ? testCaseDTO.getOrder() : 0);
-
-                    testCaseRepository.save(testCase);
-                });
-                log.info("Successfully created {} test cases for problem ID: {}", testCaseDTOs.size(), savedProblem.getId());
-            } catch (Exception e) {
-                log.error("Error creating test cases for problem ID: {}", savedProblem.getId(), e);
-                throw e; // Re-throw to ensure transaction rollback
-            }
-        }
-
-        return convertToDTO(savedProblem);
-    }
-
-    @Transactional
-    public ProblemDTO updateProblem(Long id, ProblemDTO problemDTO) {
-        log.debug("Updating problem with ID: {}", id);
-        Problem existingProblem = problemRepository.findById(id)
-                .orElseThrow(() -> {
-                    log.error("Problem not found with ID: {}", id);
-                    return new EntityNotFoundException("Problem not found with id: " + id);
-                });
-
-        // Update fields
-        existingProblem.setTitle(problemDTO.getTitle());
-        existingProblem.setDescription(problemDTO.getDescription());
-        existingProblem.setDifficulty(problemDTO.getDifficulty().toLowerCase());
-        existingProblem.setTopics(problemDTO.getTopics());
-        existingProblem.setConstraints(problemDTO.getConstraints());
-        existingProblem.setInputFormat(problemDTO.getInputFormat());
-        existingProblem.setOutputFormat(problemDTO.getOutputFormat());
-        existingProblem.setExamples(problemDTO.getExamples());
-
-        Problem updatedProblem = problemRepository.save(existingProblem);
-        log.info("Problem updated successfully with ID: {}", updatedProblem.getId());
-
-        return convertToDTO(updatedProblem);
-    }
-
-    @Transactional
     public void deleteProblem(Long id) {
         log.debug("Deleting problem with ID: {}", id);
-        if (!problemRepository.existsById(id)) {
-            log.error("Problem not found with ID: {}", id);
-            throw new EntityNotFoundException("Problem not found with id: " + id);
+        Problem problem = problemRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Problem not found with id: " + id));
+
+        // Remove problem from all contests first
+        if (problem.getContests() != null && !problem.getContests().isEmpty()) {
+            for (Contest contest : new ArrayList<>(problem.getContests())) {
+                if (contest.getProblems() != null) {
+                    contest.getProblems().remove(problem);
+                    contestRepository.save(contest);
+                }
+            }
+            problem.getContests().clear();
+            problemRepository.save(problem);
         }
 
-        // Delete associated test cases first
+        // Delete all test cases
         List<TestCase> testCases = testCaseRepository.findByProblemIdOrderByTestOrderAsc(id);
         if (!testCases.isEmpty()) {
             testCaseRepository.deleteAll(testCases);
             log.info("Deleted {} test cases for problem ID: {}", testCases.size(), id);
         }
 
-        problemRepository.deleteById(id);
+        // Finally delete the problem
+        problemRepository.delete(problem);
         log.info("Problem deleted successfully with ID: {}", id);
     }
 
@@ -229,7 +377,7 @@ public class ProblemService {
     @Transactional(readOnly = true)
     public List<ProblemDTO> getProblemsByTopic(String topic) {
         log.debug("Fetching problems by topic: {}", topic);
-        return problemRepository.findByTopic(topic).stream()
+        return problemRepository.findByTopicsContaining(topic).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
@@ -246,5 +394,137 @@ public class ProblemService {
     public List<String> getAllTopics() {
         log.debug("Fetching all topics");
         return problemRepository.findAllTopics();
+    }
+
+    @Transactional
+    public void addProblemToContest(Long problemId, Long contestId) {
+        log.debug("Adding problem {} to contest {}", problemId, contestId);
+        try {
+            Problem problem = problemRepository.findById(problemId)
+                    .orElseThrow(() -> new EntityNotFoundException("Problem not found with id: " + problemId));
+            Contest contest = contestRepository.findById(contestId)
+                    .orElseThrow(() -> new EntityNotFoundException("Contest not found with id: " + contestId));
+
+
+            if (contest.getProblems() == null) {
+                contest.setProblems(new ArrayList<>());
+            }
+            if (!contest.getProblems().contains(problem)) {
+                contest.getProblems().add(problem);
+            }
+
+            // Lưu chỉ phía Problem, không cần lưu Contest vì @ManyToMany sẽ xử lý
+            problemRepository.save(problem);
+
+            log.info("Successfully added problem {} to contest {}", problemId, contestId);
+        } catch (Exception e) {
+            // THAY ĐỔI: Thêm try-catch để ghi log lỗi
+            log.error("Failed to add problem {} to contest {}: {}", problemId, contestId, e.getMessage());
+            throw new IllegalStateException("Failed to add problem to contest: " + problemId, e);
+        }
+    }
+
+    @Transactional
+    public void removeProblemFromContest(Long problemId, Long contestId) {
+        log.debug("Removing problem {} from contest {}", problemId, contestId);
+        Problem problem = problemRepository.findById(problemId)
+                .orElseThrow(() -> new EntityNotFoundException("Problem not found with id: " + problemId));
+        Contest contest = contestRepository.findById(contestId)
+                .orElseThrow(() -> new EntityNotFoundException("Contest not found with id: " + contestId));
+
+        if (problem.getContests() != null) {
+            problem.getContests().remove(contest);
+        }
+
+        if (contest.getProblems() != null) {
+            contest.getProblems().remove(problem);
+        }
+
+        problemRepository.save(problem);
+        contestRepository.save(contest);
+        log.info("Successfully removed problem {} from contest {}", problemId, contestId);
+    }
+
+    private void validateProblemDTO(ProblemDTO problemDTO) {
+        List<String> validDifficulties = Arrays.asList("easy", "medium", "hard");
+        if (!validDifficulties.contains(problemDTO.getDifficulty().toLowerCase())) {
+            log.error("Invalid difficulty: {}", problemDTO.getDifficulty());
+            throw new IllegalArgumentException("Difficulty must be one of: " + validDifficulties);
+        }
+        if (problemDTO.getSupportedLanguages() == null || problemDTO.getSupportedLanguages().isEmpty()) {
+            throw new IllegalArgumentException("At least one supported language is required");
+        }
+        if (problemDTO.getFunctionSignatures() == null || problemDTO.getFunctionSignatures().isEmpty()) {
+            throw new IllegalArgumentException("At least one function signature is required");
+        }
+    }
+
+    private void validateProblem(Problem problem) {
+        List<String> validDifficulties = Arrays.asList("easy", "medium", "hard");
+        if (!validDifficulties.contains(problem.getDifficulty().toLowerCase())) {
+            log.error("Invalid difficulty: {}", problem.getDifficulty());
+            throw new IllegalArgumentException("Difficulty must be one of: " + validDifficulties);
+        }
+        if (problem.getSupportedLanguages() == null || problem.getSupportedLanguages().isEmpty()) {
+            throw new IllegalArgumentException("At least one supported language is required");
+        }
+        if (problem.getFunctionSignatures() == null || problem.getFunctionSignatures().isEmpty()) {
+            throw new IllegalArgumentException("At least one function signature is required");
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public ProblemDTO getProblemWithTestCases(Long id) {
+        log.debug("Fetching problem with test cases by ID: {}", id);
+        Problem problem = problemRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.error("Problem not found with ID: {}", id);
+                    return new EntityNotFoundException("Problem not found with id: " + id);
+                });
+        // Explicitly load test cases (since they are lazily loaded)
+        List<TestCase> testCases = testCaseRepository.findByProblemIdOrderByTestOrderAsc(id);
+        problem.setTestCases(testCases);
+        return convertToDTO(problem);
+    }
+
+    @Transactional(readOnly = true)
+    public Problem getProblemEntityById(Long id) {
+        log.debug("Fetching problem entity by ID: {}", id);
+        return problemRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.error("Problem entity not found with ID: {}", id);
+                    return new EntityNotFoundException("Problem not found with id: " + id);
+                });
+    }
+
+    @Transactional
+    public Problem updateProblemWithTestCases(Problem problem) {
+        log.debug("Updating problem with ID: {} and test cases", problem.getId());
+
+        // Validate problem data
+        validateProblem(problem);
+
+        // Set updated timestamp
+        problem.setUpdatedAt(LocalDateTime.now());
+
+        // Save the problem entity with its test cases
+        Problem savedProblem = problemRepository.save(problem);
+        log.info("Problem updated successfully with ID: {}", savedProblem.getId());
+
+        // Update contest associations if needed
+        if (savedProblem.getContests() != null) {
+            for (Contest contest : savedProblem.getContests()) {
+                if (contest.getProblems() == null) {
+                    contest.setProblems(new ArrayList<>());
+                }
+                if (!contest.getProblems().contains(savedProblem)) {
+                    contest.getProblems().add(savedProblem);
+                    contestRepository.save(contest);
+                    log.info("Updated problem {} association with contest {}", savedProblem.getId(), contest.getId());
+                }
+            }
+        }
+
+        return savedProblem;
     }
 }

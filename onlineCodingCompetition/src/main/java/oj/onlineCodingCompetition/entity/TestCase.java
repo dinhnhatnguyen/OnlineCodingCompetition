@@ -1,41 +1,71 @@
 package oj.onlineCodingCompetition.entity;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import org.hibernate.annotations.Type;
 
 @Entity
 @Table(name = "test_cases")
 @Data
+@AllArgsConstructor
 @NoArgsConstructor
+@Getter
+@Setter
 public class TestCase {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "problem_id", nullable = false)
     private Problem problem;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String input;
+    @Column(name = "input_data", columnDefinition = "JSONB")
+    @Type(JsonBinaryType.class)
+    private String inputData; // JSON chứa danh sách input (ví dụ: [{"input": "abc", "dataType": "String"}])
 
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String expectedOutput;
+    @Column(name = "expected_output_data", columnDefinition = "JSONB")
+    @Type(JsonBinaryType.class)
+    private String expectedOutputData; // JSON chứa expected output (ví dụ: {"expectedOutput": "6", "dataType": "integer"})
 
-    @Column(nullable = false)
-    private Boolean isExample = false;
+    @Column(name = "input_type")
+    private String inputType;
 
-    @Column(nullable = false)
-    private Boolean isHidden = false;
+    @Column(name = "output_type")
+    private String outputType;
 
-    @Column(nullable = false)
-    private Integer timeLimit = 1000; // milliseconds
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
 
-    @Column(nullable = false)
-    private Integer memoryLimit = 262144; // KB (256MB default)
+    @Column(name = "depends_on")
+    private Long dependsOn;
 
-    // Fix: Rename column to avoid SQL keyword conflict
-    @Column(name = "test_order", nullable = false)
-    private Integer testOrder = 0;
+    @Column(name = "is_example")
+    private Boolean isExample;
+
+    @Column(name = "is_hidden")
+    private Boolean isHidden;
+
+    @Column(name = "time_limit")
+    private Integer timeLimit; // Giới hạn thời gian (ms)
+
+    @Column(name = "memory_limit")
+    private Integer memoryLimit; // Giới hạn bộ nhớ (KB)
+
+    @Column(name = "weight")
+    private Double weight; // Điểm số của test case
+
+    @Column(name = "test_order")
+    private Integer testOrder;
+
+    @Column(name = "comparison_mode")
+    private String comparisonMode; // Ví dụ: EXACT, FLOAT, IGNORE_WHITESPACE
+
+    @Column(name = "epsilon")
+    private Double epsilon; // Dùng cho so sánh FLOAT
+
+
 }

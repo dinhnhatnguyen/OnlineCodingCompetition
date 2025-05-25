@@ -15,18 +15,15 @@ import {
   Alert,
   InputNumber,
   Collapse,
-  Badge,
   Steps,
+  Checkbox,
+  message,
 } from "antd";
 import {
   PlusOutlined,
   DeleteOutlined,
   InfoCircleOutlined,
-  CodeOutlined,
-  CheckCircleOutlined,
-  ArrowRightOutlined,
 } from "@ant-design/icons";
-import { CodeBlock, atomOneDark } from "react-code-blocks";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -213,7 +210,271 @@ const TEST_CASE_TEMPLATE = {
   epsilon: null,
 };
 
-const AdvancedProblemForm = ({ onSubmit, loading, initialValues }) => {
+const FunctionSignatureForm = ({ language, form }) => {
+  const [parameterCount, setParameterCount] = useState(1);
+  const dataTypes = DATA_TYPES[language];
+
+  const handleAddParameter = () => {
+    setParameterCount((prev) => prev + 1);
+  };
+
+  const handleRemoveParameter = (index) => {
+    setParameterCount((prev) => prev - 1);
+    // Remove the parameter from form
+    const currentSignature = form.getFieldValue(`${language}Signature`);
+    if (currentSignature) {
+      const parsedSignature = JSON.parse(currentSignature);
+      parsedSignature.parameterTypes.splice(index, 1);
+      form.setFieldValue(
+        `${language}Signature`,
+        JSON.stringify(parsedSignature, null, 2)
+      );
+    }
+  };
+
+  const updateSignature = (values) => {
+    const signature = {
+      functionName: values.functionName || "",
+      parameterTypes: values.parameterTypes || [],
+      returnType: values.returnType || "",
+    };
+    // Ensure the signature is valid before updating
+    if (
+      signature.functionName ||
+      signature.parameterTypes.length > 0 ||
+      signature.returnType
+    ) {
+      form.setFieldValue(
+        `${language}Signature`,
+        JSON.stringify(signature, null, 2)
+      );
+    }
+  };
+
+  // Convert string types to array for Select
+  const getTypeOptions = (typeString) => {
+    if (!typeString) return [];
+    return typeString.split(", ").map((type) => ({
+      label: type,
+      value: type,
+    }));
+  };
+
+  // Flatten all data types into one array for the selectors
+  const allTypes = Object.values(dataTypes).reduce((acc, curr) => {
+    return [...acc, ...getTypeOptions(curr)];
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      <Form.Item
+        label="Tên hàm"
+        name={`${language}FunctionName`}
+        rules={[{ required: true, message: "Vui lòng nhập tên hàm" }]}
+      >
+        <Input
+          placeholder={
+            language === "python" ? "find_max_value" : "findMaxValue"
+          }
+          onChange={(e) =>
+            updateSignature({
+              functionName: e.target.value,
+              parameterTypes: form.getFieldValue(`${language}ParameterTypes`),
+              returnType: form.getFieldValue(`${language}ReturnType`),
+            })
+          }
+        />
+      </Form.Item>
+
+      <div className="space-y-2">
+        <label className="block">Tham số</label>
+        {Array.from({ length: parameterCount }).map((_, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <Form.Item
+              className="flex-1 mb-0"
+              name={`${language}ParameterTypes${index}`}
+              rules={[
+                { required: true, message: "Vui lòng chọn kiểu dữ liệu" },
+              ]}
+            >
+              <Select
+                placeholder="Chọn kiểu dữ liệu"
+                options={allTypes}
+                onChange={() => {
+                  const types = Array.from({ length: parameterCount })
+                    .map((_, i) =>
+                      form.getFieldValue(`${language}ParameterTypes${i}`)
+                    )
+                    .filter(Boolean);
+                  updateSignature({
+                    functionName: form.getFieldValue(`${language}FunctionName`),
+                    parameterTypes: types,
+                    returnType: form.getFieldValue(`${language}ReturnType`),
+                  });
+                }}
+              />
+            </Form.Item>
+            {index === parameterCount - 1 ? (
+              <Button
+                type="dashed"
+                onClick={handleAddParameter}
+                icon={<PlusOutlined />}
+              >
+                Thêm
+              </Button>
+            ) : (
+              <Button
+                type="text"
+                danger
+                icon={<DeleteOutlined />}
+                onClick={() => handleRemoveParameter(index)}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      <Form.Item
+        label="Kiểu trả về"
+        name={`${language}ReturnType`}
+        rules={[{ required: true, message: "Vui lòng chọn kiểu trả về" }]}
+      >
+        <Select
+          placeholder="Chọn kiểu trả về"
+          options={allTypes}
+          onChange={(value) =>
+            updateSignature({
+              functionName: form.getFieldValue(`${language}FunctionName`),
+              parameterTypes: Array.from({ length: parameterCount })
+                .map((_, i) =>
+                  form.getFieldValue(`${language}ParameterTypes${i}`)
+                )
+                .filter(Boolean),
+              returnType: value,
+            })
+          }
+        />
+      </Form.Item>
+    </div>
+  );
+};
+
+const TestCaseInputForm = ({ form, field }) => {
+  const [inputCount, setInputCount] = useState(1);
+
+  const handleAddInput = () => {
+    setInputCount((prev) => prev + 1);
+  };
+
+  const handleRemoveInput = (index) => {
+    setInputCount((prev) => prev - 1);
+    // Remove the input from form
+    const currentInputs = form.getFieldValue([field.name, "inputs"]) || [];
+    currentInputs.splice(index, 1);
+    form.setFieldValue([field.name, "inputs"], currentInputs);
+    updateInputData();
+  };
+
+  const updateInputData = () => {
+    const inputs = form.getFieldValue([field.name, "inputs"]) || [];
+    const inputData = inputs.map((input) => ({
+      input: input.value,
+      dataType: input.type,
+    }));
+    form.setFieldValue([field.name, "inputData"], JSON.stringify(inputData));
+  };
+
+  // Get example value based on type
+  const getExampleValue = (type) => {
+    switch (type) {
+      case "int":
+      case "Integer":
+        return "42";
+      case "int[]":
+      case "Integer[]":
+        return "[1, 2, 3]";
+      case "String":
+        return '"hello"';
+      case "boolean":
+      case "Boolean":
+        return "true";
+      case "float":
+      case "double":
+        return "3.14";
+      default:
+        return "";
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {Array.from({ length: inputCount }).map((_, index) => (
+        <div key={index} className="flex items-center gap-2">
+          <Form.Item
+            className="flex-1 mb-0"
+            name={[field.name, "inputs", index, "type"]}
+            rules={[{ required: true, message: "Vui lòng chọn kiểu dữ liệu" }]}
+          >
+            <Select
+              placeholder="Chọn kiểu dữ liệu"
+              onChange={(value) => {
+                // Set example value when type changes
+                form.setFieldValue(
+                  [field.name, "inputs", index, "value"],
+                  getExampleValue(value)
+                );
+                updateInputData();
+              }}
+            >
+              {Object.entries(DATA_TYPES.java).map(([key, types]) => (
+                <Select.OptGroup key={key} label={key.toUpperCase()}>
+                  {types.split(", ").map((type) => (
+                    <Option key={`${key}-${type}`} value={type}>
+                      {type}
+                    </Option>
+                  ))}
+                </Select.OptGroup>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item
+            className="flex-1 mb-0"
+            name={[field.name, "inputs", index, "value"]}
+            rules={[{ required: true, message: "Vui lòng nhập giá trị" }]}
+          >
+            <Input
+              placeholder="Nhập giá trị"
+              onChange={() => updateInputData()}
+            />
+          </Form.Item>
+          {index === inputCount - 1 ? (
+            <Button
+              type="dashed"
+              onClick={handleAddInput}
+              icon={<PlusOutlined />}
+            >
+              Thêm
+            </Button>
+          ) : (
+            <Button
+              type="text"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleRemoveInput(index)}
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const AdvancedProblemForm = ({
+  onSubmit,
+  loading,
+  initialValues,
+  isCreating = false,
+}) => {
   const [form] = Form.useForm();
   const [activeTab, setActiveTab] = useState("1");
   const [topics, setTopics] = useState(initialValues?.topics || []);
@@ -228,27 +489,9 @@ const AdvancedProblemForm = ({ onSubmit, loading, initialValues }) => {
     ...initialValues?.supportedLanguages,
   });
 
-  // Track the selected input type for test case generation guidance
-  const [selectedInputType, setSelectedInputType] = useState("array");
-
-  // Keep local state of function signature forms for displaying formatted signature preview
-  const [functionSignatures, setFunctionSignatures] = useState({
-    java: FUNCTION_TEMPLATES.java,
-    python: FUNCTION_TEMPLATES.python,
-    javascript: FUNCTION_TEMPLATES.javascript,
-    cpp: FUNCTION_TEMPLATES.cpp,
-  });
-
-  // Add new state for tracking if it's an update operation
-  const [isUpdate, setIsUpdate] = useState(false);
-
-  // Add new state for tracking selected test case index
-  const [selectedTestCaseIndex, setSelectedTestCaseIndex] = useState(0);
-
   // Initialize form with values if editing
   useEffect(() => {
     if (initialValues) {
-      setIsUpdate(true);
       initializeForm();
     }
   }, [initialValues]);
@@ -260,164 +503,106 @@ const AdvancedProblemForm = ({ onSubmit, loading, initialValues }) => {
     }));
   };
 
-  const handleAddTopic = () => {
-    if (newTopic && !topics.includes(newTopic)) {
-      setTopics([...topics, newTopic]);
-      setNewTopic("");
-    }
-  };
-
-  const handleRemoveTopic = (removedTopic) => {
-    setTopics(topics.filter((topic) => topic !== removedTopic));
-  };
-
-  const validateFunctionSignature = (_, value) => {
+  const handleSubmit = async (values) => {
     try {
-      const signature = JSON.parse(value);
-      if (
-        !signature.functionName ||
-        !signature.parameterTypes ||
-        !signature.returnType
-      ) {
-        return Promise.reject("Invalid function signature format");
-      }
-      return Promise.resolve();
-    } catch {
-      return Promise.reject("Invalid JSON format");
-    }
-  };
-
-  // Update function signature state when form values change
-  const handleFunctionSignatureChange = (language, value) => {
-    try {
-      const parsedSignature = JSON.parse(value);
-      setFunctionSignatures((prev) => ({
-        ...prev,
-        [language]: parsedSignature,
-      }));
-    } catch (e) {
-      // Keep previous state if parse fails
-      console.error("Failed to parse signature:", e);
-    }
-  };
-
-  // Generate signature preview text
-  const getSignaturePreview = (language) => {
-    const signature = functionSignatures[language];
-    if (!signature) return "";
-
-    switch (language) {
-      case "java":
-        return `public ${signature.returnType} ${
-          signature.functionName
-        }(${signature.parameterTypes.join(", ")})`;
-      case "python":
-        return `def ${signature.functionName}(${signature.parameterTypes
-          .map((p) => p.replace(/List\[([^\]]+)\]/, "$1s"))
-          .join(", ")}) -> ${signature.returnType}`;
-      case "javascript":
-        return `function ${signature.functionName}(${signature.parameterTypes
-          .map((p) => p.replace(/\[\]$/, "s"))
-          .join(", ")}) => ${signature.returnType}`;
-      case "cpp":
-        return `${signature.returnType} ${
-          signature.functionName
-        }(${signature.parameterTypes.join(", ")})`;
-      default:
-        return "";
-    }
-  };
-
-  // Add new validator functions for test cases
-  const validateInputData = (_, value) => {
-    try {
-      if (!value)
-        return Promise.reject(new Error("Dữ liệu đầu vào là bắt buộc"));
-
-      const parsed = JSON.parse(value);
-
-      // Check if it's an array for multiple parameters
-      if (!Array.isArray(parsed)) {
-        return Promise.reject(
-          new Error("Dữ liệu đầu vào phải là một mảng các đối tượng")
-        );
+      // Kiểm tra xem có ít nhất một ngôn ngữ được bật không
+      const enabledLanguages = Object.entries(languageEnabled).filter(
+        ([, enabled]) => enabled
+      );
+      if (enabledLanguages.length === 0) {
+        message.error({
+          content: "Vui lòng chọn ít nhất một ngôn ngữ lập trình",
+          duration: 5,
+          style: {
+            marginTop: "20vh",
+          },
+        });
+        return;
       }
 
-      // Check each parameter object
-      for (const param of parsed) {
-        if (!param.input || !param.dataType) {
-          return Promise.reject(
-            new Error("Mỗi tham số phải có 'input' và 'dataType'")
-          );
+      // Get function signatures for enabled languages
+      const functionSignatures = {};
+      let hasValidSignature = false;
+
+      // Xử lý function signatures cho từng ngôn ngữ được bật
+      for (const [lang, enabled] of enabledLanguages) {
+        if (enabled) {
+          const functionName = values[`${lang}FunctionName`];
+          const returnType = values[`${lang}ReturnType`];
+          const parameterTypes = Array.from({
+            length: form.getFieldValue(`${lang}ParameterCount`) || 1,
+          })
+            .map((_, i) => form.getFieldValue(`${lang}ParameterTypes${i}`))
+            .filter(Boolean);
+
+          if (functionName && returnType && parameterTypes.length > 0) {
+            const signature = {
+              functionName,
+              parameterTypes,
+              returnType,
+            };
+            functionSignatures[lang] = JSON.stringify(signature);
+            hasValidSignature = true;
+          }
         }
       }
 
-      return Promise.resolve();
-    } catch {
-      return Promise.reject(new Error("Định dạng JSON không hợp lệ"));
-    }
-  };
-
-  const validateOutputData = (_, value) => {
-    try {
-      if (!value)
-        return Promise.reject(new Error("Dữ liệu đầu ra là bắt buộc"));
-
-      const parsed = JSON.parse(value);
-
-      // Check for required fields
-      if (!parsed.expectedOutput || !parsed.dataType) {
-        return Promise.reject(
-          new Error("Kết quả phải có 'expectedOutput' và 'dataType'")
-        );
+      if (!hasValidSignature) {
+        message.error({
+          content:
+            "Vui lòng định nghĩa function signature cho ít nhất một ngôn ngữ",
+          duration: 5,
+          style: {
+            marginTop: "20vh",
+          },
+        });
+        return;
       }
 
-      return Promise.resolve();
-    } catch {
-      return Promise.reject(new Error("Định dạng JSON không hợp lệ"));
-    }
-  };
+      // Prepare data for submission
+      const formData = {
+        createProblem: {
+          title: values.title,
+          description: values.description,
+          difficulty: values.difficulty,
+          constraints: values.constraints,
+          topics: topics,
+          supportedLanguages: languageEnabled,
+          functionSignatures: functionSignatures,
+        },
+      };
 
-  // Helper to insert test case examples
-  const insertTestCaseExample = (type, index) => {
-    const example = TEST_CASE_EXAMPLES[type];
-    if (!example) return;
-
-    const testCases = form.getFieldValue("testCases");
-    testCases[index].inputData = example.input;
-    testCases[index].expectedOutputData = example.output;
-    testCases[index].description = example.vietnamese || example.description;
-
-    form.setFieldsValue({ testCases });
-  };
-
-  const handleSubmit = (values) => {
-    // Only include enabled languages in function signatures
-    const enabledFunctionSignatures = {};
-    Object.keys(languageEnabled).forEach((lang) => {
-      if (languageEnabled[lang]) {
-        enabledFunctionSignatures[lang] = values[`${lang}Signature`];
+      // Chỉ thêm test cases nếu đang tạo mới problem
+      if (isCreating && values.testCases) {
+        formData.createTestCases = values.testCases.map((testCase, index) => ({
+          ...testCase,
+          testOrder: index + 1,
+        }));
+      } else if (!isCreating) {
+        // Nếu đang chỉnh sửa, giữ nguyên test cases cũ
+        formData.createProblem.testCases = initialValues?.testCases || [];
       }
-    });
 
-    // Build the complex request data structure
-    const formattedValues = {
-      createProblem: {
-        title: values.title,
-        description: values.description,
-        difficulty: values.difficulty,
-        topics: topics,
-        supportedLanguages: languageEnabled,
-        functionSignatures: enabledFunctionSignatures,
-        constraints: values.constraints || "",
-      },
-      createTestCases: values.testCases.map((testCase, index) => ({
-        ...testCase,
-        testOrder: index + 1,
-      })),
-    };
-
-    onSubmit(formattedValues);
+      await onSubmit(formData);
+      message.success({
+        content: isCreating
+          ? "Tạo bài toán mới thành công!"
+          : "Cập nhật bài toán thành công!",
+        duration: 5,
+        style: {
+          marginTop: "20vh",
+        },
+      });
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      message.error({
+        content: "Không thể gửi form. Vui lòng thử lại.",
+        duration: 5,
+        style: {
+          marginTop: "20vh",
+        },
+      });
+    }
   };
 
   const initializeForm = () => {
@@ -438,11 +623,6 @@ const AdvancedProblemForm = ({ onSubmit, loading, initialValues }) => {
           initialValues.functionSignatures?.cpp ||
           JSON.stringify(FUNCTION_TEMPLATES.cpp, null, 2),
       };
-
-      // Initialize test cases from initialValues if exists
-      if (initialValues.testCases && initialValues.testCases.length > 0) {
-        formData.testCases = initialValues.testCases;
-      }
 
       form.setFieldsValue(formData);
 
@@ -465,7 +645,7 @@ const AdvancedProblemForm = ({ onSubmit, loading, initialValues }) => {
       onFinish={handleSubmit}
       initialValues={{
         difficulty: "MEDIUM",
-        testCases: [TEST_CASE_TEMPLATE],
+        testCases: isCreating ? [TEST_CASE_TEMPLATE] : [],
         javaSignature: JSON.stringify(FUNCTION_TEMPLATES.java, null, 2),
         pythonSignature: JSON.stringify(FUNCTION_TEMPLATES.python, null, 2),
         javascriptSignature: JSON.stringify(
@@ -515,506 +695,179 @@ const AdvancedProblemForm = ({ onSubmit, loading, initialValues }) => {
               label="Độ khó"
               rules={[{ required: true, message: "Vui lòng chọn độ khó" }]}
             >
-              <Select placeholder="Chọn độ khó">
+              <Select>
                 <Option value="EASY">Dễ</Option>
                 <Option value="MEDIUM">Trung bình</Option>
                 <Option value="HARD">Khó</Option>
               </Select>
             </Form.Item>
 
-            <Form.Item label="Chủ đề">
-              <div className="flex flex-wrap gap-2 mb-3">
-                {topics.map((topic) => (
+            <div className="mb-4">
+              <label className="block mb-2">Chủ đề</label>
+              <Space wrap>
+                {topics.map((topic, index) => (
                   <Tag
-                    key={topic}
+                    key={index}
                     closable
-                    onClose={() => handleRemoveTopic(topic)}
-                    className="text-sm py-1 px-2"
+                    onClose={() => setTopics(topics.filter((t) => t !== topic))}
                   >
                     {topic}
                   </Tag>
                 ))}
-              </div>
-              <Input.Group compact>
+              </Space>
+              <div className="mt-2 flex gap-2">
                 <Input
-                  style={{ width: "calc(100% - 80px)" }}
-                  placeholder="Thêm chủ đề (Ví dụ: Mảng, Quy hoạch động...)"
                   value={newTopic}
                   onChange={(e) => setNewTopic(e.target.value)}
-                  onPressEnter={handleAddTopic}
+                  onPressEnter={(e) => {
+                    e.preventDefault();
+                    if (newTopic && !topics.includes(newTopic)) {
+                      setTopics([...topics, newTopic]);
+                      setNewTopic("");
+                    }
+                  }}
+                  placeholder="Thêm chủ đề mới"
                 />
-                <Button type="primary" onClick={handleAddTopic}>
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    if (newTopic && !topics.includes(newTopic)) {
+                      setTopics([...topics, newTopic]);
+                      setNewTopic("");
+                    }
+                  }}
+                >
                   <PlusOutlined /> Thêm
                 </Button>
-              </Input.Group>
-            </Form.Item>
+              </div>
+            </div>
           </Card>
         </TabPane>
 
-        <TabPane tab="Function Signature" key="2">
+        <TabPane tab="Function Signatures" key="2">
           <Card>
-            <Alert
-              message="Function Signature"
-              description="Đầu tiên, chọn các ngôn ngữ lập trình bạn muốn hỗ trợ, sau đó định nghĩa Function Signature cho mỗi ngôn ngữ."
-              type="info"
-              showIcon
-              className="mb-4"
-            />
-
-            <Title level={4} className="mb-4">
-              1. Chọn ngôn ngữ hỗ trợ
-            </Title>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <Card
-                className={`border-2 ${
-                  languageEnabled.java ? "border-blue-500" : "border-gray-200"
-                }`}
-              >
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Java</span>
-                  <Switch
-                    checked={languageEnabled.java}
-                    onChange={(checked) =>
-                      handleSupportedLanguagesChange("java", checked)
-                    }
-                  />
-                </div>
-              </Card>
-              <Card
-                className={`border-2 ${
-                  languageEnabled.python ? "border-blue-500" : "border-gray-200"
-                }`}
-              >
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Python</span>
-                  <Switch
-                    checked={languageEnabled.python}
-                    onChange={(checked) =>
-                      handleSupportedLanguagesChange("python", checked)
-                    }
-                  />
-                </div>
-              </Card>
-              <Card
-                className={`border-2 ${
-                  languageEnabled.javascript
-                    ? "border-blue-500"
-                    : "border-gray-200"
-                }`}
-              >
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">JavaScript</span>
-                  <Switch
-                    checked={languageEnabled.javascript}
-                    onChange={(checked) =>
-                      handleSupportedLanguagesChange("javascript", checked)
-                    }
-                  />
-                </div>
-              </Card>
-              <Card
-                className={`border-2 ${
-                  languageEnabled.cpp ? "border-blue-500" : "border-gray-200"
-                }`}
-              >
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">C++</span>
-                  <Switch
-                    checked={languageEnabled.cpp}
-                    onChange={(checked) =>
-                      handleSupportedLanguagesChange("cpp", checked)
-                    }
-                  />
-                </div>
-              </Card>
+            <div className="mb-4">
+              <label className="block mb-2">Ngôn ngữ được hỗ trợ</label>
+              <Space wrap>
+                <Checkbox
+                  checked={languageEnabled.java}
+                  onChange={(e) =>
+                    handleSupportedLanguagesChange("java", e.target.checked)
+                  }
+                >
+                  Java
+                </Checkbox>
+                <Checkbox
+                  checked={languageEnabled.python}
+                  onChange={(e) =>
+                    handleSupportedLanguagesChange("python", e.target.checked)
+                  }
+                >
+                  Python
+                </Checkbox>
+                <Checkbox
+                  checked={languageEnabled.javascript}
+                  onChange={(e) =>
+                    handleSupportedLanguagesChange(
+                      "javascript",
+                      e.target.checked
+                    )
+                  }
+                >
+                  JavaScript
+                </Checkbox>
+                <Checkbox
+                  checked={languageEnabled.cpp}
+                  onChange={(e) =>
+                    handleSupportedLanguagesChange("cpp", e.target.checked)
+                  }
+                >
+                  C++
+                </Checkbox>
+              </Space>
             </div>
 
-            <Divider />
-
-            <Title level={4} className="mb-4">
-              2. Định nghĩa Function Signature
-            </Title>
-            <Alert
-              message="Cách định nghĩa Function Signature"
-              description={
-                <ul className="list-disc pl-5">
-                  <li>Xác định tên hàm, kiểu tham số và kiểu trả về</li>
-                  <li>Sử dụng định dạng JSON như trong các ví dụ</li>
-                  <li>Xem trước Function Signature sẽ cập nhật khi bạn nhập</li>
-                </ul>
-              }
-              type="info"
-              className="mb-4"
-            />
-
-            <Collapse defaultActiveKey={["java", "python"]}>
+            <Collapse defaultActiveKey={["java"]}>
               {languageEnabled.java && (
-                <Panel
-                  header={
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">
-                        Function Signature Java
-                      </span>
-                      <Badge
-                        status="success"
-                        text={getSignaturePreview("java")}
-                      />
-                    </div>
-                  }
-                  key="java"
-                >
-                  <Alert
-                    message="Các kiểu dữ liệu Java phổ biến"
-                    description={
-                      <ul className="list-disc pl-5">
-                        <li>
-                          <strong>Mảng:</strong> {DATA_TYPES.java.array}
-                        </li>
-                        <li>
-                          <strong>Chuỗi:</strong> {DATA_TYPES.java.string}
-                        </li>
-                        <li>
-                          <strong>Số nguyên:</strong> {DATA_TYPES.java.integer}
-                        </li>
-                        <li>
-                          <strong>Số thực:</strong> {DATA_TYPES.java.float}
-                        </li>
-                        <li>
-                          <strong>Boolean:</strong> {DATA_TYPES.java.boolean}
-                        </li>
-                        <li>
-                          <strong>Đối tượng:</strong> {DATA_TYPES.java.object}
-                        </li>
-                      </ul>
-                    }
-                    type="info"
-                    className="mb-4"
-                  />
-                  <Form.Item
-                    name="javaSignature"
-                    rules={[
-                      {
-                        required: languageEnabled.java,
-                        message: "Function Signature Java là bắt buộc",
-                      },
-                      { validator: validateFunctionSignature },
-                    ]}
-                  >
-                    <TextArea
-                      rows={6}
-                      onChange={(e) =>
-                        handleFunctionSignatureChange("java", e.target.value)
-                      }
-                    />
-                  </Form.Item>
-                  <div className="bg-gray-50 p-3 rounded border border-gray-200 mt-2">
-                    <Title level={5}>Mẫu triển khai</Title>
-                    <CodeBlock
-                      text={CODE_TEMPLATES.java}
-                      language="java"
-                      theme={atomOneDark}
-                      showLineNumbers
-                    />
-                  </div>
+                <Panel header="Java Function Signature" key="java">
+                  <FunctionSignatureForm language="java" form={form} />
                 </Panel>
               )}
-
               {languageEnabled.python && (
-                <Panel
-                  header={
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">
-                        Function Signature Python
-                      </span>
-                      <Badge
-                        status="success"
-                        text={getSignaturePreview("python")}
-                      />
-                    </div>
-                  }
-                  key="python"
-                >
-                  <Alert
-                    message="Các kiểu dữ liệu Python phổ biến"
-                    description={
-                      <ul className="list-disc pl-5">
-                        <li>
-                          <strong>Mảng:</strong> {DATA_TYPES.python.array}
-                        </li>
-                        <li>
-                          <strong>Chuỗi:</strong> {DATA_TYPES.python.string}
-                        </li>
-                        <li>
-                          <strong>Số nguyên:</strong>{" "}
-                          {DATA_TYPES.python.integer}
-                        </li>
-                        <li>
-                          <strong>Số thực:</strong> {DATA_TYPES.python.float}
-                        </li>
-                        <li>
-                          <strong>Boolean:</strong> {DATA_TYPES.python.boolean}
-                        </li>
-                        <li>
-                          <strong>Đối tượng:</strong> {DATA_TYPES.python.object}
-                        </li>
-                      </ul>
-                    }
-                    type="info"
-                    className="mb-4"
-                  />
-                  <Form.Item
-                    name="pythonSignature"
-                    rules={[
-                      {
-                        required: languageEnabled.python,
-                        message: "Function Signature Python là bắt buộc",
-                      },
-                      { validator: validateFunctionSignature },
-                    ]}
-                  >
-                    <TextArea
-                      rows={6}
-                      onChange={(e) =>
-                        handleFunctionSignatureChange("python", e.target.value)
-                      }
-                    />
-                  </Form.Item>
-                  <div className="bg-gray-50 p-3 rounded border border-gray-200 mt-2">
-                    <Title level={5}>Mẫu triển khai</Title>
-                    <CodeBlock
-                      text={CODE_TEMPLATES.python}
-                      language="python"
-                      theme={atomOneDark}
-                      showLineNumbers
-                    />
-                  </div>
+                <Panel header="Python Function Signature" key="python">
+                  <FunctionSignatureForm language="python" form={form} />
                 </Panel>
               )}
-
               {languageEnabled.javascript && (
-                <Panel
-                  header={
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">
-                        JavaScript Function Signature
-                      </span>
-                      <Badge
-                        status="success"
-                        text={getSignaturePreview("javascript")}
-                      />
-                    </div>
-                  }
-                  key="javascript"
-                >
-                  <Form.Item
-                    name="javascriptSignature"
-                    rules={[
-                      {
-                        required: languageEnabled.javascript,
-                        message: "JavaScript signature is required",
-                      },
-                      { validator: validateFunctionSignature },
-                    ]}
-                  >
-                    <TextArea
-                      rows={6}
-                      onChange={(e) =>
-                        handleFunctionSignatureChange(
-                          "javascript",
-                          e.target.value
-                        )
-                      }
-                    />
-                  </Form.Item>
-                  <div className="bg-gray-50 p-3 rounded border border-gray-200 mt-2">
-                    <Title level={5}>Example Implementation</Title>
-                    <CodeBlock
-                      text={CODE_TEMPLATES.javascript}
-                      language="javascript"
-                      theme={atomOneDark}
-                      showLineNumbers
-                    />
-                  </div>
+                <Panel header="JavaScript Function Signature" key="javascript">
+                  <FunctionSignatureForm language="javascript" form={form} />
                 </Panel>
               )}
-
               {languageEnabled.cpp && (
-                <Panel
-                  header={
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">
-                        C++ Function Signature
-                      </span>
-                      <Badge
-                        status="success"
-                        text={getSignaturePreview("cpp")}
-                      />
-                    </div>
-                  }
-                  key="cpp"
-                >
-                  <Form.Item
-                    name="cppSignature"
-                    rules={[
-                      {
-                        required: languageEnabled.cpp,
-                        message: "C++ signature is required",
-                      },
-                      { validator: validateFunctionSignature },
-                    ]}
-                  >
-                    <TextArea
-                      rows={6}
-                      onChange={(e) =>
-                        handleFunctionSignatureChange("cpp", e.target.value)
-                      }
-                    />
-                  </Form.Item>
-                  <div className="bg-gray-50 p-3 rounded border border-gray-200 mt-2">
-                    <Title level={5}>Example Implementation</Title>
-                    <CodeBlock
-                      text={CODE_TEMPLATES.cpp}
-                      language="cpp"
-                      theme={atomOneDark}
-                      showLineNumbers
-                    />
-                  </div>
+                <Panel header="C++ Function Signature" key="cpp">
+                  <FunctionSignatureForm language="cpp" form={form} />
                 </Panel>
               )}
             </Collapse>
           </Card>
         </TabPane>
 
-        <TabPane tab="Test Cases" key="3">
-          <Card className="mb-6">
-            <Alert
-              message="Hướng dẫn tạo Test Cases"
-              description={
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">
-                    Tạo test cases hiệu quả cho bài toán
-                  </h3>
-                  <div
-                    className="mb-4"
-                    dangerouslySetInnerHTML={{
-                      __html: VI_INSTRUCTIONS.testCaseGuide,
-                    }}
-                  ></div>
-
-                  <h3 className="text-lg font-semibold mb-2">
-                    {VI_INSTRUCTIONS.inputFormatTitle}
-                  </h3>
-                  <pre className="bg-gray-100 p-3 rounded mb-3 text-sm">
-                    {VI_INSTRUCTIONS.inputFormatDesc}
-                  </pre>
-
-                  <h3 className="text-lg font-semibold mb-2">
-                    {VI_INSTRUCTIONS.outputFormatTitle}
-                  </h3>
-                  <pre className="bg-gray-100 p-3 rounded mb-3 text-sm">
-                    {VI_INSTRUCTIONS.outputFormatDesc}
-                  </pre>
-
-                  <div
-                    className="mb-2 mt-4"
-                    dangerouslySetInnerHTML={{
-                      __html: VI_INSTRUCTIONS.testCaseValidationTips,
-                    }}
-                  ></div>
-
-                  <h3 className="text-lg font-semibold mb-2">Mẫu test case</h3>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    <Button
-                      onClick={() => {
-                        setSelectedTestCaseIndex(0);
-                        insertTestCaseExample("array", 0);
-                      }}
-                    >
-                      Mẫu mảng
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setSelectedTestCaseIndex(0);
-                        insertTestCaseExample("string", 0);
-                      }}
-                    >
-                      Mẫu chuỗi
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setSelectedTestCaseIndex(0);
-                        insertTestCaseExample("twoParams", 0);
-                      }}
-                    >
-                      Mẫu nhiều tham số
-                    </Button>
-                  </div>
-                </div>
-              }
-              type="info"
-              showIcon
-              className="mb-6"
-            />
-
-            <Form.List name="testCases">
-              {(fields, { add, remove }) => (
-                <>
-                  {fields.length > 0 && (
-                    <div className="mb-4">
-                      <Steps
-                        type="navigation"
-                        size="small"
-                        current={selectedTestCaseIndex}
-                        onChange={(current) =>
-                          setSelectedTestCaseIndex(current)
-                        }
-                        className="mb-4"
-                      >
-                        {fields.map((field, index) => (
-                          <Step
-                            key={field.key}
-                            title={`Test Case #${index + 1}`}
-                            status={
-                              index === selectedTestCaseIndex
-                                ? "process"
-                                : "wait"
-                            }
-                            description={
-                              form.getFieldValue([
-                                "testCases",
-                                index,
-                                "description",
-                              ]) || `Test ${index + 1}`
-                            }
-                          />
-                        ))}
-                      </Steps>
-                    </div>
-                  )}
-
-                  {fields.map(({ key, name, ...restField }, index) => (
+        {isCreating && (
+          <TabPane tab="Test Cases" key="3">
+            <Card className="mb-6">
+              <Alert
+                message="Hướng dẫn tạo Test Cases"
+                description={
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">
+                      Tạo test cases hiệu quả cho bài toán
+                    </h3>
                     <div
-                      key={key}
-                      style={{
-                        display:
-                          index === selectedTestCaseIndex ? "block" : "none",
+                      className="mb-4"
+                      dangerouslySetInnerHTML={{
+                        __html: VI_INSTRUCTIONS.testCaseGuide,
                       }}
-                    >
+                    ></div>
+
+                    <h3 className="text-lg font-semibold mb-2">
+                      {VI_INSTRUCTIONS.inputFormatTitle}
+                    </h3>
+                    <pre className="bg-gray-100 p-3 rounded mb-3 text-sm">
+                      {VI_INSTRUCTIONS.inputFormatDesc}
+                    </pre>
+
+                    <h3 className="text-lg font-semibold mb-2">
+                      {VI_INSTRUCTIONS.outputFormatTitle}
+                    </h3>
+                    <pre className="bg-gray-100 p-3 rounded mb-3 text-sm">
+                      {VI_INSTRUCTIONS.outputFormatDesc}
+                    </pre>
+
+                    <div
+                      className="mb-2 mt-4"
+                      dangerouslySetInnerHTML={{
+                        __html: VI_INSTRUCTIONS.testCaseValidationTips,
+                      }}
+                    ></div>
+                  </div>
+                }
+                type="info"
+                showIcon
+                className="mb-6"
+              />
+
+              <Form.List name="testCases">
+                {(fields, { add, remove }) => (
+                  <>
+                    {fields.map((field, index) => (
                       <Card
+                        key={field.key}
                         className="mb-4"
                         title={
                           <Space>
-                            <Badge
-                              status={index === 0 ? "processing" : "default"}
-                            />
                             <span className="font-medium">
-                              Test Case #{name + 1}
+                              Test Case #{index + 1}
                             </span>
-                            {isUpdate &&
-                              initialValues?.testCases &&
-                              initialValues.testCases[name] && (
-                                <Tag color="green">Đã tồn tại</Tag>
-                              )}
                           </Space>
                         }
                         extra={
@@ -1023,15 +876,7 @@ const AdvancedProblemForm = ({ onSubmit, loading, initialValues }) => {
                               <Button
                                 danger
                                 icon={<DeleteOutlined />}
-                                onClick={() => {
-                                  remove(name);
-                                  if (
-                                    selectedTestCaseIndex >=
-                                    fields.length - 1
-                                  ) {
-                                    setSelectedTestCaseIndex(fields.length - 2);
-                                  }
-                                }}
+                                onClick={() => remove(field.name)}
                               >
                                 Xóa
                               </Button>
@@ -1039,198 +884,108 @@ const AdvancedProblemForm = ({ onSubmit, loading, initialValues }) => {
                           </Space>
                         }
                       >
-                        <Steps
-                          size="small"
-                          className="mb-6"
-                          current={3}
-                          direction="horizontal"
+                        <Form.Item {...field} label="Dữ liệu đầu vào" required>
+                          <TestCaseInputForm form={form} field={field} />
+                        </Form.Item>
+
+                        <Form.Item
+                          {...field}
+                          name={[field.name, "expectedOutput"]}
+                          label="Giá trị đầu ra mong đợi"
+                          rules={[
+                            {
+                              required: true,
+                              message: "Vui lòng nhập giá trị đầu ra",
+                            },
+                          ]}
                         >
-                          <Step title="Đầu vào" />
-                          <Step title="Đầu ra" />
-                          <Step title="Cài đặt" />
-                        </Steps>
-
-                        <Title level={5} className="flex items-center mb-3">
-                          <span className="bg-blue-500 text-white rounded-full h-6 w-6 flex items-center justify-center mr-2">
-                            1
-                          </span>
-                          Dữ liệu đầu vào
-                          <Tooltip title="Định nghĩa dữ liệu đầu vào cho hàm">
-                            <InfoCircleOutlined className="ml-2 text-gray-400" />
-                          </Tooltip>
-                        </Title>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                          <Form.Item
-                            {...restField}
-                            name={[name, "inputType"]}
-                            label="Loại dữ liệu đầu vào"
-                            className="mb-2"
-                          >
-                            <Select
-                              onChange={(value) => setSelectedInputType(value)}
-                              placeholder="Chọn kiểu dữ liệu đầu vào"
+                          <div className="flex items-center gap-2">
+                            <Input
+                              className="flex-1"
+                              placeholder="Nhập giá trị đầu ra"
+                              onChange={(e) => {
+                                const type = form.getFieldValue([
+                                  field.name,
+                                  "expectedOutputType",
+                                ]);
+                                form.setFieldValue(
+                                  [field.name, "expectedOutputData"],
+                                  JSON.stringify({
+                                    expectedOutput: e.target.value,
+                                    dataType: type,
+                                  })
+                                );
+                              }}
+                            />
+                            <Form.Item
+                              {...field}
+                              name={[field.name, "expectedOutputType"]}
+                              className="flex-1 mb-0"
+                              rules={[
+                                {
+                                  required: true,
+                                  message: "Vui lòng chọn kiểu dữ liệu",
+                                },
+                              ]}
                             >
-                              <Option value="array">Mảng</Option>
-                              <Option value="string">Chuỗi</Option>
-                              <Option value="integer">Số nguyên</Option>
-                              <Option value="object">Đối tượng</Option>
-                            </Select>
-                          </Form.Item>
-                        </div>
-
-                        <Form.Item
-                          {...restField}
-                          name={[name, "inputData"]}
-                          label={
-                            <div className="flex items-center">
-                              Dữ liệu đầu vào (JSON)
-                              <Tooltip
-                                title={
-                                  <div>
-                                    <p>
-                                      <strong>Định dạng mẫu:</strong>{" "}
-                                      <code>
-                                        [
-                                        {`{"input":"giá_trị","dataType":"kiểu_dữ_liệu"}`}
-                                        ]
-                                      </code>
-                                    </p>
-                                    <p>
-                                      Các ví dụ cho{" "}
-                                      <strong>{selectedInputType}</strong>:
-                                    </p>
-                                    <div className="mt-1">
-                                      {Object.keys(languageEnabled)
-                                        .filter((lang) => languageEnabled[lang])
-                                        .map((lang) => (
-                                          <div key={lang} className="mb-1">
-                                            <strong>{lang}:</strong>{" "}
-                                            {DATA_TYPES[lang]?.[
-                                              selectedInputType
-                                            ] || "Kiểu không khả dụng"}
-                                          </div>
-                                        ))}
-                                    </div>
-                                  </div>
-                                }
+                              <Select
+                                placeholder="Chọn kiểu dữ liệu"
+                                onChange={(value) => {
+                                  const output = form.getFieldValue([
+                                    field.name,
+                                    "expectedOutput",
+                                  ]);
+                                  form.setFieldValue(
+                                    [field.name, "expectedOutputData"],
+                                    JSON.stringify({
+                                      expectedOutput: output,
+                                      dataType: value,
+                                    })
+                                  );
+                                }}
                               >
-                                <InfoCircleOutlined className="ml-2 text-gray-400" />
-                              </Tooltip>
-                            </div>
-                          }
-                          rules={[
-                            {
-                              required: true,
-                              message: "Dữ liệu đầu vào là bắt buộc",
-                            },
-                            { validator: validateInputData },
-                          ]}
-                          help="Ví dụ: [{'input':'[1,2,3,4,5]','dataType':'int[]'}]"
-                        >
-                          <TextArea
-                            rows={4}
-                            placeholder='[{"input":"[1,2,3,4,5]","dataType":"int[]"}]'
-                          />
+                                {Object.entries(DATA_TYPES.java).map(
+                                  ([key, types]) => (
+                                    <Select.OptGroup
+                                      key={key}
+                                      label={key.toUpperCase()}
+                                    >
+                                      {types.split(", ").map((type) => (
+                                        <Option
+                                          key={`${key}-${type}`}
+                                          value={type}
+                                        >
+                                          {type}
+                                        </Option>
+                                      ))}
+                                    </Select.OptGroup>
+                                  )
+                                )}
+                              </Select>
+                            </Form.Item>
+                          </div>
                         </Form.Item>
 
-                        <Divider />
-
-                        <Title level={5} className="flex items-center mb-3">
-                          <span className="bg-green-500 text-white rounded-full h-6 w-6 flex items-center justify-center mr-2">
-                            2
-                          </span>
-                          Kết quả mong đợi
-                          <Tooltip title="Định nghĩa kết quả mong đợi từ hàm">
-                            <InfoCircleOutlined className="ml-2 text-gray-400" />
-                          </Tooltip>
-                        </Title>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                          <Form.Item
-                            {...restField}
-                            name={[name, "outputType"]}
-                            label="Loại dữ liệu đầu ra"
-                            className="mb-2"
-                          >
-                            <Select placeholder="Chọn kiểu dữ liệu đầu ra">
-                              <Option value="integer">Số nguyên</Option>
-                              <Option value="array">Mảng</Option>
-                              <Option value="string">Chuỗi</Option>
-                              <Option value="boolean">Boolean</Option>
-                              <Option value="object">Đối tượng</Option>
-                            </Select>
-                          </Form.Item>
-                        </div>
-
                         <Form.Item
-                          {...restField}
-                          name={[name, "expectedOutputData"]}
-                          label={
-                            <div className="flex items-center">
-                              Dữ liệu đầu ra (JSON)
-                              <Tooltip title="Định dạng: {'expectedOutput':'giá_trị','dataType':'kiểu_dữ_liệu'}">
-                                <InfoCircleOutlined className="ml-2 text-gray-400" />
-                              </Tooltip>
-                            </div>
-                          }
-                          rules={[
-                            {
-                              required: true,
-                              message: "Dữ liệu đầu ra là bắt buộc",
-                            },
-                            { validator: validateOutputData },
-                          ]}
-                          help="Ví dụ: {'expectedOutput':'4','dataType':'int'}"
-                        >
-                          <TextArea
-                            rows={3}
-                            placeholder='{"expectedOutput":"4","dataType":"int"}'
-                          />
-                        </Form.Item>
-
-                        <Divider />
-
-                        <Title level={5} className="flex items-center mb-3">
-                          <span className="bg-purple-500 text-white rounded-full h-6 w-6 flex items-center justify-center mr-2">
-                            3
-                          </span>
-                          Cài đặt Test Case
-                          <Tooltip title="Cấu hình thuộc tính của test case">
-                            <InfoCircleOutlined className="ml-2 text-gray-400" />
-                          </Tooltip>
-                        </Title>
-
-                        <Form.Item
-                          {...restField}
-                          name={[name, "description"]}
+                          {...field}
+                          name={[field.name, "description"]}
                           label="Mô tả"
                           rules={[
-                            {
-                              required: true,
-                              message: "Mô tả là bắt buộc",
-                            },
+                            { required: true, message: "Vui lòng nhập mô tả" },
                           ]}
                         >
                           <Input placeholder="Ví dụ: Test với mảng số nguyên khác nhau" />
                         </Form.Item>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <Form.Item
-                            {...restField}
-                            name={[name, "timeLimit"]}
-                            label={
-                              <span>
-                                Giới hạn thời gian (ms)
-                                <Tooltip title="Thời gian thực thi tối đa được phép">
-                                  <InfoCircleOutlined className="ml-1 text-gray-400" />
-                                </Tooltip>
-                              </span>
-                            }
+                            {...field}
+                            name={[field.name, "timeLimit"]}
+                            label="Giới hạn thời gian (ms)"
                             rules={[
                               {
                                 required: true,
-                                message: "Giới hạn thời gian là bắt buộc",
+                                message: "Vui lòng nhập giới hạn thời gian",
                               },
                             ]}
                           >
@@ -1242,20 +997,13 @@ const AdvancedProblemForm = ({ onSubmit, loading, initialValues }) => {
                           </Form.Item>
 
                           <Form.Item
-                            {...restField}
-                            name={[name, "memoryLimit"]}
-                            label={
-                              <span>
-                                Giới hạn bộ nhớ (KB)
-                                <Tooltip title="Bộ nhớ sử dụng tối đa được phép">
-                                  <InfoCircleOutlined className="ml-1 text-gray-400" />
-                                </Tooltip>
-                              </span>
-                            }
+                            {...field}
+                            name={[field.name, "memoryLimit"]}
+                            label="Giới hạn bộ nhớ (KB)"
                             rules={[
                               {
                                 required: true,
-                                message: "Giới hạn bộ nhớ là bắt buộc",
+                                message: "Vui lòng nhập giới hạn bộ nhớ",
                               },
                             ]}
                           >
@@ -1267,176 +1015,53 @@ const AdvancedProblemForm = ({ onSubmit, loading, initialValues }) => {
                           </Form.Item>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <Form.Item
-                            {...restField}
-                            name={[name, "weight"]}
-                            label={
-                              <span>
-                                Trọng số
-                                <Tooltip title="Tầm quan trọng của test case này (trọng số càng cao = nhiều điểm hơn)">
-                                  <InfoCircleOutlined className="ml-1 text-gray-400" />
-                                </Tooltip>
-                              </span>
-                            }
-                            rules={[
-                              {
-                                required: true,
-                                message: "Trọng số là bắt buộc",
-                              },
-                            ]}
-                          >
-                            <InputNumber
-                              min={0}
-                              max={100}
-                              step={0.5}
-                              className="w-full"
-                            />
-                          </Form.Item>
-
-                          <Form.Item
-                            {...restField}
-                            name={[name, "comparisonMode"]}
-                            label={
-                              <span>
-                                Chế độ so sánh
-                                <Tooltip title="Cách so sánh đầu ra mong đợi với đầu ra thực tế">
-                                  <InfoCircleOutlined className="ml-1 text-gray-400" />
-                                </Tooltip>
-                              </span>
-                            }
-                            rules={[
-                              {
-                                required: true,
-                                message: "Chế độ so sánh là bắt buộc",
-                              },
-                            ]}
-                          >
-                            <Select>
-                              <Option value="EXACT">So khớp chính xác</Option>
-                              <Option value="NUMERIC">
-                                Số học (có dung sai)
-                              </Option>
-                              <Option value="STRING_IGNORE_CASE">
-                                Chuỗi (bỏ qua hoa thường)
-                              </Option>
-                            </Select>
-                          </Form.Item>
-
-                          <Form.Item
-                            {...restField}
-                            name={[name, "epsilon"]}
-                            label={
-                              <span>
-                                Epsilon (cho so sánh số học)
-                                <Tooltip title="Dung sai cho so sánh số thực">
-                                  <InfoCircleOutlined className="ml-1 text-gray-400" />
-                                </Tooltip>
-                              </span>
-                            }
-                          >
-                            <InputNumber
-                              min={0}
-                              max={1}
-                              step={0.001}
-                              className="w-full"
-                            />
-                          </Form.Item>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                          <Form.Item
-                            {...restField}
-                            name={[name, "isExample"]}
+                            {...field}
+                            name={[field.name, "isExample"]}
                             valuePropName="checked"
-                            label={
-                              <span>
-                                Hiển thị như ví dụ
-                                <Tooltip title="Hiển thị cho người dùng như một ví dụ">
-                                  <InfoCircleOutlined className="ml-1 text-gray-400" />
-                                </Tooltip>
-                              </span>
-                            }
+                            label="Hiển thị như ví dụ"
                           >
                             <Switch />
                           </Form.Item>
 
                           <Form.Item
-                            {...restField}
-                            name={[name, "isHidden"]}
+                            {...field}
+                            name={[field.name, "isHidden"]}
                             valuePropName="checked"
-                            label={
-                              <span>
-                                Test case ẩn
-                                <Tooltip title="Test case không hiển thị cho người dùng">
-                                  <InfoCircleOutlined className="ml-1 text-gray-400" />
-                                </Tooltip>
-                              </span>
-                            }
+                            label="Test case ẩn"
                           >
                             <Switch />
                           </Form.Item>
                         </div>
                       </Card>
-                    </div>
-                  ))}
+                    ))}
 
-                  <Form.Item>
-                    <Button
-                      type="dashed"
-                      onClick={() => {
-                        add(TEST_CASE_TEMPLATE);
-                        setSelectedTestCaseIndex(fields.length);
-                      }}
-                      block
-                      icon={<PlusOutlined />}
-                      className="h-16"
-                    >
-                      Thêm Test Case
-                    </Button>
-                  </Form.Item>
-                </>
-              )}
-            </Form.List>
-          </Card>
-        </TabPane>
+                    <Form.Item>
+                      <Button
+                        type="dashed"
+                        onClick={() => add(TEST_CASE_TEMPLATE)}
+                        block
+                        icon={<PlusOutlined />}
+                      >
+                        Thêm Test Case
+                      </Button>
+                    </Form.Item>
+                  </>
+                )}
+              </Form.List>
+            </Card>
+          </TabPane>
+        )}
       </Tabs>
 
-      <div className="flex justify-between mt-6">
-        <Button
-          type="default"
-          onClick={() => {
-            if (activeTab === "1") {
-              setActiveTab("3");
-            } else {
-              setActiveTab(String(Number(activeTab) - 1));
-            }
-          }}
-          disabled={activeTab === "1"}
-        >
-          Trước
-        </Button>
-
+      <Form.Item>
         <Space>
-          {activeTab !== "3" ? (
-            <Button
-              type="primary"
-              onClick={() => setActiveTab(String(Number(activeTab) + 1))}
-            >
-              Tiếp theo
-            </Button>
-          ) : (
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={loading}
-              icon={<CodeOutlined />}
-            >
-              {initialValues ? "Cập nhật bài toán" : "Tạo bài toán"}
-            </Button>
-          )}
+          <Button type="primary" htmlType="submit" loading={loading}>
+            {isCreating ? "Tạo bài toán" : "Cập nhật bài toán"}
+          </Button>
         </Space>
-      </div>
+      </Form.Item>
     </Form>
   );
 };

@@ -14,6 +14,7 @@ import {
 import TestCaseManager from "../../components/admin/TestCaseManager";
 import { getProblemById } from "../../api/problemApi";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -25,6 +26,7 @@ const TestCaseManagerPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { token } = useAuth();
+  const { showSuccess, showError, showInfo } = useToast();
 
   useEffect(() => {
     const fetchProblem = async () => {
@@ -47,6 +49,68 @@ const TestCaseManagerPage = () => {
 
   const handleTestCasesChanged = () => {
     message.success("Test cases cập nhật thành công!");
+  };
+
+  const handleSave = async () => {
+    try {
+      setSubmitting(true);
+      await updateProblemWithTestCases(
+        id,
+        {
+          createProblem: problem,
+          createTestCases: testCases,
+        },
+        token
+      );
+      showSuccess("Test cases đã được cập nhật thành công!");
+    } catch (error) {
+      console.error("Error saving test cases:", error);
+      let errorMessage = "Không thể cập nhật test cases";
+
+      if (error.response?.status === 403) {
+        errorMessage = "Bạn không có quyền cập nhật test cases";
+      } else if (error.response?.status === 404) {
+        errorMessage = "Không tìm thấy bài toán để cập nhật test cases";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      showError(errorMessage);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleAddTestCase = () => {
+    const newTestCase = {
+      id: Date.now(),
+      inputData: "",
+      expectedOutputData: "",
+      isExample: false,
+      isHidden: false,
+      timeLimit: problem.defaultTimeLimit || 1000,
+      memoryLimit: problem.defaultMemoryLimit || 262144,
+      weight: 1,
+      testOrder: testCases.length + 1,
+    };
+    setTestCases([...testCases, newTestCase]);
+    showInfo("Đã thêm test case mới");
+  };
+
+  const handleDeleteTestCase = (index) => {
+    const updatedTestCases = testCases.filter((_, i) => i !== index);
+    setTestCases(updatedTestCases);
+    showInfo("Đã xóa test case");
+  };
+
+  const handleTestCaseChange = (index, field, value) => {
+    const updatedTestCases = [...testCases];
+    updatedTestCases[index] = {
+      ...updatedTestCases[index],
+      [field]: value,
+    };
+    setTestCases(updatedTestCases);
+    showInfo(`Đã cập nhật ${field} của test case ${index + 1}`);
   };
 
   if (loading) {

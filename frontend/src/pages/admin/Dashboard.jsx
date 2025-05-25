@@ -7,8 +7,10 @@ import {
   DashboardOutlined,
   PlusOutlined,
   UnorderedListOutlined,
+  UserOutlined,
 } from "@ant-design/icons";
 import Header from "../../components/layout/Header";
+import { useAuth } from "../../contexts/AuthContext";
 
 const { Content, Sider } = Layout;
 
@@ -16,6 +18,8 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
 
   // Get current selected key based on path
   const getCurrentKey = () => {
@@ -30,6 +34,8 @@ const Dashboard = () => {
     if (path === "/admin/contests") return "3";
     if (path === "/admin/contests/create") return "3-1";
     if (path.includes("/admin/contests/edit")) return "3";
+
+    if (path === "/admin/users") return "4";
 
     return "1";
   };
@@ -84,6 +90,13 @@ const Dashboard = () => {
           onClick: () => navigate("/admin/contests/create"),
         },
       ],
+    },
+    {
+      key: "4",
+      icon: <UserOutlined />,
+      label: "Quản lý người dùng",
+      onClick: () => navigate("/admin/users"),
+      // style: { display: isAdmin ? "block" : "none" }, // Chỉ hiển thị cho admin
     },
   ];
 

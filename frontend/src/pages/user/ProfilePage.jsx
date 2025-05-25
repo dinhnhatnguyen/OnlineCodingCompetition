@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { Card, Form, Input, Button, message, Spin } from "antd";
+import { Card, Form, Input, Button, Spin } from "antd";
 import { UserOutlined, MailOutlined } from "@ant-design/icons";
 import { getUserProfile, updateProfile } from "../../api/userApi";
 import { useAuth } from "../../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "../../contexts/ToastContext";
 
 const ProfilePage = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const { token, updateUser } = useAuth();
+  const navigate = useNavigate();
+  const { showSuccess, showError } = useToast();
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -19,20 +23,20 @@ const ProfilePage = () => {
           email: profileData.email,
         });
       } catch (error) {
-        message.error("Không thể tải thông tin hồ sơ");
+        showError("Không thể tải thông tin hồ sơ");
       } finally {
         setLoading(false);
       }
     };
 
     fetchUserProfile();
-  }, [token, form]);
+  }, [token, form, showError]);
 
   const handleSubmit = async (values) => {
     setSubmitting(true);
     try {
       const updatedProfile = await updateProfile(values, token);
-      message.success("Cập nhật hồ sơ thành công");
+      showSuccess("Cập nhật hồ sơ thành công!");
 
       // Update the user information in auth context if necessary
       if (updateUser) {
@@ -41,8 +45,11 @@ const ProfilePage = () => {
           email: updatedProfile.email,
         });
       }
+
+      // Redirect to home page after successful update
+      navigate("/");
     } catch (error) {
-      message.error(error.response?.data?.message || "Cập nhật hồ sơ thất bại");
+      showError(error.response?.data?.message || "Cập nhật hồ sơ thất bại");
     } finally {
       setSubmitting(false);
     }

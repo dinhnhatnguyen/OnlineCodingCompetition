@@ -4,6 +4,8 @@ import oj.onlineCodingCompetition.security.dto.ChangePasswordRequest;
 import oj.onlineCodingCompetition.security.dto.ResetPasswordRequest;
 import oj.onlineCodingCompetition.security.dto.UpdateProfileRequest;
 import oj.onlineCodingCompetition.security.dto.UserProfileResponse;
+import oj.onlineCodingCompetition.security.dto.UpdateRoleRequest;
+import java.util.List;
 
 public interface UserService {
     
@@ -40,4 +42,20 @@ public interface UserService {
      * @return true if password reset successfully
      */
     boolean resetPassword(ResetPasswordRequest request);
+
+    /**
+     * Get all users in the system
+     * 
+     * @return list of all users
+     */
+    List<UserProfileResponse> getAllUsers();
+
+    /**
+     * Update user role
+     * 
+     * @param userId the ID of the user to update
+     * @param request the update role request
+     * @return updated user profile
+     */
+    UserProfileResponse updateUserRole(Long userId, UpdateRoleRequest request);
 } 

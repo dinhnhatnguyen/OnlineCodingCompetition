@@ -6,17 +6,16 @@ import {
   getMyProblems,
 } from "../../api/problemApi";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import {
   Button,
   Table,
-  Modal,
   message,
   Tag,
   Tooltip,
   Space,
   Badge,
   Dropdown,
-  Menu,
 } from "antd";
 import {
   EditOutlined,
@@ -27,15 +26,86 @@ import {
   DatabaseOutlined,
   MoreOutlined,
   CodeOutlined,
+  CloseOutlined,
 } from "@ant-design/icons";
+
+const DeleteConfirmationModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  problem,
+  isLoading,
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-30 z-50 flex items-center justify-center">
+      <div className="bg-white rounded-lg p-6 w-[480px] relative animate-fadeIn shadow-xl">
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute right-4 top-4 text-gray-500 hover:text-gray-700"
+        >
+          <CloseOutlined />
+        </button>
+
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-4">
+          <ExclamationCircleOutlined className="text-2xl text-red-500" />
+          <h3 className="text-xl font-semibold text-gray-800">
+            Xác nhận xóa bài toán
+          </h3>
+        </div>
+
+        {/* Content */}
+        <div className="mb-6">
+          <p className="text-gray-600 mb-3">
+            Bạn có chắc chắn muốn xóa bài toán{" "}
+            <span className="font-semibold">"{problem?.title}"</span> không?
+          </p>
+          <p className="text-red-500 flex items-center gap-2">
+            <span>⚠️</span> Hành động này không thể hoàn tác.
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+            disabled={isLoading}
+          >
+            Hủy
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                <span>Đang xóa...</span>
+              </>
+            ) : (
+              "Đồng ý, Xóa"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const ProblemManagement = () => {
   const [problems, setProblems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [problemToDelete, setProblemToDelete] = useState(null);
   const { user, token } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.role === "admin";
-  const { confirm } = Modal;
+  const { showSuccess, showError } = useToast();
 
   const fetchProblems = async () => {
     setLoading(true);
@@ -71,73 +141,90 @@ const ProblemManagement = () => {
     navigate(`/admin/problems/testcases/${problem.id}`);
   };
 
-  const showDeleteConfirm = (problem) => {
-    confirm({
-      title: "Bạn có chắc chắn muốn xóa bài toán này không?",
-      icon: <ExclamationCircleOutlined />,
-      content: "Hành động này không thể hoàn tác.",
-      okText: "Đồng ý, Xóa",
-      okType: "danger",
-      cancelText: "Hủy",
-      onOk: () => handleDelete(problem.id),
-    });
-  };
-
   const handleDelete = async (id) => {
     try {
-      await deleteProblem(id, token);
-      message.success("Bài toán đã được xóa thành công");
-      fetchProblems();
+      if (!token) {
+        showError("Bạn cần đăng nhập lại để thực hiện thao tác này");
+        return;
+      }
+
+      if (!id) {
+        showError("ID bài toán không hợp lệ");
+        return;
+      }
+
+      setLoading(true);
+      const result = await deleteProblem(id, token);
+
+      if (result.success) {
+        showSuccess("Bài toán đã được xóa thành công");
+        await fetchProblems();
+        setDeleteModalOpen(false);
+        setProblemToDelete(null);
+      } else {
+        throw new Error("Không thể xóa bài toán");
+      }
     } catch (err) {
       console.error("Error deleting problem:", err);
-      message.error(err.response?.data?.message || "Failed to delete problem");
+      let errorMessage = "Không thể xóa bài toán";
+
+      if (err.response?.status === 404) {
+        errorMessage = "Không tìm thấy bài toán để xóa";
+      } else if (err.response?.status === 403) {
+        errorMessage = "Bạn không có quyền xóa bài toán này";
+      } else if (err.response?.data?.message) {
+        if (err.response.data.message.includes("active contests")) {
+          errorMessage =
+            "Không thể xóa bài toán đang được sử dụng trong cuộc thi";
+        } else {
+          errorMessage = err.response.data.message;
+        }
+      }
+
+      showError(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getDifficultyTag = (difficulty) => {
-    const colors = {
-      EASY: "green",
-      MEDIUM: "gold",
-      HARD: "red",
-    };
-
-    return <Tag color={colors[difficulty] || "default"}>{difficulty}</Tag>;
+  const showDeleteConfirm = (problem) => {
+    setProblemToDelete(problem);
+    setDeleteModalOpen(true);
   };
 
-  const getActionsMenu = (record) => (
-    <Menu>
-      <Menu.Item
-        key="1"
-        onClick={() => handleEdit(record)}
-        icon={<EditOutlined />}
-      >
-        Chỉnh sửa cơ bản
-      </Menu.Item>
-      <Menu.Item
-        key="2"
-        onClick={() => handleEditAdvanced(record)}
-        icon={<EditOutlined />}
-      >
-        Chỉnh sửa nâng cao
-      </Menu.Item>
-      <Menu.Item
-        key="3"
-        onClick={() => handleManageTestCases(record)}
-        icon={<CodeOutlined />}
-      >
-        Quản lý test cases
-      </Menu.Item>
-      <Menu.Divider />
-      <Menu.Item
-        key="4"
-        onClick={() => showDeleteConfirm(record)}
-        icon={<DeleteOutlined />}
-        danger
-      >
-        Xóa bài toán
-      </Menu.Item>
-    </Menu>
-  );
+  const getDropdownItems = (record) => [
+    {
+      key: "1",
+      label: "Chỉnh sửa cơ bản",
+      icon: <EditOutlined />,
+      onClick: () => handleEdit(record),
+    },
+    {
+      key: "2",
+      label: "Chỉnh sửa nâng cao",
+      icon: <EditOutlined />,
+      onClick: () => handleEditAdvanced(record),
+    },
+    {
+      key: "3",
+      label: "Quản lý test cases",
+      icon: <CodeOutlined />,
+      onClick: () => handleManageTestCases(record),
+    },
+    {
+      type: "divider",
+    },
+    {
+      key: "4",
+      label: "Xóa bài toán",
+      icon: <DeleteOutlined />,
+      danger: true,
+      onClick: () => {
+        console.log("Delete clicked for record:", record);
+        showDeleteConfirm(record);
+      },
+    },
+  ];
 
   const columns = [
     {
@@ -228,8 +315,13 @@ const ProblemManagement = () => {
       title: "Actions",
       key: "actions",
       render: (_, record) => (
-        <Dropdown overlay={getActionsMenu(record)} trigger={["click"]}>
-          <Button icon={<MoreOutlined />} />
+        <Dropdown
+          menu={{ items: getDropdownItems(record) }}
+          trigger={["click"]}
+          placement="bottomRight"
+          overlayStyle={{ minWidth: 180 }}
+        >
+          <Button type="text" icon={<MoreOutlined />} />
         </Dropdown>
       ),
       width: 100,
@@ -237,18 +329,20 @@ const ProblemManagement = () => {
     },
   ];
 
+  const getDifficultyTag = (difficulty) => {
+    const colors = {
+      EASY: "green",
+      MEDIUM: "gold",
+      HARD: "red",
+    };
+    return <Tag color={colors[difficulty] || "default"}>{difficulty}</Tag>;
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Quản lý bài toán</h1>
         <Space>
-          {/* <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => navigate("/admin/problems/create")}
-          >
-            Tạo bài toán
-          </Button> */}
           <Button
             type="primary"
             icon={<PlusOutlined />}
@@ -267,6 +361,17 @@ const ProblemManagement = () => {
         rowKey="id"
         pagination={{ pageSize: 10 }}
         scroll={{ x: 1000 }}
+      />
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setProblemToDelete(null);
+        }}
+        onConfirm={() => handleDelete(problemToDelete?.id)}
+        problem={problemToDelete}
+        isLoading={loading}
       />
     </div>
   );

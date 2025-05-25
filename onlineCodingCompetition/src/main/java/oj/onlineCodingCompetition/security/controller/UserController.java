@@ -13,6 +13,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
@@ -21,6 +23,28 @@ public class UserController {
 
     private final UserService userService;
     private final UserRepository userRepository;
+
+    /**
+     * Lấy danh sách tất cả người dùng (chỉ admin)
+     */
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<UserProfileResponse>> getAllUsers() {
+        log.debug("Yêu cầu lấy danh sách tất cả người dùng");
+        return ResponseEntity.ok(userService.getAllUsers());
+    }
+
+    /**
+     * Cập nhật role của người dùng (chỉ admin)
+     */
+    @PatchMapping("/{userId}/role")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserProfileResponse> updateUserRole(
+            @PathVariable Long userId,
+            @Valid @RequestBody UpdateRoleRequest request) {
+        log.debug("Yêu cầu cập nhật role cho người dùng ID {}: {}", userId, request.getRole());
+        return ResponseEntity.ok(userService.updateUserRole(userId, request));
+    }
 
     /**
      * Lấy thông tin hồ sơ người dùng hiện tại

@@ -4,95 +4,88 @@ import { message, Typography, Steps, Card, Alert, Space, Divider } from "antd";
 import AdvancedProblemForm from "../../components/admin/AdvancedProblemForm";
 import { createProblemWithTestCases } from "../../api/problemApi";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 
 const { Title, Paragraph, Text } = Typography;
 const { Step } = Steps;
 
 const CreateAdvancedProblem = () => {
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const { token } = useAuth();
   const navigate = useNavigate();
+  const { showSuccess, showError, showInfo } = useToast();
 
   const handleSubmit = async (values) => {
-    setLoading(true);
     try {
-      await createProblemWithTestCases(values, token);
-      message.success("Bài toán đã được tạo thành công!");
-      navigate("/admin/problems");
+      setSubmitting(true);
+      const result = await createProblemWithTestCases(values, token);
+      showSuccess("Bài toán đã được tạo thành công!");
+      navigate(`/admin/problems/testcases/${result.id}`);
     } catch (error) {
       console.error("Error creating problem:", error);
-      message.error(`Lỗi khi tạo bài toán: ${error.message}`);
+      let errorMessage = "Không thể tạo bài toán";
+
+      if (error.response?.status === 403) {
+        errorMessage = "Bạn không có quyền tạo bài toán";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      showError(errorMessage);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
+  const handleTestCaseChange = (testCases) => {
+    setTestCases(testCases);
+    showInfo(`Đã cập nhật ${testCases.length} test case`);
+  };
+
+  const handleAddTestCase = () => {
+    const newTestCase = {
+      id: Date.now(),
+      inputData: "",
+      expectedOutputData: "",
+      isExample: false,
+      isHidden: false,
+      timeLimit: 1000,
+      memoryLimit: 262144,
+      weight: 1,
+      testOrder: testCases.length + 1,
+    };
+    setTestCases([...testCases, newTestCase]);
+    showInfo("Đã thêm test case mới");
+  };
+
+  const handleDeleteTestCase = (index) => {
+    const updatedTestCases = testCases.filter((_, i) => i !== index);
+    setTestCases(updatedTestCases);
+    showInfo("Đã xóa test case");
+  };
+
   return (
-    <div className="container mx-auto px-4 py-6">
-      <Title level={2} className="mb-4">
-        Tạo Bài Toán Mới
-      </Title>
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-6">
+        <Title level={2}>Tạo bài toán mới</Title>
+        <Text type="secondary">
+          Tạo bài toán mới với đầy đủ thông tin cơ bản, function signatures và
+          test cases.
+        </Text>
+      </div>
 
       <Alert
-        message="Hướng dẫn tạo bài toán"
+        message="Hướng dẫn"
         description={
           <div>
-            <p>
-              Hệ thống này cho phép bạn tạo các bài toán lập trình với nhiều
-              tính năng nâng cao. Quy trình gồm 3 bước:
-            </p>
-
-            <Steps
-              current={-1}
-              direction="horizontal"
-              className="my-6"
-              items={[
-                {
-                  title: "Thông tin cơ bản",
-                  description: "Tiêu đề, mô tả, độ khó",
-                },
-                {
-                  title: "Chữ ký hàm",
-                  description: "Định nghĩa chữ ký hàm cho các ngôn ngữ",
-                },
-                {
-                  title: "Test Cases",
-                  description: "Tạo và cấu hình test cases",
-                },
-              ]}
-            />
-
-            <Divider />
-
-            <Title level={4}>Lưu ý quan trọng</Title>
-            <ul className="list-disc pl-8 mt-2">
+            <p>Để tạo một bài toán hoàn chỉnh, bạn cần:</p>
+            <ol className="list-decimal pl-8 mt-2">
+              <li>Điền đầy đủ thông tin cơ bản về bài toán</li>
               <li>
-                <Text strong>Kiểu dữ liệu:</Text> Hệ thống hỗ trợ nhiều kiểu dữ
-                liệu khác nhau như số nguyên, số thực, chuỗi, mảng và đối tượng.
-                Mỗi ngôn ngữ có thể có cách biểu diễn khác nhau.
+                Định nghĩa function signatures cho các ngôn ngữ được hỗ trợ
               </li>
-              <li>
-                <Text strong>Chữ ký hàm:</Text> Định nghĩa chính xác chữ ký hàm
-                cho từng ngôn ngữ. Người dùng sẽ phải triển khai các hàm này.
-              </li>
-              <li>
-                <Text strong>Test Cases:</Text> Mỗi test case cần có đầu vào,
-                đầu ra và các thông số cấu hình. Test cases trọng tâm nên được
-                gắn trọng số cao hơn.
-              </li>
-              <li>
-                <Text strong>Nhiều ngôn ngữ:</Text> Bạn có thể hỗ trợ nhiều ngôn
-                ngữ lập trình (Java, Python, JavaScript, C++) cho cùng một bài
-                toán.
-              </li>
-            </ul>
-
-            <Space direction="vertical" className="mt-4" size="middle">
-              <Text strong>
-                Hãy chắc chắn kiểm tra kỹ chữ ký hàm và test cases trước khi tạo
-                bài toán!
-              </Text>
-            </Space>
+              <li>Tạo các test cases để kiểm tra bài làm của học viên</li>
+            </ol>
           </div>
         }
         type="info"
@@ -100,8 +93,80 @@ const CreateAdvancedProblem = () => {
         className="mb-6"
       />
 
+      <Alert
+        message="Hướng dẫn định nghĩa Function Signature"
+        description={
+          <div>
+            <p>
+              Khi định nghĩa Function Signature, cần tuân thủ định dạng JSON với
+              cú pháp đúng:
+            </p>
+            <pre className="bg-gray-100 p-2 rounded text-sm my-2">
+              {`{
+  "functionName": "tênHàm",
+  "parameterTypes": ["kiểuThamSố1", "kiểuThamSố2", ...],
+  "returnType": "kiểuTrảVề"
+}`}
+            </pre>
+
+            <p className="font-semibold mt-3">Ví dụ cho nhiều tham số:</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-2">
+              <div>
+                <p className="text-sm font-medium">Java:</p>
+                <pre className="bg-gray-100 p-2 rounded text-sm">
+                  {`{
+  "functionName": "checkUserAccess",
+  "parameterTypes": ["String", "int", "boolean"],
+  "returnType": "boolean"
+}`}
+                </pre>
+              </div>
+              <div>
+                <p className="text-sm font-medium">Python:</p>
+                <pre className="bg-gray-100 p-2 rounded text-sm">
+                  {`{
+  "functionName": "check_user_access",
+  "parameterTypes": ["str", "int", "bool"],
+  "returnType": "bool"
+}`}
+                </pre>
+              </div>
+            </div>
+
+            <div className="text-red-500 mt-2">
+              <p>Lưu ý quan trọng:</p>
+              <ul className="list-disc pl-6 mt-1">
+                <li>
+                  Sử dụng <strong>dấu ngoặc kép</strong> cho tất cả thuộc tính
+                  và giá trị chuỗi
+                </li>
+                <li>
+                  Đảm bảo có <strong>dấu phẩy</strong> giữa các phần tử trong
+                  mảng parameterTypes
+                </li>
+                <li>
+                  Kiểu dữ liệu phải phù hợp với cú pháp của từng ngôn ngữ lập
+                  trình
+                </li>
+                <li>
+                  Khi có <strong>nhiều tham số</strong>, liệt kê tất cả trong
+                  mảng parameterTypes
+                </li>
+              </ul>
+            </div>
+          </div>
+        }
+        type="warning"
+        showIcon
+        className="mb-6"
+      />
+
       <Card>
-        <AdvancedProblemForm onSubmit={handleSubmit} loading={loading} />
+        <AdvancedProblemForm
+          onSubmit={handleSubmit}
+          loading={submitting}
+          isCreating={true}
+        />
       </Card>
     </div>
   );

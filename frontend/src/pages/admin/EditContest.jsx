@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { message, Spin, Typography, Alert, Card } from "antd";
+import { Spin, Typography, Alert, Card } from "antd";
 import ContestForm from "../../components/admin/ContestForm";
 import { getContestById, updateContest } from "../../api/contestCrudApi";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 
 const { Title, Paragraph } = Typography;
 
@@ -15,6 +16,7 @@ const EditContest = () => {
   const { user, token } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.role === "admin";
+  const { showSuccess, showError } = useToast();
 
   useEffect(() => {
     fetchContest();
@@ -27,7 +29,7 @@ const EditContest = () => {
 
       // Check if instructor is editing their own contest
       if (!isAdmin && data.createdById !== user?.id) {
-        message.error("Bạn không có quyền chỉnh sửa cuộc thi này");
+        showError("Bạn không có quyền chỉnh sửa cuộc thi này");
         navigate("/admin/contests");
         return;
       }
@@ -35,7 +37,7 @@ const EditContest = () => {
       setContest(data);
     } catch (error) {
       console.error("Lỗi khi tải thông tin cuộc thi:", error);
-      message.error("Không thể tải thông tin cuộc thi");
+      showError("Không thể tải thông tin cuộc thi");
       navigate("/admin/contests");
     } finally {
       setFetching(false);
@@ -46,7 +48,7 @@ const EditContest = () => {
     setLoading(true);
     try {
       await updateContest(id, values, token);
-      message.success("Đã cập nhật cuộc thi thành công");
+      showSuccess("Đã cập nhật cuộc thi thành công");
       navigate("/admin/contests");
     } catch (error) {
       console.error("Lỗi khi cập nhật cuộc thi:", error);
@@ -58,7 +60,7 @@ const EditContest = () => {
         errorMessage = `Lỗi: ${error.message}`;
       }
 
-      message.error(errorMessage);
+      showError(errorMessage);
     } finally {
       setLoading(false);
     }

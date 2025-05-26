@@ -1,5 +1,5 @@
 import React from 'react';
-import "./component/style.css";
+import "./style.css";
 
 const Login = ({ switchToRegister }) => {
   return (

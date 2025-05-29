@@ -1,20 +1,24 @@
 package oj.onlineCodingCompetition.controller;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import oj.onlineCodingCompetition.dto.ContestDTO;
 import oj.onlineCodingCompetition.dto.ContestRegistrationDTO;
+import oj.onlineCodingCompetition.dto.MessageResponse;
 import oj.onlineCodingCompetition.dto.ProblemDTO;
 import oj.onlineCodingCompetition.security.entity.User;
 import oj.onlineCodingCompetition.security.repository.UserRepository;
+import oj.onlineCodingCompetition.security.service.UserDetailsImpl;
 import oj.onlineCodingCompetition.service.ContestService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -86,11 +90,23 @@ public class ContestController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
-    public ResponseEntity<Void> deleteContest(@PathVariable Long id) {
-        log.debug("Yêu cầu xóa cuộc thi với ID: {}", id);
-        contestService.deleteContest(id);
-        return ResponseEntity.noContent().build();
+    @PreAuthorize("hasRole('ADMIN') or @contestService.isContestCreator(#id, authentication.principal.id)")
+    public ResponseEntity<?> deleteContest(@PathVariable Long id, Authentication authentication) {
+        try {
+            Long userId = ((UserDetailsImpl) authentication.getPrincipal()).getId();
+            contestService.deleteContest(id, userId);
+            return ResponseEntity.ok()
+                    .body(new MessageResponse("Cuộc thi đã được xóa thành công"));
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new MessageResponse(e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new MessageResponse(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new MessageResponse("Có lỗi xảy ra khi xóa cuộc thi"));
+        }
     }
 
     @PostMapping("/{id}/register")

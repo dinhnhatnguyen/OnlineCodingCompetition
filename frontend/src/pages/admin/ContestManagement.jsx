@@ -111,14 +111,17 @@ const ContestManagement = () => {
 
   const handleDeleteConfirm = async () => {
     try {
-      await deleteContest(contestToDelete.id, token);
-      showSuccess("Xóa cuộc thi thành công");
-      setDeletePopupOpen(false);
-      setContestToDelete(null);
-      fetchContests(); // Refresh the list
+      const result = await deleteContest(contestToDelete.id, token);
+      if (result.success) {
+        showSuccess(result.message || "Xóa cuộc thi thành công");
+        setDeletePopupOpen(false);
+        setContestToDelete(null);
+        fetchContests(); // Refresh the list
+      }
     } catch (error) {
       console.error("Error deleting contest:", error);
-      showError("Không thể xóa cuộc thi");
+      // Hiển thị message lỗi cụ thể từ server hoặc message mặc định
+      showError(error.message || "Không thể xóa cuộc thi");
     }
   };
 

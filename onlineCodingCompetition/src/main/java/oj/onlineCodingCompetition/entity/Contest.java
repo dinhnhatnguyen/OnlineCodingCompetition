@@ -43,16 +43,16 @@ public class Contest {
     @Column(name = "end_time", nullable = false)
     private LocalDateTime endTime;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private ContestStatus status;
+    private ContestStatus status = ContestStatus.DRAFT;
 
-    @Column(name = "is_public")
-    private boolean isPublic;
+    @Column(name = "is_public", nullable = false)
+    private boolean isPublic = false;
 
     @Column(name = "max_participants")
     private Integer maxParticipants;
@@ -78,6 +78,16 @@ public class Contest {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private List<Problem> problems = new ArrayList<>();
+
+    // Thêm các trường cho soft delete
+    @Column(name = "deleted", nullable = false)
+    private boolean deleted = false;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @Column(name = "deleted_by")
+    private Long deletedBy;
 
     public enum ContestStatus {
         DRAFT,      // Nháp
@@ -105,103 +115,6 @@ public class Contest {
                 .filter(r -> r.getStatus() == ContestRegistration.RegistrationStatus.APPROVED)
                 .count();
     }
-
-//    // Getters and setters
-//    public Long getId() {
-//        return id;
-//    }
-//
-//    public void setId(Long id) {
-//        this.id = id;
-//    }
-//
-//    public String getTitle() {
-//        return title;
-//    }
-//
-//    public void setTitle(String title) {
-//        this.title = title;
-//    }
-//
-//    public String getDescription() {
-//        return description;
-//    }
-//
-//    public void setDescription(String description) {
-//        this.description = description;
-//    }
-//
-//    public LocalDateTime getStartTime() {
-//        return startTime;
-//    }
-//
-//    public void setStartTime(LocalDateTime startTime) {
-//        this.startTime = startTime;
-//    }
-//
-//    public LocalDateTime getEndTime() {
-//        return endTime;
-//    }
-//
-//    public void setEndTime(LocalDateTime endTime) {
-//        this.endTime = endTime;
-//    }
-//
-//    public LocalDateTime getCreatedAt() {
-//        return createdAt;
-//    }
-//
-//    public void setCreatedAt(LocalDateTime createdAt) {
-//        this.createdAt = createdAt;
-//    }
-//
-//    public ContestStatus getStatus() {
-//        return status;
-//    }
-//
-//    public void setStatus(ContestStatus status) {
-//        this.status = status;
-//    }
-//
-//    public boolean isPublic() {
-//        return isPublic;
-//    }
-//
-//    public void setPublic(boolean isPublic) {
-//        this.isPublic = isPublic;
-//    }
-//
-//    public Integer getMaxParticipants() {
-//        return maxParticipants;
-//    }
-//
-//    public void setMaxParticipants(Integer maxParticipants) {
-//        this.maxParticipants = maxParticipants;
-//    }
-//
-//    public User getCreatedBy() {
-//        return createdBy;
-//    }
-//
-//    public void setCreatedBy(User createdBy) {
-//        this.createdBy = createdBy;
-//    }
-//
-//    public Set<ContestRegistration> getRegistrations() {
-//        return registrations;
-//    }
-//
-//    public void setRegistrations(Set<ContestRegistration> registrations) {
-//        this.registrations = registrations;
-//    }
-//
-//    public List<Problem> getProblems() {
-//        return problems;
-//    }
-//
-//    public void setProblems(List<Problem> problems) {
-//        this.problems = problems;
-//    }
 
     @Override
     public boolean equals(Object o) {

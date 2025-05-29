@@ -137,22 +137,25 @@ public class ContestService {
         return convertToDTO(updatedContest);
     }
 
-    // Các phương thức còn lại giữ nguyên
     @Transactional
-    public void deleteContest(Long id) {
-        log.debug("Xóa cuộc thi với ID: {}", id);
-
-        // Kiểm tra cuộc thi tồn tại
+    public void deleteContest(Long id, Long userId) {
+        log.debug("Soft deleting contest with ID: {} by user: {}", id, userId);
         Contest contest = contestRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cuộc thi với ID: " + id));
 
-        // Xóa tất cả đăng ký
-        contestRegistrationRepository.deleteAll(contest.getRegistrations());
-        log.info("Xóa {} đăng ký cho cuộc thi ID: {}", contest.getRegistrations().size(), id);
+        // Kiểm tra nếu cuộc thi đang diễn ra thì không cho xóa
+        if (contest.getStatus() == Contest.ContestStatus.ONGOING) {
+            throw new IllegalStateException("Không thể xóa cuộc thi đang diễn ra");
+        }
 
-        // Xóa cuộc thi
-        contestRepository.deleteById(id);
-        log.info("Xóa cuộc thi thành công với ID: {}", id);
+        // Đánh dấu contest là đã xóa
+        contest.setDeleted(true);
+        contest.setDeletedAt(LocalDateTime.now());
+        contest.setDeletedBy(userId);
+        
+        // Lưu thay đổi
+        contestRepository.save(contest);
+        log.info("Contest soft deleted successfully with ID: {} by user: {}", id, userId);
     }
 
     @Transactional

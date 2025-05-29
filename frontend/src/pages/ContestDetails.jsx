@@ -7,11 +7,13 @@ import {
   approveRegistration,
   rejectRegistration,
 } from "../api/contestRegistrationApi";
+import { getLeaderboard } from "../api/leaderboardApi";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import { useAuth } from "../contexts/AuthContext";
 import { useNotification } from "../contexts/NotificationContext";
 import LeaderboardTab from "../components/contest/LeaderboardTab";
+import { GlobeAltIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 
 export default function ContestDetails() {
   const { id } = useParams();
@@ -98,7 +100,14 @@ export default function ContestDetails() {
     // Always fetch registrations for the current user
     if (contest) {
       setRegLoading(true);
-      getRegistrations(contest.id, token)
+      // Use different endpoints based on user role
+      const endpoint =
+        user?.role === "admin" ||
+        (user?.role === "instructor" && contest.createdById === user.id)
+          ? getRegistrations(contest.id, token) // Admin/instructor sees all registrations
+          : getLeaderboard(contest.id, token); // Regular users see only leaderboard
+
+      endpoint
         .then((data) => {
           setRegistrations(data);
           checkRegistrationStatusChange(data);
@@ -274,9 +283,10 @@ export default function ContestDetails() {
                 ? "bg-zinc-800 text-white"
                 : "bg-zinc-900 text-gray-400"
             } ${
-              // Only enable problems tab when contest is ONGOING and user is approved or is admin/instructor
+              // Allow access to problems if contest is public and ongoing, or if user is approved/admin/instructor
               contest.status === "ONGOING" &&
-              (userRegistration?.status === "APPROVED" ||
+              (contest.public ||
+                userRegistration?.status === "APPROVED" ||
                 user?.role === "admin" ||
                 (user?.role === "instructor" &&
                   contest.createdById === user.id))
@@ -284,10 +294,11 @@ export default function ContestDetails() {
                 : "opacity-50 cursor-not-allowed"
             }`}
             onClick={() => {
-              // Only allow access to problems tab if contest is ONGOING and user is approved or is admin/instructor
+              // Allow access to problems if contest is public and ongoing, or if user is approved/admin/instructor
               if (
                 contest.status === "ONGOING" &&
-                (userRegistration?.status === "APPROVED" ||
+                (contest.public ||
+                  userRegistration?.status === "APPROVED" ||
                   user?.role === "admin" ||
                   (user?.role === "instructor" &&
                     contest.createdById === user.id))
@@ -303,12 +314,15 @@ export default function ContestDetails() {
                   "Vui lòng đăng nhập để xem bài thi",
                   "warning"
                 );
-              } else if (!userRegistration) {
+              } else if (!contest.public && !userRegistration) {
                 showNotification(
                   "Bạn phải đăng ký cuộc thi này trước",
                   "warning"
                 );
-              } else if (userRegistration.status !== "APPROVED") {
+              } else if (
+                !contest.public &&
+                userRegistration.status !== "APPROVED"
+              ) {
                 showNotification(
                   "Đăng ký của bạn phải được chấp nhận để xem bài thi",
                   "warning"
@@ -347,6 +361,7 @@ export default function ContestDetails() {
         {tab === "problems" &&
           contest.status === "ONGOING" &&
           !(
+            contest.public || // Allow access if contest is public
             userRegistration?.status === "APPROVED" ||
             user?.role === "admin" ||
             (user?.role === "instructor" && contest.createdById === user.id)
@@ -378,7 +393,7 @@ export default function ContestDetails() {
 
         {tab === "overview" && (
           <>
-            {user && userRegistration && (
+            {user && userRegistration && !contest.public && (
               <div
                 className={`mb-4 px-4 py-2 rounded text-sm font-medium ${
                   userRegistration.status === "APPROVED"
@@ -450,6 +465,22 @@ export default function ContestDetails() {
                           3600000
                       )}{" "}
                       hours
+                    </div>
+                    <div className="mt-2">
+                      <b>Type</b>
+                    </div>
+                    <div className="flex items-center">
+                      {contest.public ? (
+                        <>
+                          <GlobeAltIcon className="w-4 h-4 mr-1" />
+                          Public Contest
+                        </>
+                      ) : (
+                        <>
+                          <LockClosedIcon className="w-4 h-4 mr-1" />
+                          Private Contest
+                        </>
+                      )}
                     </div>
                     <div className="mt-2">
                       <b>Participants</b>

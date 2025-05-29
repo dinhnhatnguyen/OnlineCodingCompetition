@@ -1,33 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  getProblems,
-  deleteProblem,
-  getMyProblems,
-} from "../../api/problemApi";
-import { useAuth } from "../../contexts/AuthContext";
-import { useToast } from "../../contexts/ToastContext";
-import {
-  Button,
-  Table,
-  message,
-  Tag,
-  Tooltip,
-  Space,
-  Badge,
-  Dropdown,
-} from "antd";
+import { Button, Table, Tag, Tooltip, Space, Badge, Dropdown } from "antd";
 import {
   EditOutlined,
   DeleteOutlined,
   PlusOutlined,
-  ExclamationCircleOutlined,
   ClockCircleOutlined,
   DatabaseOutlined,
   MoreOutlined,
   CodeOutlined,
   CloseOutlined,
+  ExclamationCircleOutlined,
 } from "@ant-design/icons";
+import {
+  getProblems,
+  getMyProblems,
+  deleteProblem,
+} from "../../api/problemApi";
+import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 
 const DeleteConfirmationModal = ({
   isOpen,
@@ -64,7 +55,7 @@ const DeleteConfirmationModal = ({
             <span className="font-semibold">"{problem?.title}"</span> không?
           </p>
           <p className="text-red-500 flex items-center gap-2">
-            <span>⚠️</span> Hành động này không thể hoàn tác.
+            <span>⚠️</span> Hành động này có thể hoàn tác sau.
           </p>
         </div>
 
@@ -100,8 +91,9 @@ const DeleteConfirmationModal = ({
 const ProblemManagement = () => {
   const [problems, setProblems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [problemToDelete, setProblemToDelete] = useState(null);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [selectedProblem, setSelectedProblem] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { user, token } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.role === "admin";
@@ -116,10 +108,12 @@ const ProblemManagement = () => {
       } else {
         data = await getMyProblems(token);
       }
-      setProblems(data);
+      // Chỉ hiển thị các bài toán chưa bị xóa
+      const activeProblems = data.filter((p) => !p.deleted);
+      setProblems(activeProblems);
     } catch (err) {
       console.error("Error fetching problems:", err);
-      message.error(err.response?.data?.message || "Failed to fetch problems");
+      showError(err.response?.data?.message || "Failed to fetch problems");
     } finally {
       setLoading(false);
     }
@@ -141,55 +135,37 @@ const ProblemManagement = () => {
     navigate(`/admin/problems/testcases/${problem.id}`);
   };
 
-  const handleDelete = async (id) => {
+  const handleDeleteClick = (problem) => {
+    setSelectedProblem(problem);
+    setDeleteModalVisible(true);
+  };
+
+  const handleDelete = async () => {
     try {
       if (!token) {
         showError("Bạn cần đăng nhập lại để thực hiện thao tác này");
         return;
       }
 
-      if (!id) {
+      if (!selectedProblem?.id) {
         showError("ID bài toán không hợp lệ");
         return;
       }
 
-      setLoading(true);
-      const result = await deleteProblem(id, token);
+      setIsDeleting(true);
+      const result = await deleteProblem(selectedProblem.id, token);
 
       if (result.success) {
-        showSuccess("Bài toán đã được xóa thành công");
+        showSuccess(result.message || "Bài toán đã được xóa thành công");
         await fetchProblems();
-        setDeleteModalOpen(false);
-        setProblemToDelete(null);
-      } else {
-        throw new Error("Không thể xóa bài toán");
+        setDeleteModalVisible(false);
       }
     } catch (err) {
       console.error("Error deleting problem:", err);
-      let errorMessage = "Không thể xóa bài toán";
-
-      if (err.response?.status === 404) {
-        errorMessage = "Không tìm thấy bài toán để xóa";
-      } else if (err.response?.status === 403) {
-        errorMessage = "Bạn không có quyền xóa bài toán này";
-      } else if (err.response?.data?.message) {
-        if (err.response.data.message.includes("active contests")) {
-          errorMessage =
-            "Không thể xóa bài toán đang được sử dụng trong cuộc thi";
-        } else {
-          errorMessage = err.response.data.message;
-        }
-      }
-
-      showError(errorMessage);
+      showError(err.message || "Lỗi khi xóa bài toán");
     } finally {
-      setLoading(false);
+      setIsDeleting(false);
     }
-  };
-
-  const showDeleteConfirm = (problem) => {
-    setProblemToDelete(problem);
-    setDeleteModalOpen(true);
   };
 
   const getDropdownItems = (record) => [
@@ -219,10 +195,7 @@ const ProblemManagement = () => {
       label: "Xóa bài toán",
       icon: <DeleteOutlined />,
       danger: true,
-      onClick: () => {
-        console.log("Delete clicked for record:", record);
-        showDeleteConfirm(record);
-      },
+      onClick: () => handleDeleteClick(record),
     },
   ];
 
@@ -234,7 +207,18 @@ const ProblemManagement = () => {
       ellipsis: true,
       render: (text, record) => (
         <div>
-          <div>{text}</div>
+          <div className="flex items-center gap-2">
+            {text}
+            {record.deleted && (
+              <Tooltip
+                title={`Đã xóa bởi ${record.deletedBy} vào ${new Date(
+                  record.deletedAt
+                ).toLocaleString()}`}
+              >
+                <Tag color="red">Đã xóa</Tag>
+              </Tooltip>
+            )}
+          </div>
           <div className="text-xs text-gray-500">ID: {record.id}</div>
         </div>
       ),
@@ -258,10 +242,10 @@ const ProblemManagement = () => {
       render: (_, record) => (
         <Space direction="vertical" size="small">
           <span>
-            <ClockCircleOutlined /> {record.timeLimit || 1000} ms
+            <ClockCircleOutlined /> {record.defaultTimeLimit || 1000} ms
           </span>
           <span>
-            <DatabaseOutlined /> {record.memoryLimit || 64} MB
+            <DatabaseOutlined /> {record.defaultMemoryLimit || 64} MB
           </span>
         </Space>
       ),
@@ -284,18 +268,18 @@ const ProblemManagement = () => {
     {
       title: "Languages",
       key: "languages",
-      dataIndex: "allowedLanguages",
+      dataIndex: "supportedLanguages",
       render: (languages) => (
         <div className="flex flex-wrap gap-1">
-          {languages && languages.length > 0 ? (
-            languages.map((lang) => (
-              <Tag key={lang} color="blue">
-                {lang}
-              </Tag>
-            ))
-          ) : (
-            <span className="text-gray-400">None</span>
-          )}
+          {languages &&
+            Object.entries(languages).map(
+              ([lang, isSupported]) =>
+                isSupported && (
+                  <Tag key={lang} color="blue">
+                    {lang}
+                  </Tag>
+                )
+            )}
         </div>
       ),
     },
@@ -314,16 +298,17 @@ const ProblemManagement = () => {
     {
       title: "Actions",
       key: "actions",
-      render: (_, record) => (
-        <Dropdown
-          menu={{ items: getDropdownItems(record) }}
-          trigger={["click"]}
-          placement="bottomRight"
-          overlayStyle={{ minWidth: 180 }}
-        >
-          <Button type="text" icon={<MoreOutlined />} />
-        </Dropdown>
-      ),
+      render: (_, record) =>
+        !record.deleted && (
+          <Dropdown
+            menu={{ items: getDropdownItems(record) }}
+            trigger={["click"]}
+            placement="bottomRight"
+            overlayStyle={{ minWidth: 180 }}
+          >
+            <Button type="text" icon={<MoreOutlined />} />
+          </Dropdown>
+        ),
       width: 100,
       align: "center",
     },
@@ -343,6 +328,12 @@ const ProblemManagement = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Quản lý bài toán</h1>
         <Space>
+          {/* <Button
+            type="default"
+            onClick={() => navigate("/admin/problems/deleted")}
+          >
+            Xem bài toán đã xóa
+          </Button> */}
           <Button
             type="primary"
             icon={<PlusOutlined />}
@@ -364,14 +355,11 @@ const ProblemManagement = () => {
       />
 
       <DeleteConfirmationModal
-        isOpen={deleteModalOpen}
-        onClose={() => {
-          setDeleteModalOpen(false);
-          setProblemToDelete(null);
-        }}
-        onConfirm={() => handleDelete(problemToDelete?.id)}
-        problem={problemToDelete}
-        isLoading={loading}
+        isOpen={deleteModalVisible}
+        onClose={() => setDeleteModalVisible(false)}
+        onConfirm={handleDelete}
+        problem={selectedProblem}
+        isLoading={isDeleting}
       />
     </div>
   );

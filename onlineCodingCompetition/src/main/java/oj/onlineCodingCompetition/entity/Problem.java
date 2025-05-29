@@ -33,6 +33,15 @@ public class Problem {
     @Column(name = "difficulty")
     private String difficulty; // Ví dụ: EASY, MEDIUM, HARD
 
+    @Column(name = "deleted", nullable = false)
+    private boolean deleted = false;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @Column(name = "deleted_by")
+    private Long deletedBy;
+
     @ElementCollection
     @CollectionTable(name = "problem_supported_languages", joinColumns = @JoinColumn(name = "problem_id"))
     @MapKeyColumn(name = "language")

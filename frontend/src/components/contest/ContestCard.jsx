@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { getRegistrations } from "../../api/contestRegistrationApi";
+import ContestCountdown from "./ContestCountdown";
+import { LockClosedIcon, GlobeAltIcon } from "@heroicons/react/24/solid";
 // import { Button } from "@/components/ui/button";
 
 export default function ContestCard({ contest }) {
@@ -78,105 +80,67 @@ export default function ContestCard({ contest }) {
       );
     }
 
-    // For ONGOING contests
-    if (contest.status === "ONGOING") {
-      // Show different button based on registration status
-      if (!user) {
+    // For private contests in UPCOMING or ONGOING status
+    if (
+      (contest.status === "UPCOMING" || contest.status === "ONGOING") &&
+      !contest.public
+    ) {
+      // If user is not registered or registration was rejected
+      if (!userRegistration || userRegistration.status === "REJECTED") {
         return (
           <button
-            className="bg-gray-700 text-white rounded-md px-4 py-2 w-full"
-            onClick={handleButtonClick}
-          >
-            Sign in to join
-          </button>
-        );
-      } else if (!userRegistration) {
-        return (
-          <button
-            className="bg-gray-700 text-white rounded-md px-4 py-2 w-full"
-            onClick={handleButtonClick}
-          >
-            Not Registered
-          </button>
-        );
-      } else if (userRegistration.status === "APPROVED") {
-        return (
-          <button
-            className="bg-pink-600 hover:bg-pink-700 text-white rounded-md px-4 py-2 w-full"
-            onClick={handleButtonClick}
-          >
-            Join Now
-          </button>
-        );
-      } else if (userRegistration.status === "PENDING") {
-        return (
-          <button
-            className="bg-yellow-600 text-white rounded-md px-4 py-2 w-full"
-            onClick={handleButtonClick}
-          >
-            Pending Approval
-          </button>
-        );
-      } else {
-        return (
-          <button
-            className="bg-red-600 text-white rounded-md px-4 py-2 w-full"
-            onClick={handleButtonClick}
-          >
-            Registration Rejected
-          </button>
-        );
-      }
-    } else if (contest.status === "UPCOMING") {
-      if (userRegistration) {
-        switch (userRegistration.status) {
-          case "APPROVED":
-            return (
-              <button
-                className="bg-green-600 text-white rounded-md px-4 py-2 w-full"
-                onClick={handleButtonClick}
-              >
-                Approved
-              </button>
-            );
-          case "REJECTED":
-            return (
-              <button
-                className="bg-red-600 text-white rounded-md px-4 py-2 w-full"
-                onClick={handleButtonClick}
-              >
-                Rejected
-              </button>
-            );
-          case "PENDING":
-            return (
-              <button
-                className="bg-yellow-600 text-white rounded-md px-4 py-2 w-full"
-                onClick={handleButtonClick}
-              >
-                Pending Approval
-              </button>
-            );
-          default:
-            return (
-              <button
-                className="bg-gray-700 hover:bg-gray-600 text-white rounded-md px-4 py-2 w-full"
-                onClick={handleButtonClick}
-              >
-                Register
-              </button>
-            );
-        }
-      } else {
-        return (
-          <button
-            className="bg-gray-700 hover:bg-gray-600 text-white rounded-md px-4 py-2 w-full"
+            className="bg-[#722055] hover:bg-[#50153a] text-white rounded-md px-4 py-2 w-full"
             onClick={handleButtonClick}
           >
             Register
           </button>
         );
       }
+
+      // If registration is pending
+      if (userRegistration.status === "PENDING") {
+        return (
+          <button
+            className="bg-yellow-600 text-white rounded-md px-4 py-2 w-full cursor-not-allowed"
+            disabled
+          >
+            Registration Pending
+          </button>
+        );
+      }
+
+      // If registration is approved
+      if (userRegistration.status === "APPROVED") {
+        return (
+          <button
+            className="bg-green-600 hover:bg-green-700 text-white rounded-md px-4 py-2 w-full"
+            onClick={handleButtonClick}
+          >
+            {contest.status === "ONGOING" ? "Join Contest" : "View Details"}
+          </button>
+        );
+      }
+    }
+
+    // For public contests or other cases
+    if (contest.status === "ONGOING") {
+      return (
+        <button
+          className="bg-[#722055] hover:bg-[#50153a] text-white rounded-md px-4 py-2 w-full"
+          onClick={handleButtonClick}
+        >
+          Join Contest
+        </button>
+      );
+    } else if (contest.status === "UPCOMING") {
+      return (
+        <button
+          className="bg-[#722055] hover:bg-[#50153a] text-white rounded-md px-4 py-2 w-full"
+          onClick={handleButtonClick}
+        >
+          View Details
+        </button>
+      );
     } else if (contest.status === "COMPLETED") {
       return (
         <button
@@ -200,51 +164,60 @@ export default function ContestCard({ contest }) {
 
   return (
     <div
-      className="bg-zinc-900 rounded-lg p-4 shadow-md cursor-pointer hover:ring-2 hover:ring-primary-pink transition"
+      className="bg-zinc-900 rounded-lg p-6 cursor-pointer hover:bg-zinc-800 transition duration-200"
       onClick={() => navigate(`/contests/${contest.id}`)}
     >
-      <div className="flex justify-between items-start">
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold text-white">{contest.title}</h3>
-          <p className="text-gray-400 text-sm mt-1">{contest.description}</p>
-          <p className="text-gray-500 text-xs mt-2">
-            📅 {new Date(contest.startTime).toLocaleDateString()} -{" "}
-            {new Date(contest.endTime).toLocaleDateString()}
-          </p>
-          <p className="text-gray-500 text-xs mt-1">
-            {contest.maxParticipants
-              ? `👥 ${contest.currentParticipants || 0}/${
-                  contest.maxParticipants
-                } participants`
-              : null}
-          </p>
-          <p className="text-gray-500 text-xs mt-1">
-            {contest.problemIds.length} problems
-          </p>
-
-          {/* Registration Status Badge */}
-          {userRegistration && (
-            <p className="text-xs mt-1">
-              <span
-                className={`inline-block px-2 py-0.5 rounded ${
-                  userRegistration.status === "APPROVED"
-                    ? "bg-green-700 text-white"
-                    : userRegistration.status === "REJECTED"
-                    ? "bg-red-700 text-white"
-                    : "bg-yellow-600 text-white"
-                }`}
-              >
-                {userRegistration.status}
-              </span>
-            </p>
-          )}
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h3 className="text-lg font-semibold text-white mb-1">
+            {contest.title}
+          </h3>
+          <div className="flex items-center space-x-2">
+            <span className={`px-2 py-1 rounded text-xs ${getStatusColor()}`}>
+              {contest.status}
+            </span>
+            <span className="flex items-center text-xs text-gray-400">
+              {contest.public ? (
+                <>
+                  <GlobeAltIcon className="w-4 h-4 mr-1" />
+                  Public
+                </>
+              ) : (
+                <>
+                  <LockClosedIcon className="w-4 h-4 mr-1" />
+                  Private
+                </>
+              )}
+            </span>
+          </div>
         </div>
-        <span
-          className={`px-2 py-1 text-xs font-medium text-white rounded ${getStatusColor()}`}
-        >
-          {contest.status}
-        </span>
       </div>
+
+      <p className="text-gray-400 text-sm mb-4 line-clamp-2">
+        {contest.description}
+      </p>
+
+      <div className="space-y-2">
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-400">Start:</span>
+          <span className="text-white">
+            {new Date(contest.startTime).toLocaleString()}
+          </span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-400">End:</span>
+          <span className="text-white">
+            {new Date(contest.endTime).toLocaleString()}
+          </span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-400">Participants:</span>
+          <span className="text-white">
+            {contest.currentParticipants}/{contest.maxParticipants || "∞"}
+          </span>
+        </div>
+      </div>
+
       <div className="mt-4">{getActionButton()}</div>
     </div>
   );

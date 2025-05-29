@@ -59,65 +59,103 @@ public class SubmissionService {
 
     @Transactional
     public SubmissionDTO createSubmission(SubmissionDTO submissionDTO, Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
-        Problem problem = problemRepository.findById(submissionDTO.getProblemId())
-                .orElseThrow(() -> new RuntimeException("Problem not found: " + submissionDTO.getProblemId()));
-
-        Submission submission = new Submission();
-        submission.setProblem(problem);
-        submission.setUser(user);
-        submission.setLanguage(submissionDTO.getLanguage());
-        submission.setSourceCode(submissionDTO.getSourceCode());
-        submission.setStatus(Submission.SubmissionStatus.PENDING);
-        submission.setSubmittedAt(LocalDateTime.now());
-        submission.setTotalTestCases(testCaseRepository.countByProblemId(submissionDTO.getProblemId()));
-        submission.setCompileError("");
-        
-        // Nếu có contestId, liên kết submission với contest
-        if (submissionDTO.getContestId() != null) {
-            Contest contest = contestRepository.findById(submissionDTO.getContestId())
-                .orElseThrow(() -> new RuntimeException("Contest not found: " + submissionDTO.getContestId()));
-            submission.setContest(contest);
-            log.info("Submission associated with contest ID: {}", contest.getId());
-        }
-
-        Submission savedSubmission = submissionRepository.save(submission);
-
+        log.debug("Creating submission for user {} with payload: {}", userId, submissionDTO);
         try {
-            // Tạo một DTO riêng để gửi qua SQS để tránh vấn đề serialize/deserialize
-            Map<String, Object> messageMap = new HashMap<>();
-            messageMap.put("submissionId", savedSubmission.getId());
-            messageMap.put("problemId", problem.getId());
-            messageMap.put("userId", user.getId());
-            messageMap.put("language", submission.getLanguage());
-            messageMap.put("sourceCode", submission.getSourceCode());
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+            Problem problem = problemRepository.findById(submissionDTO.getProblemId())
+                    .orElseThrow(() -> new RuntimeException("Problem not found: " + submissionDTO.getProblemId()));
 
-            String messageBody = objectMapper.writeValueAsString(messageMap);
+            // Nếu submission thuộc về một cuộc thi, kiểm tra quyền tham gia
+            Contest contest = null;
+            if (submissionDTO.getContestId() != null) {
+                contest = contestRepository.findById(submissionDTO.getContestId())
+                    .orElseThrow(() -> new RuntimeException("Contest not found: " + submissionDTO.getContestId()));
 
-            SendMessageRequest sendMessageRequest = new SendMessageRequest()
-                    .withQueueUrl(queueUrl)
-                    .withMessageBody(messageBody)
-                    .withDelaySeconds(5);
+                log.debug("Checking contest participation for user {} in contest {}", userId, contest.getId());
+                
+                // Kiểm tra thời gian cuộc thi
+                LocalDateTime now = LocalDateTime.now();
+                if (now.isBefore(contest.getStartTime())) {
+                    throw new RuntimeException("Cuộc thi chưa bắt đầu");
+                }
+                if (now.isAfter(contest.getEndTime())) {
+                    throw new RuntimeException("Cuộc thi đã kết thúc");
+                }
 
+                // Kiểm tra xem bài toán có thuộc cuộc thi không
+                if (!contest.getProblems().contains(problem)) {
+                    throw new RuntimeException("Bài toán không thuộc cuộc thi này");
+                }
 
-            if (queueUrl.endsWith(".fifo")) {
-                sendMessageRequest
-                        .withMessageGroupId("submission-group")
-                        .withMessageDeduplicationId(savedSubmission.getId().toString());
+                // Cho phép tham gia nếu cuộc thi public và đang diễn ra
+                if (contest.isPublic() && contest.getStatus() == Contest.ContestStatus.ONGOING) {
+                    // Tự động tạo registration nếu chưa có
+                    contestService.updateContestScore(contest.getId(), userId, problem.getId(), 0.0);
+                } else if (!contestService.canUserParticipateInContest(contest.getId(), userId)) {
+                    throw new RuntimeException("User không có quyền tham gia cuộc thi này");
+                }
             }
 
-            String messageId = amazonSQS.sendMessage(sendMessageRequest).getMessageId();
-            savedSubmission.setQueueMessageId(messageId); // Lưu ID thực của message
-            submissionRepository.save(savedSubmission);
+            log.debug("Creating submission entity");
+            Submission submission = new Submission();
+            submission.setProblem(problem);
+            submission.setUser(user);
+            submission.setLanguage(submissionDTO.getLanguage());
+            submission.setSourceCode(submissionDTO.getSourceCode());
+            submission.setStatus(Submission.SubmissionStatus.PENDING);
+            submission.setSubmittedAt(LocalDateTime.now());
+            submission.setTotalTestCases(testCaseRepository.countByProblemId(submissionDTO.getProblemId()));
+            submission.setCompileError("");
+            
+            // Liên kết với cuộc thi nếu có
+            if (contest != null) {
+                submission.setContest(contest);
+                log.info("Submission associated with contest ID: {}", contest.getId());
+            }
 
-            log.info("Submission {} đã được gửi đến SQS, đang chờ worker xử lý", savedSubmission.getId());
+            log.debug("Saving submission to database");
+            Submission savedSubmission = submissionRepository.save(submission);
+
+            try {
+                log.debug("Preparing message for SQS");
+                // Tạo một DTO riêng để gửi qua SQS để tránh vấn đề serialize/deserialize
+                Map<String, Object> messageMap = new HashMap<>();
+                messageMap.put("submissionId", savedSubmission.getId());
+                messageMap.put("problemId", problem.getId());
+                messageMap.put("userId", user.getId());
+                messageMap.put("language", submission.getLanguage());
+                messageMap.put("sourceCode", submission.getSourceCode());
+
+                String messageBody = objectMapper.writeValueAsString(messageMap);
+
+                SendMessageRequest sendMessageRequest = new SendMessageRequest()
+                        .withQueueUrl(queueUrl)
+                        .withMessageBody(messageBody)
+                        .withDelaySeconds(5);
+
+                if (queueUrl.endsWith(".fifo")) {
+                    sendMessageRequest
+                            .withMessageGroupId("submission-group")
+                            .withMessageDeduplicationId(savedSubmission.getId().toString());
+                }
+
+                log.debug("Sending message to SQS");
+                String messageId = amazonSQS.sendMessage(sendMessageRequest).getMessageId();
+                savedSubmission.setQueueMessageId(messageId);
+                submissionRepository.save(savedSubmission);
+
+                log.info("Submission {} đã được gửi đến SQS, đang chờ worker xử lý", savedSubmission.getId());
+            } catch (Exception e) {
+                log.error("Failed to send submission {} to SQS: {}", savedSubmission.getId(), e.getMessage(), e);
+                throw new RuntimeException("Failed to send submission to SQS: " + e.getMessage());
+            }
+
+            return convertToDTO(savedSubmission);
         } catch (Exception e) {
-            log.error("Failed to send submission {} to SQS", savedSubmission.getId(), e);
-            throw new RuntimeException("Failed to send submission to SQS", e);
+            log.error("Error creating submission for user {}: {}", userId, e.getMessage(), e);
+            throw new RuntimeException("Error creating submission: " + e.getMessage());
         }
-
-        return convertToDTO(savedSubmission);
     }
 
 
@@ -181,6 +219,7 @@ public class SubmissionService {
             // Nếu submission thuộc về một cuộc thi, cập nhật điểm cho leaderboard
             if (savedSubmission.getContest() != null && savedSubmission.getScore() != null) {
                 try {
+                    // Cập nhật điểm cho cuộc thi mà không cần kiểm tra đăng ký
                     contestService.updateContestScore(
                         savedSubmission.getContest().getId(),
                         savedSubmission.getUser().getId(),

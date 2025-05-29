@@ -42,7 +42,6 @@ export const deleteProblem = async (id, token) => {
     }
 
     console.log(`Attempting to delete problem with ID: ${id}`);
-    console.log(`Using token: ${token.substring(0, 20)}...`);
 
     const response = await axios.delete(`${API_URL}/${id}`, {
       headers: {
@@ -50,10 +49,13 @@ export const deleteProblem = async (id, token) => {
       },
     });
 
-    console.log("Delete response:", response);
-
-    if (response.status === 204 || response.status === 200) {
-      return { success: true };
+    // Xử lý response cho soft delete
+    if (response.status === 200) {
+      return {
+        success: true,
+        message: "Bài toán đã được xóa thành công",
+        softDeleted: true,
+      };
     }
 
     throw new Error(`Unexpected response status: ${response.status}`);
@@ -63,6 +65,16 @@ export const deleteProblem = async (id, token) => {
       data: error.response?.data,
       message: error.message,
     });
+
+    // Xử lý các lỗi cụ thể
+    if (error.response?.status === 403) {
+      throw new Error("Bạn không có quyền xóa bài toán này");
+    } else if (error.response?.status === 404) {
+      throw new Error("Không tìm thấy bài toán");
+    } else if (error.response?.data?.message) {
+      throw new Error(error.response.data.message);
+    }
+
     throw error;
   }
 };
@@ -105,6 +117,51 @@ export const getMyProblems = async (token) => {
     return response.data;
   } catch (error) {
     console.error("Error fetching my problems:", error);
+    throw error;
+  }
+};
+
+export const restoreProblem = async (id, token) => {
+  try {
+    if (!id) {
+      throw new Error("Problem ID is required");
+    }
+
+    if (!token) {
+      throw new Error("Authorization token is required");
+    }
+
+    console.log(`Attempting to restore problem with ID: ${id}`);
+
+    const response = await axios.post(`${API_URL}/${id}/restore`, null, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.status === 200) {
+      return {
+        success: true,
+        message: "Bài toán đã được khôi phục thành công",
+      };
+    }
+
+    throw new Error(`Unexpected response status: ${response.status}`);
+  } catch (error) {
+    console.error("Error details:", {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+    });
+
+    if (error.response?.status === 403) {
+      throw new Error("Bạn không có quyền khôi phục bài toán này");
+    } else if (error.response?.status === 404) {
+      throw new Error("Không tìm thấy bài toán");
+    } else if (error.response?.data?.message) {
+      throw new Error(error.response.data.message);
+    }
+
     throw error;
   }
 };

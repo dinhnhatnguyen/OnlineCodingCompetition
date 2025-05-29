@@ -23,11 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -52,8 +48,9 @@ public class ContestService {
 
         // Kiểm tra dữ liệu đầu vào
         validateContestDTO(contestDTO);
+        validateContestStatus(contestDTO.getStatus());
 
-        // Tạo entity Contest - KHÔNG sử dụng modelMapper cho toàn bộ đối tượng
+        // Tạo entity Contest
         Contest contest = new Contest();
         contest.setTitle(contestDTO.getTitle());
         contest.setDescription(contestDTO.getDescription());
@@ -64,34 +61,25 @@ public class ContestService {
         contest.setPublic(contestDTO.isPublic());
         contest.setMaxParticipants(contestDTO.getMaxParticipants());
 
-        // Đặt trạng thái mặc định
-        if (contestDTO.getStatus() == null) {
-            contest.setStatus(Contest.ContestStatus.DRAFT);
-        } else {
-            try {
-                contest.setStatus(Contest.ContestStatus.valueOf(contestDTO.getStatus()));
-            } catch (IllegalArgumentException e) {
-                log.error("Trạng thái cuộc thi không hợp lệ: {}", contestDTO.getStatus());
-                throw new IllegalArgumentException("Trạng thái không hợp lệ: " + contestDTO.getStatus());
-            }
-        }
+        // Xử lý trạng thái
+        Contest.ContestStatus requestedStatus = contestDTO.getStatus() != null 
+            ? Contest.ContestStatus.valueOf(contestDTO.getStatus()) 
+            : Contest.ContestStatus.DRAFT;
+        
+        contest.setStatus(determineContestStatus(requestedStatus, contest.getStartTime(), contest.getEndTime()));
 
         // Kiểm tra và thêm bài toán
-        List<Problem> problems = List.of();
         if (contestDTO.getProblemIds() != null && !contestDTO.getProblemIds().isEmpty()) {
-            problems = problemRepository.findAllById(contestDTO.getProblemIds());
-            if (problems.size() != contestDTO.getProblemIds().size()) {
-                log.error("Một số bài toán không tồn tại: {}", contestDTO.getProblemIds());
-                throw new IllegalArgumentException("Một hoặc nhiều ID bài toán không hợp lệ");
+            // Only add non-deleted problems
+            List<Problem> problems = problemRepository.findAllById(contestDTO.getProblemIds()).stream()
+                    .filter(problem -> !problem.isDeleted())
+                    .collect(Collectors.toList());
+            if (problems.isEmpty()) {
+                throw new IllegalArgumentException("Không tìm thấy bài toán hợp lệ nào");
             }
+            contest.setProblems(problems);
         }
-        contest.setProblems(problems);
 
-        // Log nội dung cuộc thi trước khi lưu để debug
-        log.debug("Chuẩn bị lưu cuộc thi: title={}, startTime={}, endTime={}",
-                contest.getTitle(), contest.getStartTime(), contest.getEndTime());
-
-        // Lưu cuộc thi
         Contest savedContest = contestRepository.save(contest);
         log.info("Tạo cuộc thi thành công với ID: {}", savedContest.getId());
 
@@ -102,14 +90,13 @@ public class ContestService {
     public ContestDTO updateContest(Long id, ContestDTO contestDTO) {
         log.debug("Cập nhật cuộc thi với ID: {}", id);
 
-        // Kiểm tra cuộc thi tồn tại
         Contest existingContest = contestRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cuộc thi với ID: " + id));
 
-        // Kiểm tra dữ liệu đầu vào
         validateContestDTO(contestDTO);
+        validateContestStatus(contestDTO.getStatus());
 
-        // Cập nhật thông tin - KHÔNG dùng modelMapper để tránh lỗi
+        // Cập nhật thông tin cơ bản
         if (contestDTO.getTitle() != null) {
             existingContest.setTitle(contestDTO.getTitle());
         }
@@ -117,44 +104,36 @@ public class ContestService {
             existingContest.setDescription(contestDTO.getDescription());
         }
 
-        // Đảm bảo cập nhật các trường thời gian
         existingContest.setStartTime(contestDTO.getStartTime());
         existingContest.setEndTime(contestDTO.getEndTime());
+        
+        // Cập nhật thuộc tính public
         existingContest.setPublic(contestDTO.isPublic());
 
         if (contestDTO.getMaxParticipants() != null) {
             existingContest.setMaxParticipants(contestDTO.getMaxParticipants());
         }
 
-        // Cập nhật trạng thái
+        // Xử lý trạng thái
         if (contestDTO.getStatus() != null) {
-            try {
-                existingContest.setStatus(Contest.ContestStatus.valueOf(contestDTO.getStatus()));
-            } catch (IllegalArgumentException e) {
-                log.error("Trạng thái cuộc thi không hợp lệ: {}", contestDTO.getStatus());
-                throw new IllegalArgumentException("Trạng thái không hợp lệ: " + contestDTO.getStatus());
-            }
+            Contest.ContestStatus requestedStatus = Contest.ContestStatus.valueOf(contestDTO.getStatus());
+            existingContest.setStatus(determineContestStatus(requestedStatus, 
+                existingContest.getStartTime(), existingContest.getEndTime()));
         }
 
         // Cập nhật danh sách bài toán
-        List<Problem> problems = List.of();
-        if (contestDTO.getProblemIds() != null && !contestDTO.getProblemIds().isEmpty()) {
-            problems = problemRepository.findAllById(contestDTO.getProblemIds());
-            if (problems.size() != contestDTO.getProblemIds().size()) {
-                log.error("Một số bài toán không tồn tại: {}", contestDTO.getProblemIds());
-                throw new IllegalArgumentException("Một hoặc nhiều ID bài toán không hợp lệ");
+        if (contestDTO.getProblemIds() != null) {
+            // Only add non-deleted problems
+            List<Problem> problems = problemRepository.findAllById(contestDTO.getProblemIds()).stream()
+                    .filter(problem -> !problem.isDeleted())
+                    .collect(Collectors.toList());
+            if (problems.isEmpty() && !contestDTO.getProblemIds().isEmpty()) {
+                throw new IllegalArgumentException("Không tìm thấy bài toán hợp lệ nào");
             }
             existingContest.setProblems(problems);
         }
 
-        // Log trước khi lưu để debug
-        log.debug("Chuẩn bị lưu cập nhật cuộc thi: title={}, startTime={}, endTime={}",
-                existingContest.getTitle(), existingContest.getStartTime(), existingContest.getEndTime());
-
-        // Lưu cập nhật
         Contest updatedContest = contestRepository.save(existingContest);
-        log.info("Cập nhật cuộc thi thành công với ID: {}", updatedContest.getId());
-
         return convertToDTO(updatedContest);
     }
 
@@ -192,10 +171,11 @@ public class ContestService {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy user với ID: " + userId));
         log.debug("Tìm thấy user: {}", user.getUsername());
 
-        // Kiểm tra đăng ký
+        // Kiểm tra đăng ký hiện có
         log.debug("Kiểm tra xem user đã đăng ký chưa");
-        if (contestRegistrationRepository.findByContestIdAndUserId(contestId, userId).isPresent()) {
-            throw new IllegalStateException("User đã đăng ký cho cuộc thi này");
+        Optional<ContestRegistration> existingRegistration = contestRegistrationRepository.findByContestIdAndUserId(contestId, userId);
+        if (existingRegistration.isPresent()) {
+            return convertToRegistrationDTO(existingRegistration.get());
         }
 
         // Kiểm tra giới hạn người tham gia
@@ -205,24 +185,22 @@ public class ContestService {
             throw new IllegalStateException("Đã đạt số lượng người tham gia tối đa");
         }
 
-        // Tạo đăng ký
-        log.debug("Tạo bản ghi đăng ký mới");
+        // Tạo đăng ký mới
         ContestRegistration registration = new ContestRegistration();
         registration.setContest(contest);
         registration.setUser(user);
         registration.setRegisteredAt(LocalDateTime.now());
-        registration.setStatus(ContestRegistration.RegistrationStatus.PENDING);
         registration.setTotalScore(0.0);
+        registration.setStatus(ContestRegistration.RegistrationStatus.PENDING);
 
         // Lưu đăng ký
         log.debug("Lưu bản ghi đăng ký");
         ContestRegistration savedRegistration = contestRegistrationRepository.save(registration);
         log.info("Đăng ký thành công cho user {} trong cuộc thi {} với ID đăng ký: {}", userId, contestId, savedRegistration.getId());
 
-        // Chuyển đổi DTO
-        log.debug("Chuyển đổi sang DTO");
         return convertToRegistrationDTO(savedRegistration);
     }
+
     @Transactional
     public void approveRegistration(Long registrationId) {
         log.debug("Duyệt đăng ký với ID: {}", registrationId);
@@ -310,35 +288,91 @@ public class ContestService {
     @Transactional(readOnly = true)
     public List<ContestRegistrationDTO> getLeaderboard(Long contestId) {
         log.debug("Lấy bảng xếp hạng cho cuộc thi ID: {}", contestId);
-        return contestRegistrationRepository.findByContestIdOrderByTotalScoreDesc(contestId).stream()
-                .map(this::convertToRegistrationDTO)
+        return contestRegistrationRepository.findByContestIdOrderByTotalScoreDesc(contestId)
+                .stream()
+                .map(registration -> {
+                    ContestRegistrationDTO dto = modelMapper.map(registration, ContestRegistrationDTO.class);
+                    dto.setContestId(registration.getContest().getId());
+                    dto.setUserId(registration.getUser().getId());
+                    dto.setUsername(registration.getUser().getUsername());
+                    dto.setEmail(registration.getUser().getEmail());
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ContestRegistrationDTO> getRegistrations(Long contestId) {
+        log.debug("Lấy danh sách đăng ký cho cuộc thi ID: {}", contestId);
+        return contestRegistrationRepository.findByContestId(contestId)
+                .stream()
+                .map(registration -> {
+                    ContestRegistrationDTO dto = modelMapper.map(registration, ContestRegistrationDTO.class);
+                    dto.setContestId(registration.getContest().getId());
+                    dto.setUserId(registration.getUser().getId());
+                    dto.setUsername(registration.getUser().getUsername());
+                    dto.setEmail(registration.getUser().getEmail());
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 
     /**
-     * Cập nhật điểm số cho người tham gia trong cuộc thi
+     * Kiểm tra xem người dùng có thể tham gia cuộc thi không
      * @param contestId ID của cuộc thi
      * @param userId ID của người dùng
-     * @param problemId ID của bài toán
-     * @param score Điểm số cho bài toán này
+     * @return true nếu người dùng có thể tham gia, false nếu không
      */
+    @Transactional(readOnly = true)
+    public boolean canUserParticipateInContest(Long contestId, Long userId) {
+        Contest contest = contestRepository.findById(contestId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cuộc thi với ID: " + contestId));
+
+        // Nếu là cuộc thi public và đang diễn ra, cho phép tham gia ngay
+        if (contest.isPublic() == true && contest.getStatus() == Contest.ContestStatus.ONGOING) {
+            return true;
+        }
+
+        // Nếu là cuộc thi private, kiểm tra đăng ký
+        return contestRegistrationRepository
+                .findByContestIdAndUserId(contestId, userId)
+                .map(registration -> registration.getStatus() == ContestRegistration.RegistrationStatus.APPROVED)
+                .orElse(false);
+    }
+
     @Transactional
     public void updateContestScore(Long contestId, Long userId, Long problemId, Double score) {
         log.debug("Cập nhật điểm cho cuộc thi ID: {}, user ID: {}, problem ID: {}, điểm: {}", 
                 contestId, userId, problemId, score);
         
-        // Tìm đăng ký của user trong cuộc thi
+        // Tìm thông tin cuộc thi
+        Contest contest = contestRepository.findById(contestId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cuộc thi với ID: " + contestId));
+
+        // Tìm thông tin người dùng
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy user với ID: " + userId));
+
+        // Tìm hoặc tạo đăng ký cho user
         ContestRegistration registration = contestRegistrationRepository
                 .findByContestIdAndUserId(contestId, userId)
-                .orElseThrow(() -> new EntityNotFoundException(
-                    "Không tìm thấy đăng ký cho user " + userId + " trong cuộc thi " + contestId));
-        
-        // Kiểm tra trạng thái đăng ký
-        if (registration.getStatus() != ContestRegistration.RegistrationStatus.APPROVED) {
-            log.warn("User {} không được phép tham gia cuộc thi {}, trạng thái: {}", 
-                    userId, contestId, registration.getStatus());
-            return;
-        }
+                .orElseGet(() -> {
+                    // Tạo đăng ký mới
+                    ContestRegistration newRegistration = new ContestRegistration();
+                    newRegistration.setContest(contest);
+                    newRegistration.setUser(user);
+                    newRegistration.setRegisteredAt(LocalDateTime.now());
+                    newRegistration.setTotalScore(0.0);
+                    
+                    // Nếu là cuộc thi public và đang diễn ra, tự động approve
+                    if (contest.isPublic() && contest.getStatus() == Contest.ContestStatus.ONGOING) {
+                        newRegistration.setStatus(ContestRegistration.RegistrationStatus.APPROVED);
+                    } else {
+                        newRegistration.setStatus(ContestRegistration.RegistrationStatus.PENDING);
+                    }
+                    
+                    return contestRegistrationRepository.save(newRegistration);
+                });
         
         // Lấy điểm tối đa cho bài toán này từ submission của user
         List<Submission> submissions = submissionRepository
@@ -385,11 +419,21 @@ public class ContestService {
 
     private ContestDTO convertToDTO(Contest contest) {
         ContestDTO dto = modelMapper.map(contest, ContestDTO.class);
-        dto.setProblemIds(contest.getProblemIds());
+        
+        // Only include non-deleted problems in problemIds
+        if (contest.getProblems() != null) {
+            List<Long> problemIds = contest.getProblems().stream()
+                    .filter(problem -> !problem.isDeleted())
+                    .map(Problem::getId)
+                    .collect(Collectors.toList());
+            dto.setProblemIds(problemIds);
+        }
+        
         dto.setCreatedById(contest.getCreatedBy().getId());
         // Đảm bảo các trường thời gian được chuyển đổi đúng
         dto.setStartTime(contest.getStartTime());
         dto.setEndTime(contest.getEndTime());
+        dto.setPublic(contest.isPublic()); // Sửa lại: không đảo ngược giá trị
         
         // Tính số người tham gia hiện tại (đã được duyệt)
         long approvedCount = contestRegistrationRepository.countByContestIdAndStatus(
@@ -441,11 +485,12 @@ public class ContestService {
         
         // Lấy danh sách ID các bài toán đã có trong cuộc thi
         Set<Long> existingProblemIds = contest.getProblems().stream()
+                .filter(problem -> !problem.isDeleted()) // Only consider non-deleted problems
                 .map(Problem::getId)
                 .collect(Collectors.toSet());
         
-        // Lấy tất cả bài toán và lọc ra những bài toán chưa có trong cuộc thi
-        List<Problem> availableProblems = problemRepository.findAll().stream()
+        // Lấy tất cả bài toán chưa bị xoá và lọc ra những bài toán chưa có trong cuộc thi
+        List<Problem> availableProblems = problemRepository.findAllActive().stream()
                 .filter(problem -> !existingProblemIds.contains(problem.getId()))
                 .collect(Collectors.toList());
         
@@ -508,5 +553,70 @@ public class ContestService {
         return contests.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void updateContestStatus(Contest contest) {
+        LocalDateTime now = LocalDateTime.now();
+        
+        // Chỉ cập nhật trạng thái cho các trạng thái tự động
+        if (contest.getStatus() == Contest.ContestStatus.UPCOMING ||
+            contest.getStatus() == Contest.ContestStatus.ONGOING) {
+            
+            if (now.isBefore(contest.getStartTime())) {
+                contest.setStatus(Contest.ContestStatus.UPCOMING);
+            } else if (now.isAfter(contest.getStartTime()) && now.isBefore(contest.getEndTime())) {
+                contest.setStatus(Contest.ContestStatus.ONGOING);
+            } else if (now.isAfter(contest.getEndTime())) {
+                contest.setStatus(Contest.ContestStatus.COMPLETED);
+            }
+            
+            contestRepository.save(contest);
+        }
+    }
+
+    @Transactional
+    public void updateAllContestStatuses() {
+        List<Contest> contests = contestRepository.findAll();
+        for (Contest contest : contests) {
+            updateContestStatus(contest);
+        }
+    }
+
+    private void validateContestStatus(String status) {
+        if (status != null) {
+            try {
+                Contest.ContestStatus newStatus = Contest.ContestStatus.valueOf(status);
+                // Cho phép DRAFT, CANCELLED, READY và UPCOMING
+                if (newStatus != Contest.ContestStatus.DRAFT && 
+                    newStatus != Contest.ContestStatus.CANCELLED &&
+                    newStatus != Contest.ContestStatus.READY &&
+                    newStatus != Contest.ContestStatus.UPCOMING) {
+                    throw new IllegalArgumentException("Trạng thái không hợp lệ: " + status);
+                }
+            } catch (IllegalArgumentException e) {
+                log.error("Trạng thái cuộc thi không hợp lệ: {}", status);
+                throw new IllegalArgumentException("Trạng thái không hợp lệ: " + status);
+            }
+        }
+    }
+
+    private Contest.ContestStatus determineContestStatus(Contest.ContestStatus requestedStatus, LocalDateTime startTime, LocalDateTime endTime) {
+        if (requestedStatus == Contest.ContestStatus.DRAFT || 
+            requestedStatus == Contest.ContestStatus.CANCELLED ||
+            requestedStatus == Contest.ContestStatus.UPCOMING) {
+            return requestedStatus;
+        }
+
+        // Nếu trạng thái là READY, tự động xác định trạng thái dựa vào thời gian
+        LocalDateTime now = LocalDateTime.now();
+        
+        if (endTime.isBefore(now)) {
+            return Contest.ContestStatus.COMPLETED;
+        } else if (startTime.isBefore(now)) {
+            return Contest.ContestStatus.ONGOING;
+        } else {
+            return Contest.ContestStatus.UPCOMING;
+        }
     }
 }

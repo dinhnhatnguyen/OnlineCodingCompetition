@@ -80,7 +80,11 @@ public class Contest {
     private List<Problem> problems = new ArrayList<>();
 
     public enum ContestStatus {
-        DRAFT, UPCOMING, ONGOING, COMPLETED, CANCELLED
+        DRAFT,      // Nháp
+        UPCOMING,   // Sắp diễn ra
+        ONGOING,    // Đang diễn ra
+        COMPLETED,  // Đã kết thúc
+        READY, CANCELLED   // Đã huỷ
     }
 
     // Helper method để lấy problemIds
@@ -102,102 +106,102 @@ public class Contest {
                 .count();
     }
 
-    // Getters and setters
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public LocalDateTime getStartTime() {
-        return startTime;
-    }
-
-    public void setStartTime(LocalDateTime startTime) {
-        this.startTime = startTime;
-    }
-
-    public LocalDateTime getEndTime() {
-        return endTime;
-    }
-
-    public void setEndTime(LocalDateTime endTime) {
-        this.endTime = endTime;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public ContestStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(ContestStatus status) {
-        this.status = status;
-    }
-
-    public boolean isPublic() {
-        return isPublic;
-    }
-
-    public void setPublic(boolean isPublic) {
-        this.isPublic = isPublic;
-    }
-
-    public Integer getMaxParticipants() {
-        return maxParticipants;
-    }
-
-    public void setMaxParticipants(Integer maxParticipants) {
-        this.maxParticipants = maxParticipants;
-    }
-
-    public User getCreatedBy() {
-        return createdBy;
-    }
-
-    public void setCreatedBy(User createdBy) {
-        this.createdBy = createdBy;
-    }
-
-    public Set<ContestRegistration> getRegistrations() {
-        return registrations;
-    }
-
-    public void setRegistrations(Set<ContestRegistration> registrations) {
-        this.registrations = registrations;
-    }
-
-    public List<Problem> getProblems() {
-        return problems;
-    }
-
-    public void setProblems(List<Problem> problems) {
-        this.problems = problems;
-    }
+//    // Getters and setters
+//    public Long getId() {
+//        return id;
+//    }
+//
+//    public void setId(Long id) {
+//        this.id = id;
+//    }
+//
+//    public String getTitle() {
+//        return title;
+//    }
+//
+//    public void setTitle(String title) {
+//        this.title = title;
+//    }
+//
+//    public String getDescription() {
+//        return description;
+//    }
+//
+//    public void setDescription(String description) {
+//        this.description = description;
+//    }
+//
+//    public LocalDateTime getStartTime() {
+//        return startTime;
+//    }
+//
+//    public void setStartTime(LocalDateTime startTime) {
+//        this.startTime = startTime;
+//    }
+//
+//    public LocalDateTime getEndTime() {
+//        return endTime;
+//    }
+//
+//    public void setEndTime(LocalDateTime endTime) {
+//        this.endTime = endTime;
+//    }
+//
+//    public LocalDateTime getCreatedAt() {
+//        return createdAt;
+//    }
+//
+//    public void setCreatedAt(LocalDateTime createdAt) {
+//        this.createdAt = createdAt;
+//    }
+//
+//    public ContestStatus getStatus() {
+//        return status;
+//    }
+//
+//    public void setStatus(ContestStatus status) {
+//        this.status = status;
+//    }
+//
+//    public boolean isPublic() {
+//        return isPublic;
+//    }
+//
+//    public void setPublic(boolean isPublic) {
+//        this.isPublic = isPublic;
+//    }
+//
+//    public Integer getMaxParticipants() {
+//        return maxParticipants;
+//    }
+//
+//    public void setMaxParticipants(Integer maxParticipants) {
+//        this.maxParticipants = maxParticipants;
+//    }
+//
+//    public User getCreatedBy() {
+//        return createdBy;
+//    }
+//
+//    public void setCreatedBy(User createdBy) {
+//        this.createdBy = createdBy;
+//    }
+//
+//    public Set<ContestRegistration> getRegistrations() {
+//        return registrations;
+//    }
+//
+//    public void setRegistrations(Set<ContestRegistration> registrations) {
+//        this.registrations = registrations;
+//    }
+//
+//    public List<Problem> getProblems() {
+//        return problems;
+//    }
+//
+//    public void setProblems(List<Problem> problems) {
+//        this.problems = problems;
+//    }
 
     @Override
     public boolean equals(Object o) {

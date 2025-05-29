@@ -4,51 +4,121 @@ const API_URL = "http://localhost:8080/api/submissions";
 
 // Gửi code nộp bài
 export const submitCode = async (data) => {
-  const response = await axios.post(API_URL, {
-    problemId: data.problemId,
-    language: data.language,
-    sourceCode: data.sourceCode,
-    contestId: data.contestId || null,
-  });
-  return response.data;
+  try {
+    const response = await axios.post(
+      API_URL,
+      {
+        problemId: data.problemId,
+        language: data.language,
+        sourceCode: data.sourceCode,
+        contestId: data.contestId || null,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${data.token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      // Server trả về lỗi với status code
+      const errorMessage =
+        error.response.data.error || "Có lỗi xảy ra khi nộp bài";
+      throw new Error(errorMessage);
+    } else if (error.request) {
+      // Request được gửi nhưng không nhận được response
+      throw new Error("Không thể kết nối đến server");
+    } else {
+      // Lỗi khi thiết lập request
+      throw new Error("Có lỗi xảy ra: " + error.message);
+    }
+  }
 };
 
 // Lấy lịch sử nộp bài của user
 export const getUserSubmissions = async (token) => {
-  const response = await axios.get(`${API_URL}/user`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return response.data;
+  try {
+    const response = await axios.get(`${API_URL}/user`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      throw new Error(
+        error.response.data.error || "Không thể lấy lịch sử nộp bài"
+      );
+    }
+    throw error;
+  }
 };
 
 // Lấy submission theo ID
 export const getSubmissionById = async (id) => {
-  const response = await axios.get(`${API_URL}/${id}`);
-  return response.data;
+  try {
+    const response = await axios.get(`${API_URL}/${id}`);
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      throw new Error(
+        error.response.data.error || "Không thể lấy thông tin bài nộp"
+      );
+    }
+    throw error;
+  }
 };
 
 // Lấy submissions theo problem ID
 export const getSubmissionsByProblem = async (problemId, token) => {
-  const response = await axios.get(`${API_URL}/problem/${problemId}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return response.data;
+  try {
+    const response = await axios.get(`${API_URL}/problem/${problemId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      throw new Error(
+        error.response.data.error || "Không thể lấy danh sách bài nộp"
+      );
+    }
+    throw error;
+  }
 };
 
 // Lấy submissions trong contest
 export const getContestSubmissions = async (contestId, token) => {
-  const response = await axios.get(`${API_URL}/contest/${contestId}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return response.data;
+  try {
+    const response = await axios.get(`${API_URL}/contest/${contestId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      throw new Error(
+        error.response.data.error ||
+          "Không thể lấy danh sách bài nộp trong cuộc thi"
+      );
+    }
+    throw error;
+  }
 };
 
 // Lấy leaderboard của contest
 export const getContestLeaderboard = async (contestId) => {
-  const response = await axios.get(
-    `http://localhost:8080/api/contests/${contestId}/leaderboard`
-  );
-  return response.data;
+  try {
+    const response = await axios.get(
+      `http://localhost:8080/api/contests/${contestId}/leaderboard`
+    );
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      throw new Error(
+        error.response.data.error || "Không thể lấy bảng xếp hạng"
+      );
+    }
+    throw error;
+  }
 };
 
 // Poll submission status with requirements:

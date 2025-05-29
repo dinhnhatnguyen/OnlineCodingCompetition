@@ -9,19 +9,21 @@ const ProblemTable = ({ problems }) => {
   const navigate = useNavigate();
 
   // Filter problems based on search term and difficulty
-  const filteredProblems = problems.filter((problem) => {
-    const matchesSearch =
-      problem.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (problem.topics &&
-        problem.topics.some((topic) =>
-          topic.toLowerCase().includes(searchTerm.toLowerCase())
-        ));
-    const matchesDifficulty =
-      difficultyFilter === "all" ||
-      (problem.difficulty &&
-        problem.difficulty.toLowerCase() === difficultyFilter.toLowerCase());
-    return matchesSearch && matchesDifficulty;
-  });
+  const filteredProblems = problems
+    .filter((problem) => !problem.deleted) // Remove deleted problems
+    .filter((problem) => {
+      const matchesSearch =
+        problem.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (problem.topics &&
+          problem.topics.some((topic) =>
+            topic.toLowerCase().includes(searchTerm.toLowerCase())
+          ));
+      const matchesDifficulty =
+        difficultyFilter === "all" ||
+        (problem.difficulty &&
+          problem.difficulty.toLowerCase() === difficultyFilter.toLowerCase());
+      return matchesSearch && matchesDifficulty;
+    });
 
   // Render status icon based on problem status
   const renderStatusIcon = (status) => {

@@ -55,6 +55,13 @@ public class ContestController {
         return ResponseEntity.ok(contestService.getLeaderboard(id));
     }
 
+    @GetMapping("/{id}/registrations")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
+    public ResponseEntity<List<ContestRegistrationDTO>> getRegistrations(@PathVariable Long id) {
+        log.debug("Yêu cầu lấy danh sách đăng ký cho cuộc thi ID: {}", id);
+        return ResponseEntity.ok(contestService.getRegistrations(id));
+    }
+
     @PostMapping
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<ContestDTO> createContest(

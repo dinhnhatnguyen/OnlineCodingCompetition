@@ -127,18 +127,29 @@ const ContestProblemDetails = () => {
     setSubmitting(true);
     setSubmitResults(null);
     try {
+      // Kiểm tra dữ liệu đầu vào
+      if (!code.trim()) {
+        throw new Error("Vui lòng nhập code trước khi nộp bài");
+      }
+
       const payload = {
         problemId: problem.id,
         language,
         sourceCode: code,
-        contestId: parseInt(contestId, 10), // Đính kèm contestId
+        contestId: parseInt(contestId, 10),
+        token: token,
       };
 
       console.log("Submitting with payload:", payload);
+
+      // Gửi bài và đợi kết quả
       const response = await submitCode(payload);
+      console.log("Initial submission response:", response);
 
       // Poll for submission results
       const result = await pollSubmissionStatus(response.id);
+      console.log("Final submission result:", result);
+
       setSubmitResults(result);
 
       // Thông báo kết quả
@@ -149,7 +160,9 @@ const ContestProblemDetails = () => {
         );
       } else if (result.status === "COMPILE_ERROR") {
         showNotification(
-          "Lỗi biên dịch. Vui lòng kiểm tra code của bạn!",
+          `Lỗi biên dịch: ${
+            result.compileError || "Vui lòng kiểm tra code của bạn!"
+          }`,
           "error"
         );
       } else {
@@ -157,10 +170,15 @@ const ContestProblemDetails = () => {
       }
     } catch (error) {
       console.error("Submit error:", error);
-      showNotification(error.message || "Nộp bài thất bại", "error");
+
+      // Xử lý thông báo lỗi
+      const errorMessage =
+        error.response?.data?.error || error.message || "Nộp bài thất bại";
+      showNotification(errorMessage, "error");
+
       setSubmitResults({
         status: "ERROR",
-        error: error.message || "Failed to submit code",
+        error: errorMessage,
       });
     } finally {
       setSubmitting(false);

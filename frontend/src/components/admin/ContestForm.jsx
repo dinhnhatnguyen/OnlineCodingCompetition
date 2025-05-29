@@ -8,9 +8,7 @@ import {
   InputNumber,
   Switch,
   Card,
-  Divider,
   Space,
-  Alert,
 } from "antd";
 import { getProblems } from "../../api/problemApi";
 import { getAvailableProblemsForContest } from "../../api/contestCrudApi";
@@ -30,106 +28,68 @@ const ContestForm = ({ initialValues, onSubmit, loading }) => {
 
   useEffect(() => {
     if (isEditing && initialValues?.id) {
-      // Nếu đang chỉnh sửa cuộc thi, lấy danh sách bài toán có thể thêm vào
       fetchAvailableProblems(initialValues.id);
     } else {
-      // Nếu đang tạo mới, lấy tất cả bài toán
       fetchProblems();
     }
   }, [initialValues]);
 
   useEffect(() => {
     if (initialValues) {
-      // Format the dates for form
-      const formattedValues = {
+      const formValues = {
         ...initialValues,
         dateRange:
           initialValues.startTime && initialValues.endTime
             ? [moment(initialValues.startTime), moment(initialValues.endTime)]
             : undefined,
+        isPublic: initialValues.public,
       };
-      form.setFieldsValue(formattedValues);
+      form.setFieldsValue(formValues);
     }
   }, [initialValues, form]);
-
-  const fetchAvailableProblems = async (contestId) => {
-    setLoadingProblems(true);
-    try {
-      const data = await getAvailableProblemsForContest(contestId, token);
-
-      // Nếu đang chỉnh sửa, kết hợp bài toán đã có và bài toán có thể thêm
-      let combinedProblems = [...data];
-
-      // Thêm những bài toán đã được chọn từ initialValues (nếu có)
-      if (
-        initialValues &&
-        initialValues.problemIds &&
-        initialValues.problemIds.length > 0
-      ) {
-        const existingProblems = await getProblems();
-        const selectedProblems = existingProblems.filter(
-          (p) =>
-            initialValues.problemIds.includes(p.id) &&
-            !combinedProblems.some((cp) => cp.id === p.id)
-        );
-        combinedProblems = [...combinedProblems, ...selectedProblems];
-      }
-
-      // Show all problems to instructors when editing contests
-      setProblems(combinedProblems);
-    } catch (error) {
-      console.error("Lỗi khi tải danh sách bài toán:", error);
-      // Nếu API mới lỗi, sử dụng API cũ để lấy tất cả bài toán
-      fetchProblems();
-    } finally {
-      setLoadingProblems(false);
-    }
-  };
 
   const fetchProblems = async () => {
     setLoadingProblems(true);
     try {
       const data = await getProblems();
-      // Don't filter problems for instructors - show all system problems when creating contests
       setProblems(data);
     } catch (error) {
-      console.error("Lỗi khi tải danh sách bài toán:", error);
+      console.error("Error fetching problems:", error);
     } finally {
       setLoadingProblems(false);
     }
   };
 
-  const handleSubmit = (values) => {
-    // Extract start and end times from the date range
-    const [startTime, endTime] = values.dateRange || [];
+  const fetchAvailableProblems = async (contestId) => {
+    setLoadingProblems(true);
+    try {
+      const data = await getAvailableProblemsForContest(contestId, token);
+      setProblems(data);
+    } catch (error) {
+      console.error("Error fetching available problems:", error);
+    } finally {
+      setLoadingProblems(false);
+    }
+  };
 
-    const contestData = {
-      ...values,
-      startTime: startTime
-        ? startTime.format("YYYY-MM-DDTHH:mm:ss")
-        : undefined,
-      endTime: endTime ? endTime.format("YYYY-MM-DDTHH:mm:ss") : undefined,
+  const handleStatusChange = (value) => {
+    // Không cần tự động chuyển đổi trạng thái ở frontend nữa
+    form.setFieldValue("status", value);
+  };
+
+  const handleSubmit = async (values) => {
+    const [startTime, endTime] = values.dateRange;
+
+    // Format dữ liệu trước khi gửi
+    const { dateRange, isPublic, ...otherValues } = values;
+    const formattedData = {
+      ...otherValues,
+      startTime: startTime.format("YYYY-MM-DDTHH:mm:ss"),
+      endTime: endTime.format("YYYY-MM-DDTHH:mm:ss"),
+      public: isPublic,
     };
 
-    // Remove the dateRange field
-    delete contestData.dateRange;
-
-    // Ensure problemIds is correctly formatted as an array of numbers
-    if (contestData.problemIds && Array.isArray(contestData.problemIds)) {
-      contestData.problemIds = contestData.problemIds.map((id) =>
-        typeof id === "string" ? parseInt(id, 10) : id
-      );
-    }
-
-    // Convert numeric values to proper types
-    if (contestData.maxParticipants) {
-      contestData.maxParticipants = parseInt(contestData.maxParticipants, 10);
-    }
-
-    // Ensure boolean values are properly formatted
-    contestData.isPublic = Boolean(contestData.isPublic);
-
-    onSubmit(contestData);
+    onSubmit(formattedData);
   };
 
   return (
@@ -138,20 +98,18 @@ const ContestForm = ({ initialValues, onSubmit, loading }) => {
       layout="vertical"
       onFinish={handleSubmit}
       initialValues={{
+        maxParticipants: 100,
         isPublic: true,
         status: "DRAFT",
-        problemIds: [],
       }}
     >
-      <Card title="Thông tin cuộc thi" className="mb-4">
+      <Card title="Thông tin cơ bản" className="mb-4">
         <Form.Item
           name="title"
-          label="Tiêu đề cuộc thi"
-          rules={[
-            { required: true, message: "Vui lòng nhập tiêu đề cuộc thi" },
-          ]}
+          label="Tên cuộc thi"
+          rules={[{ required: true, message: "Vui lòng nhập tên cuộc thi" }]}
         >
-          <Input placeholder="Nhập tiêu đề cuộc thi" />
+          <Input placeholder="Nhập tên cuộc thi" />
         </Form.Item>
 
         <Form.Item
@@ -159,16 +117,16 @@ const ContestForm = ({ initialValues, onSubmit, loading }) => {
           label="Mô tả"
           rules={[{ required: true, message: "Vui lòng nhập mô tả cuộc thi" }]}
         >
-          <TextArea rows={4} placeholder="Mô tả chi tiết về cuộc thi" />
+          <TextArea rows={4} placeholder="Nhập mô tả cuộc thi" />
         </Form.Item>
 
         <Form.Item
           name="dateRange"
-          label="Thời gian diễn ra"
+          label="Thời gian"
           rules={[
             {
               required: true,
-              message: "Vui lòng chọn thời gian diễn ra cuộc thi",
+              message: "Vui lòng chọn thời gian bắt đầu và kết thúc",
             },
           ]}
         >
@@ -176,23 +134,21 @@ const ContestForm = ({ initialValues, onSubmit, loading }) => {
             showTime
             format="YYYY-MM-DD HH:mm:ss"
             className="w-full"
-            placeholder={["Thời gian bắt đầu", "Thời gian kết thúc"]}
           />
         </Form.Item>
+      </Card>
 
-        <Space className="w-full">
+      <Card title="Cài đặt cuộc thi" className="mb-4">
+        <Space direction="vertical" className="w-full">
           <Form.Item
             name="status"
             label="Trạng thái"
             rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
-            className="w-full"
           >
-            <Select placeholder="Chọn trạng thái">
+            <Select placeholder="Chọn trạng thái" onChange={handleStatusChange}>
               <Option value="DRAFT">Nháp</Option>
-              <Option value="UPCOMING">Sắp diễn ra</Option>
-              <Option value="ONGOING">Đang diễn ra</Option>
-              <Option value="COMPLETED">Đã kết thúc</Option>
-              <Option value="CANCELLED">Đã hủy</Option>
+              <Option value="READY">Sẵn sàng tổ chức</Option>
+              <Option value="CANCELLED">Huỷ</Option>
             </Select>
           </Form.Item>
 
@@ -213,55 +169,32 @@ const ContestForm = ({ initialValues, onSubmit, loading }) => {
           name="isPublic"
           label="Cuộc thi công khai"
           valuePropName="checked"
+          tooltip="Cuộc thi công khai cho phép mọi người tham gia mà không cần đăng ký"
         >
           <Switch />
         </Form.Item>
       </Card>
 
-      <Card title="Bài toán trong cuộc thi" className="mb-4">
-        {problems.length === 0 && !loadingProblems ? (
-          <Alert
-            message="Không có bài toán nào"
-            description="Bạn cần tạo các bài toán trước khi thêm vào cuộc thi."
-            type="info"
-            className="mb-4"
-          />
-        ) : null}
-
-        <Form.Item
-          name="problemIds"
-          label="Chọn bài toán"
-          rules={[
-            { required: true, message: "Vui lòng chọn ít nhất một bài toán" },
-          ]}
-        >
+      <Card title="Bài tập" className="mb-4">
+        <Form.Item name="problemIds" label="Danh sách bài tập">
           <Select
             mode="multiple"
-            placeholder="Chọn các bài toán cho cuộc thi này"
+            placeholder="Chọn bài tập"
             loading={loadingProblems}
             className="w-full"
-            optionFilterProp="children"
           >
             {problems.map((problem) => (
               <Option key={problem.id} value={problem.id}>
-                {problem.title} (
-                {problem.difficulty === "EASY"
-                  ? "Dễ"
-                  : problem.difficulty === "MEDIUM"
-                  ? "Trung bình"
-                  : "Khó"}
-                )
+                {problem.title}
               </Option>
             ))}
           </Select>
         </Form.Item>
       </Card>
 
-      <Divider />
-
       <Form.Item>
-        <Button type="primary" htmlType="submit" loading={loading}>
-          {initialValues ? "Cập nhật cuộc thi" : "Tạo cuộc thi"}
+        <Button type="primary" htmlType="submit" loading={loading} block>
+          {isEditing ? "Cập nhật cuộc thi" : "Tạo cuộc thi"}
         </Button>
       </Form.Item>
     </Form>

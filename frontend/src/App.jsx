@@ -37,6 +37,7 @@ import ContestManagement from "./pages/admin/ContestManagement";
 import CreateContest from "./pages/admin/CreateContest";
 import EditContest from "./pages/admin/EditContest";
 import UserManagement from "./pages/admin/UserManagement";
+import DeletedProblems from "./pages/admin/DeletedProblems";
 
 function App() {
   return (
@@ -102,6 +103,7 @@ function App() {
                 path="problems/testcases/:id"
                 element={<TestCaseManagerPage />}
               />
+              <Route path="problems/deleted" element={<DeletedProblems />} />
               <Route path="contests" element={<ContestManagement />} />
               <Route path="contests/create" element={<CreateContest />} />
               <Route path="contests/edit/:id" element={<EditContest />} />
@@ -133,6 +135,7 @@ function App() {
                 path="problems/testcases/:id"
                 element={<TestCaseManagerPage />}
               />
+              <Route path="problems/deleted" element={<DeletedProblems />} />
               <Route path="contests" element={<ContestManagement />} />
               <Route path="contests/create" element={<CreateContest />} />
               <Route path="contests/edit/:id" element={<EditContest />} />

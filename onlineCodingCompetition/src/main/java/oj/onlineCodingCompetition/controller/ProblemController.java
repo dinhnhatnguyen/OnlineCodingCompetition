@@ -243,14 +243,18 @@ public class ProblemController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
-    public ResponseEntity<Void> deleteProblem(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteProblem(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
         log.debug("REST request to delete Problem : {}", id);
         try {
-            problemService.deleteProblem(id);
-            return ResponseEntity.noContent().build();
+            User user = userRepository.findByUsername(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            problemService.deleteProblem(id, user.getId());
+            return ResponseEntity.ok().build();
         } catch (Exception e) {
-            log.error("Problem not found with id: {}", id);
-            return ResponseEntity.notFound().build();
+            log.error("Error deleting problem with id: {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 

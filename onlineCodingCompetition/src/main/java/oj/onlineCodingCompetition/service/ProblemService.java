@@ -43,6 +43,12 @@ public class ProblemService {
         }
 
         ProblemDTO dto = modelMapper.map(problem, ProblemDTO.class);
+        
+        // Xử lý riêng trường createdBy
+        if (problem.getCreatedBy() != null) {
+            dto.setCreatedBy(problem.getCreatedBy().getId());
+        }
+        
         if (problem.getTestCases() != null) {
             dto.setTestCases(problem.getTestCases().stream()
                     .map(testCase -> modelMapper.map(testCase, TestCaseDTO.class))
@@ -290,7 +296,7 @@ public class ProblemService {
     @Transactional(readOnly = true)
     public List<ProblemDTO> getAllProblems() {
         log.debug("Request to get all Problems");
-        return problemRepository.findAll().stream()
+        return problemRepository.findAllActive().stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
@@ -300,7 +306,7 @@ public class ProblemService {
         log.debug("Request to get all Problems created by user: {}", userId);
         User creator = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + userId));
-        return problemRepository.findByCreatedBy(creator).stream()
+        return problemRepository.findByCreatedByAndDeletedFalse(creator).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
@@ -327,49 +333,35 @@ public class ProblemService {
 
     @Transactional(readOnly = true)
     public ProblemDTO getProblemById(Long id) {
-        log.debug("Fetching problem by ID: {}", id);
+        log.debug("Request to get Problem : {}", id);
         Problem problem = problemRepository.findById(id)
-                .orElseThrow(() -> {
-                    log.error("Problem not found with ID: {}", id);
-                    return new EntityNotFoundException("Problem not found with id: " + id);
-                });
+                .orElseThrow(() -> new EntityNotFoundException("Problem not found with id: " + id));
+        if (problem.isDeleted()) {
+            throw new EntityNotFoundException("Problem has been deleted");
+        }
         return convertToDTO(problem);
     }
 
     @Transactional
-    public void deleteProblem(Long id) {
-        log.debug("Deleting problem with ID: {}", id);
+    public void deleteProblem(Long id, Long userId) {
+        log.debug("Soft deleting problem with ID: {} by user: {}", id, userId);
         Problem problem = problemRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Problem not found with id: " + id));
 
-        // Remove problem from all contests first
-        if (problem.getContests() != null && !problem.getContests().isEmpty()) {
-            for (Contest contest : new ArrayList<>(problem.getContests())) {
-                if (contest.getProblems() != null) {
-                    contest.getProblems().remove(problem);
-                    contestRepository.save(contest);
-                }
-            }
-            problem.getContests().clear();
-            problemRepository.save(problem);
-        }
-
-        // Delete all test cases
-        List<TestCase> testCases = testCaseRepository.findByProblemIdOrderByTestOrderAsc(id);
-        if (!testCases.isEmpty()) {
-            testCaseRepository.deleteAll(testCases);
-            log.info("Deleted {} test cases for problem ID: {}", testCases.size(), id);
-        }
-
-        // Finally delete the problem
-        problemRepository.delete(problem);
-        log.info("Problem deleted successfully with ID: {}", id);
+        // Đánh dấu problem là đã xóa
+        problem.setDeleted(true);
+        problem.setDeletedAt(LocalDateTime.now());
+        problem.setDeletedBy(userId);
+        
+        // Lưu thay đổi
+        problemRepository.save(problem);
+        log.info("Problem soft deleted successfully with ID: {} by user: {}", id, userId);
     }
 
     @Transactional(readOnly = true)
     public List<ProblemDTO> getProblemsByDifficulty(String difficulty) {
         log.debug("Fetching problems by difficulty: {}", difficulty);
-        return problemRepository.findByDifficulty(difficulty.toLowerCase()).stream()
+        return problemRepository.findByDifficultyAndDeletedFalse(difficulty).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
@@ -384,8 +376,8 @@ public class ProblemService {
 
     @Transactional(readOnly = true)
     public List<ProblemDTO> searchProblemsByTitle(String keyword) {
-        log.debug("Searching problems by title keyword: {}", keyword);
-        return problemRepository.findByTitleContainingIgnoreCase(keyword).stream()
+        log.debug("Searching problems by title containing: {}", keyword);
+        return problemRepository.findByTitleContainingIgnoreCaseAndDeletedFalse(keyword).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }

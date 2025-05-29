@@ -81,8 +81,13 @@ const ContestManagement = () => {
         ? data
         : data.filter((contest) => contest.createdById === user?.id);
 
-      setContests(filteredData);
-      showSuccess("Tải danh sách cuộc thi thành công");
+      // Sort contests by createdAt in descending order (newest first)
+      const sortedData = filteredData.sort((a, b) => {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+
+      setContests(sortedData);
+      // showSuccess("Tải danh sách cuộc thi thành công");
     } catch (error) {
       console.error("Error fetching contests:", error);
       showError("Không thể tải danh sách cuộc thi");
@@ -106,14 +111,17 @@ const ContestManagement = () => {
 
   const handleDeleteConfirm = async () => {
     try {
-      await deleteContest(contestToDelete.id, token);
-      showSuccess("Xóa cuộc thi thành công");
-      setDeletePopupOpen(false);
-      setContestToDelete(null);
-      fetchContests(); // Refresh the list
+      const result = await deleteContest(contestToDelete.id, token);
+      if (result.success) {
+        showSuccess(result.message || "Xóa cuộc thi thành công");
+        setDeletePopupOpen(false);
+        setContestToDelete(null);
+        fetchContests(); // Refresh the list
+      }
     } catch (error) {
       console.error("Error deleting contest:", error);
-      showError("Không thể xóa cuộc thi");
+      // Hiển thị message lỗi cụ thể từ server hoặc message mặc định
+      showError(error.message || "Không thể xóa cuộc thi");
     }
   };
 
@@ -180,8 +188,8 @@ const ContestManagement = () => {
     },
     {
       title: "Visibility",
-      dataIndex: "isPublic",
-      key: "isPublic",
+      dataIndex: "public",
+      key: "public",
       render: (isPublic) =>
         isPublic ? (
           <Tooltip title="Public Contest">
@@ -200,7 +208,7 @@ const ContestManagement = () => {
         { text: "Public", value: true },
         { text: "Private", value: false },
       ],
-      onFilter: (value, record) => record.isPublic === value,
+      onFilter: (value, record) => record.public === value,
       width: 120,
     },
     {

@@ -9,6 +9,7 @@ export default function ContestsList() {
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [visibilityFilter, setVisibilityFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(0);
   const pageSize = 6;
 
@@ -45,7 +46,13 @@ export default function ContestsList() {
     const matchesStatus =
       statusFilter === "all" || contestStatus === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    // Visibility filter
+    const matchesVisibility =
+      visibilityFilter === "all" ||
+      (visibilityFilter === "public" && contest.public) ||
+      (visibilityFilter === "private" && !contest.public);
+
+    return matchesSearch && matchesStatus && matchesVisibility;
   });
 
   const totalPages = Math.ceil(filteredContests.length / pageSize);
@@ -80,7 +87,7 @@ export default function ContestsList() {
           </div>
         </div>
 
-        <div className="w-full md:w-auto">
+        <div className="flex gap-4">
           <select
             className="bg-zinc-900 text-white px-4 py-2 rounded border border-zinc-700 focus:outline-none appearance-none"
             value={statusFilter}
@@ -90,6 +97,16 @@ export default function ContestsList() {
             <option value="upcoming">Upcoming</option>
             <option value="ongoing">Ongoing</option>
             <option value="completed">Completed</option>
+          </select>
+
+          <select
+            className="bg-zinc-900 text-white px-4 py-2 rounded border border-zinc-700 focus:outline-none appearance-none"
+            value={visibilityFilter}
+            onChange={(e) => setVisibilityFilter(e.target.value)}
+          >
+            <option value="all">All Visibility</option>
+            <option value="public">Public</option>
+            <option value="private">Private</option>
           </select>
         </div>
       </div>

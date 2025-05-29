@@ -494,8 +494,9 @@ export default function ContestDetails() {
                     </div>
                     <div>{contest.problemIds.length} problems</div>
                   </div>
-                  {contest.status === "UPCOMING" ||
-                    (contest.status === "ONGOING" && !userRegistration && (
+                  {(contest.status === "UPCOMING" ||
+                    contest.status === "ONGOING") &&
+                    !userRegistration && (
                       <button
                         className="bg-[#722055] hover:bg-[#50153a] text-white font-semibold rounded-full px-4 py-2 w-full"
                         onClick={handleRegister}
@@ -503,7 +504,7 @@ export default function ContestDetails() {
                       >
                         {registering ? "Registering..." : "Register"}
                       </button>
-                    ))}
+                    )}
                   {userRegistration && (
                     <div
                       className={`mt-2 py-2 px-4 rounded-md text-center text-sm font-medium ${

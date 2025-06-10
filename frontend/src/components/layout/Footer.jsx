@@ -6,9 +6,7 @@ const Footer = () => {
     <footer className="bg-black text-white text-center py-6 px-4">
       <div className="mb-4">
         <p className="text-pink-500 font-semibold">OCCS</p>
-        <p className="text-gray-400">
-          Master algorithms, one problem at a time.
-        </p>
+        <p className="text-gray-400">Làm chủ thuật toán, từng bài tập một.</p>
       </div>
       <div className="flex justify-center space-x-4 mb-4">
         <a href="#" className="text-gray-400 hover:text-pink-500">
@@ -18,16 +16,16 @@ const Footer = () => {
           <FaTwitter />
         </a>
       </div>
-      <p className="text-gray-400">© 2025 OCCS. All rights reserved.</p>
+      <p className="text-gray-400">© 2025 OCCS. Đã đăng ký bản quyền.</p>
       <div className="mt-2 text-gray-400 space-x-4">
         <a href="#" className="hover:text-pink-500">
-          Privacy Policy
+          Chính sách bảo mật
         </a>
         <a href="#" className="hover:text-pink-500">
-          Terms of Service
+          Điều khoản dịch vụ
         </a>
         <a href="#" className="hover:text-pink-500">
-          Contact
+          Liên hệ
         </a>
       </div>
     </footer>

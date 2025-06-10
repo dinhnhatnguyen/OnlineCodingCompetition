@@ -369,7 +369,7 @@ const ContestProblemDetails = () => {
           <div className="lg:col-span-2">
             <div className="mb-4 bg-zinc-900 p-4 rounded-lg">
               <div className="flex justify-between items-center mb-2">
-                <h2 className="text-lg font-bold">Code Editor</h2>
+                <h2 className="text-lg font-bold">Trình soạn thảo</h2>
                 <select
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
@@ -409,7 +409,7 @@ const ContestProblemDetails = () => {
                       : "bg-green-600 hover:bg-green-700 text-white"
                   }`}
                 >
-                  {submitting ? "Submitting..." : "Submit"}
+                  {submitting ? "Đang nộp bài..." : "Nộp bài"}
                 </button>
               </div>
 

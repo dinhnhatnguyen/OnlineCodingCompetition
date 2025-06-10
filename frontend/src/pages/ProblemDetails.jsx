@@ -261,7 +261,7 @@ const ProblemDetails = () => {
             <div className="flex justify-between items-center mb-2">
               <div className="flex items-center">
                 <label htmlFor="language" className="mr-2">
-                  Language:
+                  Ngôn ngữ:
                 </label>
                 <select
                   id="language"
@@ -301,7 +301,7 @@ const ProblemDetails = () => {
                     : "bg-green-600 hover:bg-green-700 text-white"
                 }`}
               >
-                {submitting ? "Submitting..." : "Submit"}
+                {submitting ? "Đang nộp bài..." : "Nộp bài"}
               </button>
             </div>
           </div>

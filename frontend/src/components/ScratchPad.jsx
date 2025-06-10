@@ -170,7 +170,7 @@ const ScratchPad = () => {
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center">
           <BiCodeBlock size={24} className="mr-2 text-blue-400" />
-          <h1 className="text-xl font-bold text-white">Code Scratch Pad</h1>
+          <h1 className="text-xl font-bold text-white">Bảng nháp code</h1>
         </div>
 
         <div className="flex items-center gap-2">
@@ -221,7 +221,9 @@ const ScratchPad = () => {
           >
             <div className="p-3 border-b border-zinc-700 bg-zinc-900 flex items-center">
               <FaCode className="mr-2 text-blue-400" />
-              <h2 className="text-sm font-semibold text-white">Code Editor</h2>
+              <h2 className="text-sm font-semibold text-white">
+                Trình soạn thảo
+              </h2>
             </div>
             <div className="h-full">
               <CodeEditor
@@ -243,7 +245,7 @@ const ScratchPad = () => {
           {/* Input */}
           <div className="mt-4 bg-zinc-800 border border-zinc-700 rounded-lg overflow-hidden">
             <div className="p-3 border-b border-zinc-700 bg-zinc-900">
-              <span className="text-sm font-semibold text-white">Input</span>
+              <span className="text-sm font-semibold text-white">Đầu vào</span>
             </div>
             <div className="p-0">
               <textarea
@@ -261,7 +263,7 @@ const ScratchPad = () => {
           {/* Output */}
           <div className="bg-zinc-800 border border-zinc-700 rounded-lg overflow-hidden flex-grow">
             <div className="p-3 border-b border-zinc-700 bg-zinc-900 flex justify-between">
-              <span className="text-sm font-semibold text-white">Output</span>
+              <span className="text-sm font-semibold text-white">Kết quả</span>
               <div className="flex space-x-2">
                 <button
                   onClick={copyOutput}
@@ -341,7 +343,7 @@ const ScratchPad = () => {
                 </>
               ) : (
                 <>
-                  <FaPlay className="mr-2" /> Run Code
+                  <FaPlay className="mr-2" /> Chạy code
                 </>
               )}
             </button>

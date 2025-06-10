@@ -72,26 +72,26 @@ const Header = () => {
             to="/problems"
             className="text-gray-400 hover:text-primary-pink transition-colors"
           >
-            Problems
+            Bài tập
           </Link>
           <Link
             to="/contests"
             className="text-gray-400 hover:text-primary-pink transition-colors"
           >
-            Contests
+            Cuộc thi
           </Link>
           <Link
             to="/scratchpad"
             className="text-gray-400 hover:text-primary-pink transition-colors"
           >
-            Scratch Pad
+            Bảng nháp
           </Link>
           {isAdminOrInstructor && (
             <Link
               to="/admin"
               className="text-gray-400 hover:text-pink-400 transition-colors"
             >
-              Manage
+              Quản lý
             </Link>
           )}
         </nav>
@@ -130,13 +130,13 @@ const Header = () => {
               className="text-gray-400 hover:text-primary-pink transition-colors"
               style={{ padding: "10px 20px" }}
             >
-              Sign in
+              Đăng nhập
             </button>
             <button
               onClick={() => handleShow("signup")}
               className="primary-btn"
             >
-              Sign up
+              Đăng ký
             </button>
           </>
         )}

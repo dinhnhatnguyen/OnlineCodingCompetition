@@ -93,7 +93,7 @@ const CreateAdvancedProblem = () => {
         className="mb-6"
       />
 
-      <Alert
+      {/* <Alert
         message="Hướng dẫn định nghĩa Function Signature"
         description={
           <div>
@@ -159,7 +159,7 @@ const CreateAdvancedProblem = () => {
         type="warning"
         showIcon
         className="mb-6"
-      />
+      /> */}
 
       <Card>
         <AdvancedProblemForm

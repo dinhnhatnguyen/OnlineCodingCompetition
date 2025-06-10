@@ -32,7 +32,18 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
+/**
+ * Service for processing code submissions and executing them in isolated containers.
+ * Service xử lý các bài nộp code và thực thi chúng trong các container độc lập.
+ * 
+ * Main responsibilities / Trách nhiệm chính:
+ * - Polling submission queue / Kiểm tra hàng đợi các bài nộp
+ * - Running code in Docker containers / Chạy code trong Docker containers
+ * - Validating outputs / Kiểm tra kết quả đầu ra
+ * - Recording metrics / Ghi nhận các chỉ số thực thi
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -52,6 +63,10 @@ public class WorkerService {
     @Value("${aws.sqs.queue-url}")
     private String queueUrl;
 
+    /**
+     * Maps programming languages to their Docker images
+     * Ánh xạ ngôn ngữ lập trình với Docker image tương ứng
+     */
     private static final Map<String, String> LANGUAGE_IMAGE_MAP = Map.of(
             "java", "java-runner",
             "python", "python-runner",
@@ -59,6 +74,10 @@ public class WorkerService {
             "javascript", "js-runner"
     );
 
+    /**
+     * Maps programming languages to their file extensions
+     * Ánh xạ ngôn ngữ lập trình với phần mở rộng file
+     */
     private static final Map<String, String> LANGUAGE_EXTENSION_MAP = Map.of(
             "java", ".java",
             "python", ".py",
@@ -66,6 +85,10 @@ public class WorkerService {
             "javascript", ".js"
     );
 
+    /**
+     * Maps programming languages to their main class/file names
+     * Ánh xạ ngôn ngữ lập trình với tên file/class chính
+     */
     private static final Map<String, String> LANGUAGE_MAIN_CLASS_MAP = Map.of(
             "java", "Solution",
             "python", "solution",
@@ -73,15 +96,34 @@ public class WorkerService {
             "javascript", "solution"
     );
 
+    /**
+     * Stores execution results and metrics from running code
+     * Lưu trữ kết quả và các chỉ số thực thi code
+     */
     @Data
     public static class ExecutionResult {
+        // Program output / Đầu ra của chương trình
         private String output;
+        // Error messages / Thông báo lỗi
         private String error;
+        // Exit code (0 = success) / Mã thoát (0 = thành công)
         private int exitCode;
+        // Execution time / Thời gian thực thi
         private long runtimeMs;
+        // Memory usage / Lượng bộ nhớ sử dụng
         private long memoryUsedKb;
     }
 
+    /**
+     * Main processing loop for submissions
+     * Vòng lặp xử lý chính cho các bài nộp
+     * 
+     * Steps / Các bước:
+     * 1. Poll queue / Kiểm tra hàng đợi
+     * 2. Process submission / Xử lý bài nộp
+     * 3. Run test cases / Chạy các test case
+     * 4. Save results / Lưu kết quả
+     */
     public void processSubmissions() {
         while (true) {
             ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(queueUrl)
@@ -266,6 +308,14 @@ public class WorkerService {
         }
     }
 
+    /**
+     * Runs a single test case for a submission
+     * Thực thi một test case cho một bài nộp
+     * 
+     * @param submission Submission to test / Bài nộp cần kiểm tra
+     * @param testCase Test case to run / Test case cần chạy
+     * @return Test case result / Kết quả test case
+     */
     private TestCaseResult runTestCase(Submission submission, TestCase testCase) {
         TestCaseResult result = new TestCaseResult();
         result.setSubmission(submission);
@@ -297,16 +347,81 @@ public class WorkerService {
             }
             log.info("Function signature: {}", functionSignature);
 
-            String executionEnvironment = LANGUAGE_IMAGE_MAP.get(language); // Lấy tên image
+            String executionEnvironment = LANGUAGE_IMAGE_MAP.get(language);
             submission.setExecutionEnvironment(executionEnvironment);
             log.info("Using execution environment: {}", executionEnvironment);
 
             String extension = LANGUAGE_EXTENSION_MAP.get(language);
-            String solutionFilePath = language.equals("python") 
-                ? tempDir + "/solution" + extension
-                : tempDir + "/Solution" + extension;
-            Files.writeString(Paths.get(solutionFilePath), submission.getSourceCode());
-            log.info("Written solution code to: {}", solutionFilePath);
+            
+            // Đặc biệt xử lý cho Python để đảm bảo giữ nguyên định dạng
+            if (language.equals("python")) {
+                String solutionFilePath = tempDir + "/solution" + extension;
+                
+                // Thêm các import cần thiết vào đầu file
+                StringBuilder pythonCode = new StringBuilder();
+                pythonCode.append("from typing import List, Optional, Dict, Set, Tuple\n");
+                pythonCode.append("\n");
+                
+                // Thêm code của người dùng
+                String sourceCode = submission.getSourceCode();
+                if (!sourceCode.endsWith("\n")) {
+                    sourceCode += "\n";
+                }
+                pythonCode.append(sourceCode);
+                
+                // Ghi file với encoding UTF-8
+                Files.write(Paths.get(solutionFilePath), 
+                          pythonCode.toString().getBytes("UTF-8"));
+                
+                log.info("Written solution code to: {}", solutionFilePath);
+                log.debug("Solution code content:\n{}", pythonCode.toString());
+            } else if (language.equals("java")) {
+                String solutionFilePath = tempDir + "/Solution" + extension;
+                
+                // Thêm các import phổ biến vào đầu file Solution.java
+                StringBuilder javaCode = new StringBuilder();
+                javaCode.append("import java.util.*;\n");  // Collections, List, Set, Map, etc.
+                javaCode.append("import java.util.stream.*;\n");  // Stream API
+                javaCode.append("import java.math.*;\n");  // BigInteger, BigDecimal
+                javaCode.append("import java.text.*;\n");  // Formatting
+                javaCode.append("import java.time.*;\n");  // Date/Time API
+                javaCode.append("import java.util.function.*;\n");  // Functional interfaces
+                javaCode.append("import java.util.regex.*;\n");  // Regular expressions
+                // Import các class phổ biến một cách rõ ràng
+                javaCode.append("import java.util.HashMap;\n");
+                javaCode.append("import java.util.ArrayList;\n");
+                javaCode.append("import java.util.List;\n");
+                javaCode.append("import java.util.Map;\n");
+                javaCode.append("import java.util.Set;\n");
+                javaCode.append("import java.util.Queue;\n");
+                javaCode.append("import java.util.LinkedList;\n");
+                javaCode.append("import java.util.PriorityQueue;\n");
+                javaCode.append("import java.util.Stack;\n");
+                javaCode.append("import java.util.TreeMap;\n");
+                javaCode.append("import java.util.TreeSet;\n");
+                javaCode.append("import java.util.HashSet;\n");
+                javaCode.append("import java.util.Deque;\n");
+                javaCode.append("import java.util.ArrayDeque;\n");
+                javaCode.append("\n");
+                
+                // Thêm code của người dùng
+                String sourceCode = submission.getSourceCode();
+                if (!sourceCode.endsWith("\n")) {
+                    sourceCode += "\n";
+                }
+                javaCode.append(sourceCode);
+                
+                // Ghi file với encoding UTF-8
+                Files.write(Paths.get(solutionFilePath), 
+                          javaCode.toString().getBytes("UTF-8"));
+                
+                log.info("Written solution code to: {}", solutionFilePath);
+                log.debug("Solution code content:\n{}", javaCode.toString());
+            } else {
+                String solutionFilePath = tempDir + "/Solution" + extension;
+                Files.writeString(Paths.get(solutionFilePath), submission.getSourceCode());
+                log.info("Written solution code to: {}", solutionFilePath);
+            }
 
             List<TestCaseService.TestCaseInput> inputs = testCaseService.parseInputData(testCase.getInputData());
             String inputFilePath = tempDir + "/input.txt";
@@ -417,6 +532,15 @@ public class WorkerService {
         return result;
     }
 
+    /**
+     * Generates main program for different languages
+     * Tạo chương trình chính cho các ngôn ngữ khác nhau
+     * 
+     * Features / Tính năng:
+     * - Input handling / Xử lý đầu vào
+     * - Solution function call / Gọi hàm giải pháp
+     * - Output formatting / Định dạng đầu ra
+     */
     private String generateMainProgram(String language, FunctionSignature functionSignature, List<TestCaseService.TestCaseInput> inputs) {
         String functionName = functionSignature.getFunctionName();
         List<String> paramTypes = functionSignature.getParameterTypes();
@@ -426,8 +550,19 @@ public class WorkerService {
         switch (language.toLowerCase()) {
             case "java":
                 StringBuilder javaMain = new StringBuilder();
-                javaMain.append("import java.util.Scanner;\n");
-                javaMain.append("import java.util.Arrays;\n\n");
+                // Thêm các import phổ biến để hỗ trợ giải thuật
+                javaMain.append("import java.util.*;\n");  // Collections, List, Set, Map, etc.
+                javaMain.append("import java.util.stream.*;\n");  // Stream API
+                javaMain.append("import java.math.*;\n");  // BigInteger, BigDecimal
+                javaMain.append("import java.text.*;\n");  // Formatting
+                javaMain.append("import java.time.*;\n");  // Date/Time API
+                javaMain.append("import java.util.function.*;\n");  // Functional interfaces
+                javaMain.append("import java.util.regex.*;\n");  // Regular expressions
+                javaMain.append("import java.util.HashMap;\n");  // Explicitly import HashMap
+                javaMain.append("import java.util.List;\n");  // Explicitly import List
+                javaMain.append("import java.util.ArrayList;\n");  // Explicitly import ArrayList
+                javaMain.append("\n");
+
                 javaMain.append("public class Main {\n");
                 javaMain.append("    public static void main(String[] args) {\n");
                 javaMain.append("        Scanner scanner = new Scanner(System.in);\n");
@@ -438,7 +573,7 @@ public class WorkerService {
                     String paramName = "param" + i;
                     switch (paramType) {
                         case "int[]":
-                            // Parse array input like "[2,7,11,15]"
+                            // Xử lý mảng int, ví dụ: "[2,7,11,15]"
                             javaMain.append("        String ").append(paramName).append("Str = scanner.nextLine();\n");
                             javaMain.append("        ").append(paramName).append("Str = ").append(paramName).append("Str.replace(\"[\", \"\").replace(\"]\", \"\");\n");
                             javaMain.append("        String[] ").append(paramName).append("Parts = ").append(paramName).append("Str.split(\",\");\n");
@@ -447,14 +582,59 @@ public class WorkerService {
                             javaMain.append("            ").append(paramName).append("[i] = Integer.parseInt(").append(paramName).append("Parts[i].trim());\n");
                             javaMain.append("        }\n");
                             break;
+                        case "list<integer>":
+                        case "list[integer]":
+                        case "arraylist<integer>":
+                            // Xử lý List<Integer>, ví dụ: "[2,7,11,15]"
+                            javaMain.append("        String ").append(paramName).append("Str = scanner.nextLine();\n");
+                            javaMain.append("        ").append(paramName).append("Str = ").append(paramName).append("Str.replace(\"[\", \"\").replace(\"]\", \"\");\n");
+                            javaMain.append("        List<Integer> ").append(paramName).append(" = Arrays.stream(").append(paramName).append("Str.split(\",\"))\n");
+                            javaMain.append("            .map(String::trim)\n");
+                            javaMain.append("            .filter(s -> !s.isEmpty())\n");
+                            javaMain.append("            .map(Integer::parseInt)\n");
+                            javaMain.append("            .collect(Collectors.toList());\n");
+                            break;
+                        case "string[]":
+                            // Xử lý mảng String, ví dụ: "[\"abc\", \"def\"]"
+                            javaMain.append("        String ").append(paramName).append("Str = scanner.nextLine();\n");
+                            javaMain.append("        ").append(paramName).append("Str = ").append(paramName).append("Str.substring(1, ").append(paramName).append("Str.length() - 1);\n");
+                            javaMain.append("        String[] ").append(paramName).append(" = ").append(paramName).append("Str.split(\",\");\n");
+                            javaMain.append("        for (int i = 0; i < ").append(paramName).append(".length; i++) {\n");
+                            javaMain.append("            ").append(paramName).append("[i] = ").append(paramName).append("[i].trim().replace(\"\\\"\", \"\");\n");
+                            javaMain.append("        }\n");
+                            break;
+                        case "list<string>":
+                        case "list[string]":
+                            // Xử lý List<String>, ví dụ: "[\"abc\", \"def\"]"
+                            javaMain.append("        String ").append(paramName).append("Str = scanner.nextLine();\n");
+                            javaMain.append("        ").append(paramName).append("Str = ").append(paramName).append("Str.substring(1, ").append(paramName).append("Str.length() - 1);\n");
+                            javaMain.append("        List<String> ").append(paramName).append(" = Arrays.stream(").append(paramName).append("Str.split(\",\"))\n");
+                            javaMain.append("            .map(s -> s.trim().replace(\"\\\"\", \"\"))\n");
+                            javaMain.append("            .collect(Collectors.toList());\n");
+                            break;
                         case "string":
+                            // Xử lý String
                             javaMain.append("        String ").append(paramName).append(" = scanner.nextLine();\n");
                             break;
                         case "int":
-                            javaMain.append("        int ").append(paramName).append(" = Integer.parseInt(scanner.nextLine());\n");
+                            // Xử lý int
+                            javaMain.append("        int ").append(paramName).append(" = Integer.parseInt(scanner.nextLine().trim());\n");
+                            break;
+                        case "long":
+                            // Xử lý long
+                            javaMain.append("        long ").append(paramName).append(" = Long.parseLong(scanner.nextLine().trim());\n");
                             break;
                         case "double":
-                            javaMain.append("        double ").append(paramName).append(" = Double.parseDouble(scanner.nextLine());\n");
+                            // Xử lý double
+                            javaMain.append("        double ").append(paramName).append(" = Double.parseDouble(scanner.nextLine().trim());\n");
+                            break;
+                        case "char":
+                            // Xử lý char
+                            javaMain.append("        char ").append(paramName).append(" = scanner.nextLine().trim().charAt(0);\n");
+                            break;
+                        case "boolean":
+                            // Xử lý boolean
+                            javaMain.append("        boolean ").append(paramName).append(" = Boolean.parseBoolean(scanner.nextLine().trim());\n");
                             break;
                         default:
                             throw new UnsupportedOperationException("Unsupported parameter type in Java: " + paramType);
@@ -463,12 +643,15 @@ public class WorkerService {
                     if (i < paramTypes.size() - 1) paramList.append(", ");
                 }
 
-                javaMain.append("        ").append(mainClassName).append(" solution = new ").append(mainClassName).append("();\n");
+                // Gọi hàm từ Solution.java
+                javaMain.append("\n        Solution solution = new Solution();\n");
                 javaMain.append("        ").append(returnType).append(" result = solution.").append(functionName).append("(").append(paramList).append(");\n");
 
-                // Handle output based on returnType
+                // Xử lý output dựa trên loại trả về
                 if (returnType.toLowerCase().equals("int[]")) {
                     javaMain.append("        System.out.println(Arrays.toString(result).replace(\" \", \"\"));\n");
+                } else if (returnType.toLowerCase().startsWith("list")) {
+                    javaMain.append("        System.out.println(result.toString().replace(\" \", \"\"));\n");
                 } else {
                     javaMain.append("        System.out.println(result);\n");
                 }
@@ -478,28 +661,82 @@ public class WorkerService {
 
             case "python":
                 StringBuilder pythonMain = new StringBuilder();
-                pythonMain.append("import ").append(mainClassName).append("\n\n");
+                pythonMain.append("#!/usr/bin/env python3\n");
+                pythonMain.append("# -*- coding: utf-8 -*-\n\n");
+                pythonMain.append("from typing import List\n");
+                pythonMain.append("import json\n");
+                pythonMain.append("import solution\n\n");
 
                 StringBuilder paramListPy = new StringBuilder();
                 for (int i = 0; i < paramTypes.size(); i++) {
-                    String paramType = paramTypes.get(i);
                     String paramName = "param" + i;
+                    pythonMain.append("# Read input ").append(paramName).append("\n");
                     pythonMain.append(paramName).append(" = input().strip()\n");
+                    
+                    String paramType = paramTypes.get(i);
                     switch (paramType.toLowerCase()) {
+                        case "list[int]":
+                            pythonMain.append("try:\n");
+                            pythonMain.append("    ").append(paramName).append(" = json.loads(").append(paramName).append(")\n");
+                            pythonMain.append("    ").append(paramName).append(" = [int(x) for x in ").append(paramName).append("]\n");
+                            pythonMain.append("except (json.JSONDecodeError, ValueError) as e:\n");
+                            pythonMain.append("    raise ValueError(f'Invalid input format for array: {e}')\n");
+                            break;
+                        case "list[float]":
+                            pythonMain.append("try:\n");
+                            pythonMain.append("    ").append(paramName).append(" = json.loads(").append(paramName).append(")\n");
+                            pythonMain.append("    ").append(paramName).append(" = [float(x) for x in ").append(paramName).append("]\n");
+                            pythonMain.append("except (json.JSONDecodeError, ValueError) as e:\n");
+                            pythonMain.append("    raise ValueError(f'Invalid input format for array: {e}')\n");
+                            break;
+                        case "list[str]":
+                            pythonMain.append("try:\n");
+                            pythonMain.append("    ").append(paramName).append(" = json.loads(").append(paramName).append(")\n");
+                            pythonMain.append("    if not all(isinstance(x, str) for x in ").append(paramName).append("):\n");
+                            pythonMain.append("        raise ValueError('All elements must be strings')\n");
+                            pythonMain.append("except json.JSONDecodeError as e:\n");
+                            pythonMain.append("    raise ValueError(f'Invalid input format for array: {e}')\n");
+                            break;
                         case "int":
-                            pythonMain.append(paramName).append(" = int(").append(paramName).append(")\n");
+                            pythonMain.append("try:\n");
+                            pythonMain.append("    ").append(paramName).append(" = int(").append(paramName).append(")\n");
+                            pythonMain.append("except ValueError:\n");
+                            pythonMain.append("    raise ValueError('Invalid integer input')\n");
                             break;
+                        case "float":
                         case "double":
-                            pythonMain.append(paramName).append(" = float(").append(paramName).append(")\n");
+                            pythonMain.append("try:\n");
+                            pythonMain.append("    ").append(paramName).append(" = float(").append(paramName).append(")\n");
+                            pythonMain.append("except ValueError:\n");
+                            pythonMain.append("    raise ValueError('Invalid float input')\n");
                             break;
+                        case "str":
+                        case "string":
+                            // String input doesn't need conversion
+                            break;
+                        default:
+                            throw new UnsupportedOperationException("Unsupported parameter type in Python: " + paramType);
                     }
+                    pythonMain.append("\n");
                     paramListPy.append(paramName);
                     if (i < paramTypes.size() - 1) paramListPy.append(", ");
                 }
 
-                pythonMain.append("result = ").append(mainClassName).append(".").append(functionName).append("(").append(paramListPy.toString()).append(")\n");
-                pythonMain.append("print(result)\n");
-                return pythonMain.toString();
+                pythonMain.append("# Call the solution function\n");
+                pythonMain.append("result = solution.").append(functionName).append("(").append(paramListPy.toString()).append(")\n\n");
+                pythonMain.append("# Format and print the result\n");
+                pythonMain.append("if isinstance(result, list):\n");
+                pythonMain.append("    # Convert list to string and remove spaces after commas\n");
+                pythonMain.append("    print(str(result).replace(', ', ','))\n");
+                pythonMain.append("elif isinstance(result, bool):\n");
+                pythonMain.append("    # Convert Python's True/False to lowercase true/false\n");
+                pythonMain.append("    print(str(result).lower())\n");
+                pythonMain.append("else:\n");
+                pythonMain.append("    print(result)\n");
+
+                String mainProgram = pythonMain.toString();
+                log.debug("Generated Python main program:\n{}", mainProgram);
+                return mainProgram;
 
             case "cpp":
                 StringBuilder cppMain = new StringBuilder();

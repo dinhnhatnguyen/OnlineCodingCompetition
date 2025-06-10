@@ -21,6 +21,16 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
+/**
+ * Service for executing code submissions in isolated environments.
+ * Service thực thi mã nguồn trong môi trường độc lập.
+ *
+ * Main features / Tính năng chính:
+ * - Code execution in Docker / Thực thi code trong Docker
+ * - Resource monitoring / Giám sát tài nguyên
+ * - Security isolation / Cách ly bảo mật
+ * - Multiple language support / Hỗ trợ nhiều ngôn ngữ
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -31,7 +41,10 @@ public class RunService {
     private final TestCaseService testCaseService;
     private final ObjectMapper objectMapper;
     
-    // Constants for language settings
+    /**
+     * Maps programming languages to Docker images
+     * Ánh xạ ngôn ngữ lập trình với Docker image
+     */
     private static final Map<String, String> LANGUAGE_IMAGE_MAP = Map.of(
             "java", "java-runner",
             "python", "python-runner",
@@ -39,6 +52,10 @@ public class RunService {
             "javascript", "js-runner"
     );
 
+    /**
+     * Maps programming languages to file extensions
+     * Ánh xạ ngôn ngữ lập trình với phần mở rộng file
+     */
     private static final Map<String, String> LANGUAGE_EXTENSION_MAP = Map.of(
             "java", ".java",
             "python", ".py",
@@ -46,6 +63,10 @@ public class RunService {
             "javascript", ".js"
     );
 
+    /**
+     * Maps programming languages to main class/file names
+     * Ánh xạ ngôn ngữ lập trình với tên file/class chính
+     */
     private static final Map<String, String> LANGUAGE_MAIN_CLASS_MAP = Map.of(
             "java", "Solution",
             "python", "solution",
@@ -53,7 +74,10 @@ public class RunService {
             "javascript", "solution"
     );
     
-    // New DTO for scratch pad code execution
+    /**
+     * DTO for scratch pad code execution
+     * DTO cho thực thi code trực tiếp
+     */
     public static class ScratchCodeDTO {
         private String code;
         private String language;
@@ -85,7 +109,10 @@ public class RunService {
         }
     }
     
-    // New DTO for scratch pad execution result
+    /**
+     * DTO for scratch pad execution results
+     * DTO cho kết quả thực thi code trực tiếp
+     */
     public static class ScratchResultDTO {
         private String status;
         private String output;
@@ -146,6 +173,15 @@ public class RunService {
         }
     }
     
+    /**
+     * Executes code in scratch pad mode
+     * Thực thi code ở chế độ thử nghiệm
+     * 
+     * Features / Tính năng:
+     * - Direct code execution / Thực thi code trực tiếp
+     * - Resource limits / Giới hạn tài nguyên
+     * - Error handling / Xử lý lỗi
+     */
     public ScratchResultDTO runScratchCode(ScratchCodeDTO scratchCodeDTO) {
         try {
             // Create a temporary directory for compilation and execution
@@ -266,6 +302,15 @@ public class RunService {
         }
     }
     
+    /**
+     * Executes code against test cases
+     * Thực thi code với các test case
+     * 
+     * Process / Quy trình:
+     * 1. Setup environment / Chuẩn bị môi trường
+     * 2. Run test cases / Chạy test case
+     * 3. Collect results / Thu thập kết quả
+     */
     public RunCodeResultDTO runCode(RunCodeDTO runCodeDTO) {
         try {
             Problem problem = problemRepository.findById(runCodeDTO.getProblemId())
@@ -352,6 +397,15 @@ public class RunService {
         }
     }
     
+    /**
+     * Runs a single test case
+     * Thực thi một test case
+     * 
+     * Steps / Các bước:
+     * 1. Prepare input / Chuẩn bị đầu vào
+     * 2. Execute code / Thực thi code
+     * 3. Validate output / Kiểm tra đầu ra
+     */
     private TestCaseRunResultDTO runSingleTestCase(
             TestCase testCase, String tempDirPath, String sourceFilePath, String language, Problem problem) {
         
@@ -449,6 +503,14 @@ public class RunService {
         }
     }
     
+    /**
+     * Measures Docker container memory usage
+     * Đo lường bộ nhớ sử dụng của container Docker
+     * 
+     * Units / Đơn vị:
+     * - Input: B/KiB/MiB/GiB
+     * - Output: KB
+     */
     private long measureMemoryUsage(String containerName) {
         try {
             ProcessBuilder pb = new ProcessBuilder(
@@ -486,6 +548,15 @@ public class RunService {
         }
     }
     
+    /**
+     * Compares outputs with different comparison modes
+     * So sánh kết quả với các chế độ khác nhau
+     * 
+     * Modes / Chế độ:
+     * - EXACT: Exact match / Khớp chính xác
+     * - FLOAT: With epsilon / Với sai số
+     * - IGNORE_WHITESPACE: Ignore spaces / Bỏ qua khoảng trắng
+     */
     private boolean compareOutputs(String userOutput, String expectedOutput, TestCase testCase) {
         if (userOutput == null && expectedOutput == null) return true;
         if (userOutput == null || expectedOutput == null) return false;

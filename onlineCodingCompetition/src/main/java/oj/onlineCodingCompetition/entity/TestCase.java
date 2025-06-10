@@ -67,5 +67,4 @@ public class TestCase {
     @Column(name = "epsilon")
     private Double epsilon; // Dùng cho so sánh FLOAT
 
-
 }

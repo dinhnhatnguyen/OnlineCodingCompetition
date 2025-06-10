@@ -35,7 +35,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-
+/**
+ * Service for managing code submissions in the system.
+ * Service quản lý các bài nộp code trong hệ thống.
+ *
+ * Main features / Tính năng chính:
+ * - Submission processing / Xử lý bài nộp
+ * - Queue management / Quản lý hàng đợi
+ * - Contest integration / Tích hợp với cuộc thi
+ * - Result tracking / Theo dõi kết quả
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -57,6 +66,15 @@ public class SubmissionService {
 
     private final ObjectMapper objectMapper;
 
+    /**
+     * Creates a new submission and sends it to processing queue
+     * Tạo mới bài nộp và gửi vào hàng đợi xử lý
+     * 
+     * Steps / Các bước:
+     * 1. Validate submission / Kiểm tra tính hợp lệ
+     * 2. Save to database / Lưu vào database
+     * 3. Send to SQS queue / Gửi vào hàng đợi SQS
+     */
     @Transactional
     public SubmissionDTO createSubmission(SubmissionDTO submissionDTO, Long userId) {
         log.debug("Creating submission for user {} with payload: {}", userId, submissionDTO);
@@ -158,7 +176,15 @@ public class SubmissionService {
         }
     }
 
-
+    /**
+     * Gets submission details by ID
+     * Lấy thông tin bài nộp theo ID
+     * 
+     * Includes / Bao gồm:
+     * - Basic info / Thông tin cơ bản
+     * - Test results / Kết quả test
+     * - Execution metrics / Chỉ số thực thi
+     */
     @Transactional(readOnly = true)
     public SubmissionDTO getSubmissionById(Long id) {
         log.debug("Getting submission by ID: {}", id);
@@ -186,7 +212,15 @@ public class SubmissionService {
         return dto;
     }
 
-
+    /**
+     * Updates submission status and results
+     * Cập nhật trạng thái và kết quả bài nộp
+     * 
+     * Actions / Hành động:
+     * - Update status / Cập nhật trạng thái
+     * - Record metrics / Ghi nhận chỉ số
+     * - Update contest scores / Cập nhật điểm thi
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @Retryable(value = {Exception.class}, maxAttempts = 5, backoff = @Backoff(delay = 200))
     public void updateSubmission(Submission submission) {
@@ -238,12 +272,10 @@ public class SubmissionService {
         }
     }
 
-
     private SubmissionDTO convertToDTO(Submission submission) {
         SubmissionDTO dto = modelMapper.map(submission, SubmissionDTO.class);
         return dto;
     }
-
 
     @Transactional(readOnly = true)
     public Submission getSubmissionEntityById(Long id) {
@@ -251,6 +283,10 @@ public class SubmissionService {
                 .orElseThrow(() -> new RuntimeException("Submission not found: " + id));
     }
     
+    /**
+     * Marks a problem as solved by user
+     * Đánh dấu bài toán đã được giải bởi người dùng
+     */
     @Transactional
     public void markProblemSolved(Long problemId, Long userId) {
         // Kiểm tra xem bài đã được đánh dấu là đã giải chưa
@@ -271,6 +307,10 @@ public class SubmissionService {
         }
     }
     
+    /**
+     * Gets list of problems solved by user
+     * Lấy danh sách bài toán đã giải của người dùng
+     */
     @Transactional(readOnly = true)
     public List<Long> getUserSolvedProblems(Long userId) {
         return userSolvedProblemRepository.findByUserId(userId).stream()
@@ -278,6 +318,15 @@ public class SubmissionService {
                 .collect(Collectors.toList());
     }
     
+    /**
+     * Gets detailed test case results for a submission
+     * Lấy kết quả chi tiết các test case của bài nộp
+     * 
+     * Includes / Bao gồm:
+     * - Test status / Trạng thái test
+     * - Input/Output / Đầu vào/ra
+     * - Error messages / Thông báo lỗi
+     */
     @Transactional(readOnly = true)
     public List<TestCaseResultDTO> getTestCaseResults(Long submissionId) {
         Submission submission = submissionRepository.findById(submissionId)

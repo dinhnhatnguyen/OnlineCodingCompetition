@@ -496,7 +496,8 @@ export default function ContestDetails() {
                   </div>
                   {(contest.status === "UPCOMING" ||
                     contest.status === "ONGOING") &&
-                    !userRegistration && (
+                    !userRegistration &&
+                    !contest.public && (
                       <button
                         className="bg-[#722055] hover:bg-[#50153a] text-white font-semibold rounded-full px-4 py-2 w-full"
                         onClick={handleRegister}

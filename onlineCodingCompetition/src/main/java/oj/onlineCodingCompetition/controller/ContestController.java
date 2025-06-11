@@ -25,6 +25,16 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Controller class for managing programming contests
+ * Lớp controller để quản lý các cuộc thi lập trình
+ *
+ * This controller handles all contest-related operations including:
+ * Controller này xử lý tất cả các hoạt động liên quan đến cuộc thi bao gồm:
+ * - Contest CRUD operations (Các thao tác CRUD cho cuộc thi)
+ * - Contest registration management (Quản lý đăng ký cuộc thi)
+ * - Leaderboard functionality (Chức năng bảng xếp hạng)
+ */
 @RestController
 @RequestMapping("/api/contests")
 @RequiredArgsConstructor
@@ -35,30 +45,64 @@ public class ContestController {
     private final ContestService contestService;
     private final UserRepository userRepository;
 
+    /**
+     * Retrieves all contests
+     * Lấy tất cả các cuộc thi
+     *
+     * @return List of all contests (Danh sách tất cả các cuộc thi)
+     */
     @GetMapping
     public ResponseEntity<List<ContestDTO>> getAllContests() {
         log.debug("Yêu cầu lấy tất cả cuộc thi");
         return ResponseEntity.ok(contestService.getAllContests());
     }
 
+    /**
+     * Retrieves paginated list of contests
+     * Lấy danh sách cuộc thi theo trang
+     *
+     * @param pageable Pagination information (Thông tin phân trang)
+     * @return Page of contests (Trang chứa danh sách cuộc thi)
+     */
     @GetMapping("/page")
     public ResponseEntity<Page<ContestDTO>> getContestsPage(Pageable pageable) {
         log.debug("Yêu cầu lấy danh sách cuộc thi theo trang");
         return ResponseEntity.ok(contestService.getContestsPage(pageable));
     }
 
+    /**
+     * Retrieves a specific contest by its ID
+     * Lấy thông tin cuộc thi theo ID
+     *
+     * @param id Contest ID (ID của cuộc thi)
+     * @return Contest information (Thông tin cuộc thi)
+     */
     @GetMapping("/{id}")
     public ResponseEntity<ContestDTO> getContestById(@PathVariable Long id) {
         log.debug("Yêu cầu lấy cuộc thi với ID: {}", id);
         return ResponseEntity.ok(contestService.getContestById(id));
     }
 
+    /**
+     * Retrieves the leaderboard for a specific contest
+     * Lấy bảng xếp hạng cho một cuộc thi cụ thể
+     *
+     * @param id Contest ID (ID của cuộc thi)
+     * @return List of contest registrations sorted by score (Danh sách đăng ký cuộc thi được sắp xếp theo điểm)
+     */
     @GetMapping("/{id}/leaderboard")
     public ResponseEntity<List<ContestRegistrationDTO>> getLeaderboard(@PathVariable Long id) {
         log.debug("Yêu cầu lấy bảng xếp hạng cho cuộc thi ID: {}", id);
         return ResponseEntity.ok(contestService.getLeaderboard(id));
     }
 
+    /**
+     * Retrieves all registrations for a contest (Admin/Instructor only)
+     * Lấy tất cả đăng ký cho một cuộc thi (Chỉ dành cho Admin/Giảng viên)
+     *
+     * @param id Contest ID (ID của cuộc thi)
+     * @return List of contest registrations (Danh sách đăng ký cuộc thi)
+     */
     @GetMapping("/{id}/registrations")
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<List<ContestRegistrationDTO>> getRegistrations(@PathVariable Long id) {
@@ -66,6 +110,14 @@ public class ContestController {
         return ResponseEntity.ok(contestService.getRegistrations(id));
     }
 
+    /**
+     * Creates a new contest (Admin/Instructor only)
+     * Tạo một cuộc thi mới (Chỉ dành cho Admin/Giảng viên)
+     *
+     * @param contestDTO Contest data (Dữ liệu cuộc thi)
+     * @param userDetails Current user details (Thông tin người dùng hiện tại)
+     * @return Created contest information (Thông tin cuộc thi đã tạo)
+     */
     @PostMapping
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<ContestDTO> createContest(
@@ -80,6 +132,14 @@ public class ContestController {
         return new ResponseEntity<>(createdContest, HttpStatus.CREATED);
     }
 
+    /**
+     * Updates an existing contest (Admin/Instructor only)
+     * Cập nhật một cuộc thi đã tồn tại (Chỉ dành cho Admin/Giảng viên)
+     *
+     * @param id Contest ID (ID của cuộc thi)
+     * @param contestDTO Updated contest data (Dữ liệu cuộc thi cập nhật)
+     * @return Updated contest information (Thông tin cuộc thi đã cập nhật)
+     */
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<ContestDTO> updateContest(
@@ -89,6 +149,14 @@ public class ContestController {
         return ResponseEntity.ok(contestService.updateContest(id, contestDTO));
     }
 
+    /**
+     * Deletes a contest (Admin or contest creator only)
+     * Xóa một cuộc thi (Chỉ dành cho Admin hoặc người tạo cuộc thi)
+     *
+     * @param id Contest ID (ID của cuộc thi)
+     * @param authentication Current user authentication (Thông tin xác thực người dùng hiện tại)
+     * @return Response message (Thông báo phản hồi)
+     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @contestService.isContestCreator(#id, authentication.principal.id)")
     public ResponseEntity<?> deleteContest(@PathVariable Long id, Authentication authentication) {
@@ -109,6 +177,14 @@ public class ContestController {
         }
     }
 
+    /**
+     * Registers a user for a contest
+     * Đăng ký người dùng cho một cuộc thi
+     *
+     * @param id Contest ID (ID của cuộc thi)
+     * @param userDetails Current user details (Thông tin người dùng hiện tại)
+     * @return Registration information (Thông tin đăng ký)
+     */
     @PostMapping("/{id}/register")
     public ResponseEntity<ContestRegistrationDTO> registerUser(
             @PathVariable Long id,
@@ -121,6 +197,13 @@ public class ContestController {
         return ResponseEntity.ok(contestService.registerUser(id, user.getId()));
     }
 
+    /**
+     * Approves a contest registration (Admin/Instructor only)
+     * Phê duyệt đăng ký cuộc thi (Chỉ dành cho Admin/Giảng viên)
+     *
+     * @param registrationId Registration ID (ID đăng ký)
+     * @return Empty response with OK status (Phản hồi trống với trạng thái OK)
+     */
     @PostMapping("/registrations/{registrationId}/approve")
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<Void> approveRegistration(@PathVariable Long registrationId) {
@@ -129,6 +212,13 @@ public class ContestController {
         return ResponseEntity.ok().build();
     }
 
+    /**
+     * Rejects a contest registration (Admin/Instructor only)
+     * Từ chối đăng ký cuộc thi (Chỉ dành cho Admin/Giảng viên)
+     *
+     * @param registrationId Registration ID (ID đăng ký)
+     * @return Empty response with OK status (Phản hồi trống với trạng thái OK)
+     */
     @PostMapping("/registrations/{registrationId}/reject")
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<Void> rejectRegistration(@PathVariable Long registrationId) {
@@ -137,7 +227,13 @@ public class ContestController {
         return ResponseEntity.ok().build();
     }
 
-    // Endpoint để lấy tất cả các bài toán có thể thêm vào cuộc thi
+    /**
+     * Retrieves all problems that can be added to a contest (Admin/Instructor only)
+     * Lấy tất cả các bài toán có thể thêm vào cuộc thi (Chỉ dành cho Admin/Giảng viên)
+     *
+     * @param contestId Contest ID (ID của cuộc thi)
+     * @return List of available problems (Danh sách các bài toán có sẵn)
+     */
     @GetMapping("/{contestId}/available-problems")
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<List<ProblemDTO>> getAvailableProblems(@PathVariable Long contestId) {
@@ -145,6 +241,13 @@ public class ContestController {
         return ResponseEntity.ok(contestService.getAvailableProblemsForContest(contestId));
     }
 
+    /**
+     * Retrieves all contests created by the current user (Admin/Instructor only)
+     * Lấy tất cả các cuộc thi do người dùng hiện tại tạo (Chỉ dành cho Admin/Giảng viên)
+     *
+     * @param userDetails Current user details (Thông tin người dùng hiện tại)
+     * @return List of contests created by the user (Danh sách cuộc thi do người dùng tạo)
+     */
     @GetMapping("/my-contests")
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<List<ContestDTO>> getMyContests(@AuthenticationPrincipal UserDetails userDetails) {

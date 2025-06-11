@@ -26,6 +26,16 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Service for managing programming contests in the system.
+ * Service quản lý các cuộc thi lập trình trong hệ thống.
+ *
+ * Main features / Tính năng chính:
+ * - Contest management / Quản lý cuộc thi
+ * - Registration handling / Xử lý đăng ký
+ * - Leaderboard tracking / Theo dõi bảng xếp hạng
+ * - Status automation / Tự động hóa trạng thái
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -38,6 +48,16 @@ public class ContestService {
     private final SubmissionRepository submissionRepository;
     private final ModelMapper modelMapper;
 
+    /**
+     * Creates a new contest
+     * Tạo mới cuộc thi
+     * 
+     * Steps / Các bước:
+     * 1. Validate input / Kiểm tra đầu vào
+     * 2. Create contest / Tạo cuộc thi
+     * 3. Add problems / Thêm bài toán
+     * 4. Set status / Đặt trạng thái
+     */
     @Transactional
     public ContestDTO createContest(ContestDTO contestDTO, Long creatorId) {
         log.debug("Tạo cuộc thi mới bởi user ID: {}", creatorId);
@@ -86,6 +106,16 @@ public class ContestService {
         return convertToDTO(savedContest);
     }
 
+    /**
+     * Updates an existing contest
+     * Cập nhật cuộc thi đã tồn tại
+     * 
+     * Updates / Cập nhật:
+     * - Basic info / Thông tin cơ bản
+     * - Problems / Bài toán
+     * - Status / Trạng thái
+     * - Time settings / Cài đặt thời gian
+     */
     @Transactional
     public ContestDTO updateContest(Long id, ContestDTO contestDTO) {
         log.debug("Cập nhật cuộc thi với ID: {}", id);
@@ -158,6 +188,16 @@ public class ContestService {
         log.info("Contest soft deleted successfully with ID: {} by user: {}", id, userId);
     }
 
+    /**
+     * Registers a user for a contest
+     * Đăng ký người dùng vào cuộc thi
+     * 
+     * Checks / Kiểm tra:
+     * - Contest exists / Cuộc thi tồn tại
+     * - User exists / Người dùng tồn tại
+     * - Registration limits / Giới hạn đăng ký
+     * - Previous registration / Đăng ký trước đó
+     */
     @Transactional
     public ContestRegistrationDTO registerUser(Long contestId, Long userId) {
         log.debug("Đăng ký user {} cho cuộc thi {}", userId, contestId);
@@ -204,6 +244,15 @@ public class ContestService {
         return convertToRegistrationDTO(savedRegistration);
     }
 
+    /**
+     * Approves a contest registration
+     * Duyệt đăng ký cuộc thi
+     * 
+     * Validations / Kiểm tra:
+     * - Registration exists / Đăng ký tồn tại
+     * - Participant limit / Giới hạn người tham gia
+     * - Contest status / Trạng thái cuộc thi
+     */
     @Transactional
     public void approveRegistration(Long registrationId) {
         log.debug("Duyệt đăng ký với ID: {}", registrationId);
@@ -288,6 +337,15 @@ public class ContestService {
         return convertToDTO(contest);
     }
 
+    /**
+     * Gets contest leaderboard
+     * Lấy bảng xếp hạng cuộc thi
+     * 
+     * Includes / Bao gồm:
+     * - User info / Thông tin người dùng
+     * - Total score / Điểm tổng
+     * - Registration status / Trạng thái đăng ký
+     */
     @Transactional(readOnly = true)
     public List<ContestRegistrationDTO> getLeaderboard(Long contestId) {
         log.debug("Lấy bảng xếp hạng cho cuộc thi ID: {}", contestId);
@@ -343,6 +401,15 @@ public class ContestService {
                 .orElse(false);
     }
 
+    /**
+     * Updates contest score for a user
+     * Cập nhật điểm cuộc thi cho người dùng
+     * 
+     * Process / Quy trình:
+     * 1. Find/Create registration / Tìm/Tạo đăng ký
+     * 2. Calculate scores / Tính toán điểm số
+     * 3. Update total score / Cập nhật tổng điểm
+     */
     @Transactional
     public void updateContestScore(Long contestId, Long userId, Long problemId, Double score) {
         log.debug("Cập nhật điểm cho cuộc thi ID: {}, user ID: {}, problem ID: {}, điểm: {}", 
@@ -461,6 +528,15 @@ public class ContestService {
         return dto;
     }
 
+    /**
+     * Validates contest data before saving
+     * Kiểm tra dữ liệu cuộc thi trước khi lưu
+     * 
+     * Checks / Kiểm tra:
+     * - Time validity / Tính hợp lệ thời gian
+     * - Participant limit / Giới hạn người tham gia
+     * - Status validity / Tính hợp lệ trạng thái
+     */
     private void validateContestDTO(ContestDTO contestDTO) {
         if (contestDTO.getStartTime() == null || contestDTO.getEndTime() == null) {
             throw new IllegalArgumentException("Thời gian bắt đầu và kết thúc là bắt buộc");
@@ -558,6 +634,15 @@ public class ContestService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Updates contest status based on time
+     * Cập nhật trạng thái cuộc thi dựa trên thời gian
+     * 
+     * States / Trạng thái:
+     * - UPCOMING: Before start / Chưa bắt đầu
+     * - ONGOING: In progress / Đang diễn ra
+     * - COMPLETED: Finished / Đã kết thúc
+     */
     @Transactional
     public void updateContestStatus(Contest contest) {
         LocalDateTime now = LocalDateTime.now();
@@ -604,6 +689,14 @@ public class ContestService {
         }
     }
 
+    /**
+     * Determines contest status based on time and requested status
+     * Xác định trạng thái cuộc thi dựa trên thời gian và yêu cầu
+     * 
+     * Rules / Quy tắc:
+     * - Manual states: DRAFT, CANCELLED / Trạng thái thủ công: DRAFT, CANCELLED
+     * - Auto states: UPCOMING, ONGOING, COMPLETED / Trạng thái tự động: UPCOMING, ONGOING, COMPLETED
+     */
     private Contest.ContestStatus determineContestStatus(Contest.ContestStatus requestedStatus, LocalDateTime startTime, LocalDateTime endTime) {
         if (requestedStatus == Contest.ContestStatus.DRAFT || 
             requestedStatus == Contest.ContestStatus.CANCELLED ||

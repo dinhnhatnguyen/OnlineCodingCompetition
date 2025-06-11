@@ -13,35 +13,80 @@ import oj.onlineCodingCompetition.service.TestCaseService;
 
 import java.util.List;
 
+/**
+ * Controller class for managing test cases
+ * Lớp controller để quản lý các test case
+ *
+ * This controller handles all test case-related operations including:
+ * Controller này xử lý tất cả các hoạt động liên quan đến test case bao gồm:
+ * - Test case CRUD operations (Các thao tác CRUD cho test case)
+ * - Problem-specific test case management (Quản lý test case cho từng bài toán)
+ * - Example and visibility management (Quản lý test case mẫu và hiển thị)
+ */
 @RestController
 @RequestMapping("/api/test-cases")
 @RequiredArgsConstructor
 @Tag(name = "Testcase", description = "API để quản lý TestCase")
-
 public class TestCaseController {
 
     private final TestCaseService testCaseService;
 
+    /**
+     * Retrieves a specific test case by its ID
+     * Lấy thông tin một test case theo ID
+     *
+     * @param id Test case ID (ID của test case)
+     * @return Test case information (Thông tin test case)
+     */
     @GetMapping("/{id}")
     public ResponseEntity<TestCaseDTO> getTestCaseById(@PathVariable Long id) {
         return ResponseEntity.ok(testCaseService.getTestCaseById(id));
     }
 
+    /**
+     * Retrieves all test cases for a specific problem
+     * Lấy tất cả test case cho một bài toán cụ thể
+     *
+     * @param problemId Problem ID (ID của bài toán)
+     * @return List of test cases (Danh sách test case)
+     */
     @GetMapping("/problem/{problemId}")
     public ResponseEntity<List<TestCaseDTO>> getAllTestCasesByProblemId(@PathVariable Long problemId) {
         return ResponseEntity.ok(testCaseService.getAllTestCasesByProblemId(problemId));
     }
 
+    /**
+     * Retrieves example test cases for a specific problem
+     * Lấy các test case mẫu cho một bài toán cụ thể
+     *
+     * @param problemId Problem ID (ID của bài toán)
+     * @return List of example test cases (Danh sách test case mẫu)
+     */
     @GetMapping("/problem/{problemId}/examples")
     public ResponseEntity<List<TestCaseDTO>> getExampleTestCasesByProblemId(@PathVariable Long problemId) {
         return ResponseEntity.ok(testCaseService.getExampleTestCasesByProblemId(problemId));
     }
 
+    /**
+     * Retrieves visible test cases for a specific problem
+     * Lấy các test case được hiển thị cho một bài toán cụ thể
+     *
+     * @param problemId Problem ID (ID của bài toán)
+     * @return List of visible test cases (Danh sách test case được hiển thị)
+     */
     @GetMapping("/problem/{problemId}/visible")
     public ResponseEntity<List<TestCaseDTO>> getVisibleTestCasesByProblemId(@PathVariable Long problemId) {
         return ResponseEntity.ok(testCaseService.getVisibleTestCasesByProblemId(problemId));
     }
 
+    /**
+     * Creates a new test case (Admin/Instructor only)
+     * Tạo một test case mới (Chỉ dành cho Admin/Giảng viên)
+     *
+     * @param testCaseDTO Test case data (Dữ liệu test case)
+     * @return Created test case information (Thông tin test case đã tạo)
+     * @throws JsonProcessingException if there's an error processing JSON data (nếu có lỗi xử lý dữ liệu JSON)
+     */
     @PostMapping
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<TestCaseDTO> createTestCase(@Valid @RequestBody TestCaseDTO testCaseDTO) throws JsonProcessingException {
@@ -49,6 +94,14 @@ public class TestCaseController {
         return new ResponseEntity<>(createdTestCase, HttpStatus.CREATED);
     }
 
+    /**
+     * Creates multiple test cases for a problem (Admin/Instructor only)
+     * Tạo nhiều test case cho một bài toán (Chỉ dành cho Admin/Giảng viên)
+     *
+     * @param problemId Problem ID (ID của bài toán)
+     * @param testCaseDTOs List of test case data (Danh sách dữ liệu test case)
+     * @return List of created test cases (Danh sách test case đã tạo)
+     */
     @PostMapping("/batch/{problemId}")
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<List<TestCaseDTO>> createTestCases(
@@ -58,6 +111,15 @@ public class TestCaseController {
         return new ResponseEntity<>(createdTestCases, HttpStatus.CREATED);
     }
 
+    /**
+     * Updates an existing test case (Admin/Instructor only)
+     * Cập nhật một test case đã tồn tại (Chỉ dành cho Admin/Giảng viên)
+     *
+     * @param id Test case ID (ID của test case)
+     * @param testCaseDTO Updated test case data (Dữ liệu test case cập nhật)
+     * @return Updated test case information (Thông tin test case đã cập nhật)
+     * @throws JsonProcessingException if there's an error processing JSON data (nếu có lỗi xử lý dữ liệu JSON)
+     */
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<TestCaseDTO> updateTestCase(
@@ -66,6 +128,13 @@ public class TestCaseController {
         return ResponseEntity.ok(testCaseService.updateTestCase(id, testCaseDTO));
     }
 
+    /**
+     * Deletes a test case (Admin/Instructor only)
+     * Xóa một test case (Chỉ dành cho Admin/Giảng viên)
+     *
+     * @param id Test case ID (ID của test case)
+     * @return Empty response with no content status (Phản hồi trống với trạng thái không có nội dung)
+     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<Void> deleteTestCase(@PathVariable Long id) {
@@ -73,6 +142,13 @@ public class TestCaseController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Deletes all test cases for a specific problem (Admin/Instructor only)
+     * Xóa tất cả test case của một bài toán cụ thể (Chỉ dành cho Admin/Giảng viên)
+     *
+     * @param problemId Problem ID (ID của bài toán)
+     * @return Empty response with no content status (Phản hồi trống với trạng thái không có nội dung)
+     */
     @DeleteMapping("/problem/{problemId}")
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<Void> deleteAllTestCasesByProblemId(@PathVariable Long problemId) {

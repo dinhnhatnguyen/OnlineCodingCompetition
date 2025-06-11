@@ -195,12 +195,12 @@ const TEST_CASE_EXAMPLES = {
 
 // Test case template with proper formatting
 const TEST_CASE_TEMPLATE = {
-  inputData: '[{"input":"[1,2,3,4,5]","dataType":"int[]"}]',
-  inputType: "array",
-  outputType: "integer",
-  expectedOutputData: '{"expectedOutput":"4","dataType":"int"}',
-  description: "Test with distinct numbers",
-  isExample: true,
+  inputData: "",
+  inputType: "",
+  outputType: "",
+  expectedOutputData: "",
+  description: "",
+  isExample: false,
   isHidden: false,
   timeLimit: 1000,
   memoryLimit: 262144,
@@ -377,11 +377,25 @@ const TestCaseInputForm = ({ form, field }) => {
 
   const updateInputData = () => {
     const inputs = form.getFieldValue([field.name, "inputs"]) || [];
-    const inputData = inputs.map((input) => ({
-      input: input.value,
-      dataType: input.type,
-    }));
-    form.setFieldValue([field.name, "inputData"], JSON.stringify(inputData));
+    // Format input data theo đúng cấu trúc mà backend mong đợi
+    const formattedInputs = inputs
+      .filter((input) => input && input.value && input.type)
+      .map((input) => ({
+        input: input.value,
+        dataType: input.type,
+      }));
+
+    if (formattedInputs.length > 0) {
+      form.setFieldValue(
+        [field.name, "inputData"],
+        JSON.stringify(formattedInputs)
+      );
+      // Cập nhật inputType dựa trên type của input đầu tiên
+      form.setFieldValue(
+        [field.name, "inputType"],
+        formattedInputs[0].dataType
+      );
+    }
   };
 
   // Get example value based on type
@@ -559,30 +573,71 @@ const AdvancedProblemForm = ({
         return;
       }
 
+      // Format test cases data từ dữ liệu người dùng nhập
+      let formattedTestCases = [];
+      if (isCreating && values.testCases) {
+        formattedTestCases = values.testCases.map((testCase, index) => {
+          // Lấy dữ liệu input trực tiếp từ form
+          const inputs =
+            form.getFieldValue(["testCases", index, "inputs"]) || [];
+          const inputData = JSON.stringify(
+            inputs
+              .filter((input) => input && input.value && input.type)
+              .map((input) => ({
+                input: input.value,
+                dataType: input.type,
+              }))
+          );
+
+          // Lấy dữ liệu output trực tiếp từ form
+          const expectedOutput = form.getFieldValue([
+            "testCases",
+            index,
+            "expectedOutput",
+          ]);
+          const expectedOutputType = form.getFieldValue([
+            "testCases",
+            index,
+            "expectedOutputType",
+          ]);
+          const expectedOutputData = JSON.stringify({
+            expectedOutput: expectedOutput,
+            dataType: expectedOutputType,
+          });
+
+          return {
+            inputData,
+            expectedOutputData,
+            inputType: inputs[0]?.type || "array",
+            outputType: expectedOutputType || "integer",
+            description: testCase.description || `Test case ${index + 1}`,
+            isExample: testCase.isExample || false,
+            isHidden: testCase.isHidden || false,
+            timeLimit: testCase.timeLimit || 1000,
+            memoryLimit: testCase.memoryLimit || 262144,
+            weight: testCase.weight || 1.0,
+            testOrder: index + 1,
+            comparisonMode: testCase.comparisonMode || "EXACT",
+            epsilon: testCase.epsilon || null,
+          };
+        });
+      }
+
       // Prepare data for submission
       const formData = {
         createProblem: {
-          title: values.title,
-          description: values.description,
+          title: values.title?.trim(),
+          description: values.description?.trim(),
           difficulty: values.difficulty,
-          constraints: values.constraints,
+          constraints: values.constraints?.trim() || "",
           topics: topics,
           supportedLanguages: languageEnabled,
           functionSignatures: functionSignatures,
         },
+        createTestCases: formattedTestCases,
       };
 
-      // Chỉ thêm test cases nếu đang tạo mới problem
-      if (isCreating && values.testCases) {
-        formData.createTestCases = values.testCases.map((testCase, index) => ({
-          ...testCase,
-          testOrder: index + 1,
-        }));
-      } else if (!isCreating) {
-        // Nếu đang chỉnh sửa, giữ nguyên test cases cũ
-        formData.createProblem.testCases = initialValues?.testCases || [];
-      }
-
+      console.log("Submitting data:", formData);
       await onSubmit(formData);
       message.success({
         content: isCreating

@@ -16,6 +16,16 @@ import oj.onlineCodingCompetition.repository.TestCaseRepository;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Service for managing test cases in the system.
+ * Service quản lý các test case trong hệ thống.
+ *
+ * Main features / Tính năng chính:
+ * - Test case CRUD operations / Thao tác CRUD cho test case
+ * - Input/Output parsing / Xử lý đầu vào/đầu ra
+ * - Test case validation / Kiểm tra tính hợp lệ
+ * - Example test case management / Quản lý test case mẫu
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -25,18 +35,30 @@ public class TestCaseService {
     private final ProblemRepository problemRepository;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Data class for test case input
+     * Class dữ liệu cho đầu vào test case
+     */
     @Data
     public static class TestCaseInput {
-        private String input;
-        private String dataType;
+        private String input;      // Input value / Giá trị đầu vào
+        private String dataType;   // Data type / Kiểu dữ liệu
     }
 
+    /**
+     * Data class for test case output
+     * Class dữ liệu cho đầu ra test case
+     */
     @Data
     public static class TestCaseOutput {
-        private String expectedOutput;
-        private String dataType;
+        private String expectedOutput;  // Expected output / Đầu ra mong đợi
+        private String dataType;        // Data type / Kiểu dữ liệu
     }
 
+    /**
+     * Parses input data from JSON format
+     * Phân tích dữ liệu đầu vào từ định dạng JSON
+     */
     public List<TestCaseInput> parseInputData(String inputDataJson) {
         try {
             return objectMapper.readValue(inputDataJson, objectMapper.getTypeFactory()
@@ -47,6 +69,10 @@ public class TestCaseService {
         }
     }
 
+    /**
+     * Parses expected output from JSON format
+     * Phân tích dữ liệu đầu ra mong đợi từ định dạng JSON
+     */
     public TestCaseOutput parseExpectedOutput(String expectedOutputJson) {
         try {
             return objectMapper.readValue(expectedOutputJson, TestCaseOutput.class);
@@ -56,6 +82,10 @@ public class TestCaseService {
         }
     }
 
+    /**
+     * Converts TestCase entity to DTO
+     * Chuyển đổi entity TestCase sang DTO
+     */
     public TestCaseDTO convertToDTO(TestCase testCase) {
         TestCaseDTO dto = new TestCaseDTO();
         dto.setId(testCase.getId());
@@ -98,6 +128,13 @@ public class TestCaseService {
         return testCase;
     }
 
+    /**
+     * Creates a new test case
+     * Tạo mới test case
+     * 
+     * @param testCaseDTO Test case data / Dữ liệu test case
+     * @return Created test case / Test case đã tạo
+     */
     @Transactional
     public TestCaseDTO createTestCase(TestCaseDTO testCaseDTO) {
         log.debug("Creating test case for problem ID: {}", testCaseDTO.getProblemId());
@@ -112,6 +149,13 @@ public class TestCaseService {
         return convertToDTO(savedTestCase);
     }
 
+    /**
+     * Updates an existing test case
+     * Cập nhật test case đã tồn tại
+     * 
+     * @param id Test case ID / ID test case
+     * @param testCaseDTO Updated data / Dữ liệu cập nhật
+     */
     @Transactional
     public TestCaseDTO updateTestCase(Long id, TestCaseDTO testCaseDTO) {
         log.debug("Updating test case with ID: {}", id);
@@ -132,6 +176,12 @@ public class TestCaseService {
         return convertToDTO(savedTestCase);
     }
 
+    /**
+     * Gets all test cases for a problem
+     * Lấy tất cả test case của một bài toán
+     * 
+     * @param problemId Problem ID / ID bài toán
+     */
     @Transactional(readOnly = true)
     public List<TestCaseDTO> getAllTestCasesByProblemId(Long problemId) {
         log.debug("Fetching all test cases for problem ID: {}", problemId);
@@ -140,6 +190,10 @@ public class TestCaseService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Gets example test cases for a problem
+     * Lấy các test case mẫu của một bài toán
+     */
     @Transactional(readOnly = true)
     public List<TestCaseDTO> getExampleTestCasesByProblemId(Long problemId) {
         log.debug("Fetching example test cases for problem ID: {}", problemId);
@@ -148,6 +202,10 @@ public class TestCaseService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Gets visible (non-hidden) test cases
+     * Lấy các test case hiển thị (không ẩn)
+     */
     @Transactional(readOnly = true)
     public List<TestCaseDTO> getVisibleTestCasesByProblemId(Long problemId) {
         log.debug("Fetching visible test cases for problem ID: {}", problemId);
@@ -167,6 +225,13 @@ public class TestCaseService {
         return convertToDTO(testCase);
     }
 
+    /**
+     * Creates multiple test cases for a problem
+     * Tạo nhiều test case cho một bài toán
+     * 
+     * @param testCaseDTOs List of test cases / Danh sách test case
+     * @param problemId Problem ID / ID bài toán
+     */
     @Transactional
     public List<TestCaseDTO> createTestCases(List<TestCaseDTO> testCaseDTOs, Long problemId) {
         log.debug("Creating {} test cases for problem ID: {}", testCaseDTOs.size(), problemId);
@@ -202,6 +267,10 @@ public class TestCaseService {
         log.info("Test case deleted successfully with ID: {}", id);
     }
 
+    /**
+     * Deletes all test cases for a problem
+     * Xóa tất cả test case của một bài toán
+     */
     @Transactional
     public void deleteAllTestCasesByProblemId(Long problemId) {
         log.debug("Deleting all test cases for problem ID: {}", problemId);

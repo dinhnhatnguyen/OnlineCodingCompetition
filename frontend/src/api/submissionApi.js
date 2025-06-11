@@ -5,21 +5,12 @@ const API_URL = "http://localhost:8080/api/submissions";
 // Gửi code nộp bài
 export const submitCode = async (data) => {
   try {
-    const response = await axios.post(
-      API_URL,
-      {
-        problemId: data.problemId,
-        language: data.language,
-        sourceCode: data.sourceCode,
-        contestId: data.contestId || null,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${data.token}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const response = await axios.post(API_URL, {
+      problemId: data.problemId,
+      language: data.language,
+      sourceCode: data.sourceCode,
+      contestId: data.contestId || null,
+    });
     return response.data;
   } catch (error) {
     if (error.response) {
@@ -38,11 +29,9 @@ export const submitCode = async (data) => {
 };
 
 // Lấy lịch sử nộp bài của user
-export const getUserSubmissions = async (token) => {
+export const getUserSubmissions = async () => {
   try {
-    const response = await axios.get(`${API_URL}/user`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await axios.get(`${API_URL}/user`);
     return response.data;
   } catch (error) {
     if (error.response) {
@@ -70,11 +59,9 @@ export const getSubmissionById = async (id) => {
 };
 
 // Lấy submissions theo problem ID
-export const getSubmissionsByProblem = async (problemId, token) => {
+export const getSubmissionsByProblem = async (problemId) => {
   try {
-    const response = await axios.get(`${API_URL}/problem/${problemId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await axios.get(`${API_URL}/problem/${problemId}`);
     return response.data;
   } catch (error) {
     if (error.response) {
@@ -87,11 +74,9 @@ export const getSubmissionsByProblem = async (problemId, token) => {
 };
 
 // Lấy submissions trong contest
-export const getContestSubmissions = async (contestId, token) => {
+export const getContestSubmissions = async (contestId) => {
   try {
-    const response = await axios.get(`${API_URL}/contest/${contestId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await axios.get(`${API_URL}/contest/${contestId}`);
     return response.data;
   } catch (error) {
     if (error.response) {

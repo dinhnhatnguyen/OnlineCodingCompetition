@@ -24,6 +24,16 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Service for managing programming problems in the system.
+ * Service quản lý các bài toán lập trình trong hệ thống.
+ *
+ * Main responsibilities / Trách nhiệm chính:
+ * - CRUD operations for problems / Thao tác CRUD cho bài toán
+ * - Problem-Contest relationship / Quản lý quan hệ bài toán - cuộc thi
+ * - Function signature management / Quản lý định dạng hàm
+ * - Test case management / Quản lý test case
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -37,6 +47,10 @@ public class ProblemService {
 
     private final ContestRepository contestRepository;
 
+    /**
+     * Converts a Problem entity to ProblemDTO
+     * Chuyển đổi entity Problem sang ProblemDTO
+     */
     public ProblemDTO convertToDTO(Problem problem) {
         if (problem == null) {
             return null;
@@ -74,6 +88,13 @@ public class ProblemService {
         return dto;
     }
 
+    /**
+     * Converts a ProblemDTO to Problem entity
+     * Chuyển đổi ProblemDTO sang entity Problem
+     * 
+     * @param dto DTO to convert / DTO cần chuyển đổi
+     * @param creator User who creates the problem / Người tạo bài toán
+     */
     private Problem convertToEntity(ProblemDTO dto, User creator) {
         if (dto == null) {
             return null;
@@ -119,6 +140,14 @@ public class ProblemService {
         return problem;
     }
 
+    /**
+     * Creates a new problem with test cases
+     * Tạo mới bài toán với các test case
+     * 
+     * @param problemDTO Problem data / Dữ liệu bài toán
+     * @param creatorId ID of creator / ID người tạo
+     * @return Created problem / Bài toán đã tạo
+     */
     @Transactional
     public ProblemDTO createProblem(ProblemDTO problemDTO, Long creatorId) {
         log.debug("Creating problem with creator ID: {}", creatorId);
@@ -229,6 +258,13 @@ public class ProblemService {
         return savedProblem;
     }
 
+    /**
+     * Updates an existing problem
+     * Cập nhật bài toán đã tồn tại
+     * 
+     * @param id Problem ID / ID bài toán
+     * @param problemDTO Updated data / Dữ liệu cập nhật
+     */
     @Transactional
     public ProblemDTO updateProblem(Long id, ProblemDTO problemDTO) {
         log.debug("Updating problem with ID: {}", id);
@@ -311,6 +347,10 @@ public class ProblemService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Gets function signature for a specific language
+     * Lấy định dạng hàm cho một ngôn ngữ cụ thể
+     */
     @Transactional(readOnly = true)
     public Problem.FunctionSignature getFunctionSignature(Long problemId, String language) {
         log.debug("Request to get function signature for problem {} and language {}", problemId, language);
@@ -342,6 +382,13 @@ public class ProblemService {
         return convertToDTO(problem);
     }
 
+    /**
+     * Soft deletes a problem
+     * Xóa mềm một bài toán
+     * 
+     * @param id Problem ID / ID bài toán
+     * @param userId User performing deletion / ID người xóa
+     */
     @Transactional
     public void deleteProblem(Long id, Long userId) {
         log.debug("Soft deleting problem with ID: {} by user: {}", id, userId);
@@ -437,6 +484,15 @@ public class ProblemService {
         log.info("Successfully removed problem {} from contest {}", problemId, contestId);
     }
 
+    /**
+     * Validates problem data before saving
+     * Kiểm tra tính hợp lệ của dữ liệu bài toán trước khi lưu
+     * 
+     * Checks / Kiểm tra:
+     * - Valid difficulty / Độ khó hợp lệ
+     * - Supported languages / Ngôn ngữ hỗ trợ
+     * - Function signatures / Định dạng hàm
+     */
     private void validateProblemDTO(ProblemDTO problemDTO) {
         List<String> validDifficulties = Arrays.asList("easy", "medium", "hard");
         if (!validDifficulties.contains(problemDTO.getDifficulty().toLowerCase())) {

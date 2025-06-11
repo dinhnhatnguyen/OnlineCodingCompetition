@@ -155,7 +155,7 @@ const SubmissionDetails = () => {
           </div>
 
           <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-2">Your Code</h3>
+            <h3 className="text-lg font-semibold mb-2">Code của bạn</h3>
             <div className="bg-black rounded overflow-hidden border border-zinc-800">
               <MonacoEditor
                 height="400px"
@@ -170,7 +170,7 @@ const SubmissionDetails = () => {
           {submission.compileError && (
             <div className="mb-6">
               <h3 className="text-lg font-semibold mb-2 text-red-400">
-                Compile Error
+                Lỗi biên dịch
               </h3>
               <pre className="bg-red-900/30 p-4 rounded overflow-x-auto text-sm border border-red-800">
                 {submission.compileError}

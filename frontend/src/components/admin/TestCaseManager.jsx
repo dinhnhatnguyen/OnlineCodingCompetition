@@ -29,6 +29,10 @@ import {
   MoreOutlined,
 } from "@ant-design/icons";
 import * as testCaseApi from "../../api/testCaseApi";
+import {
+  validateValueByType,
+  getExampleValueByType,
+} from "../../utils/dataTypeValidator";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -85,24 +89,7 @@ const TestCaseManager = ({ problemId, token, onTestCasesChanged }) => {
 
   // Get example value based on type
   const getExampleValue = (type) => {
-    switch (type) {
-      case "int":
-      case "Integer":
-        return "42";
-      case "int[]":
-      case "Integer[]":
-        return "[1, 2, 3]";
-      case "String":
-        return '"hello"';
-      case "boolean":
-      case "Boolean":
-        return "true";
-      case "float":
-      case "double":
-        return "3.14";
-      default:
-        return "";
-    }
+    return getExampleValueByType(type);
   };
 
   // Tải danh sách test cases
@@ -484,7 +471,26 @@ const TestCaseManager = ({ problemId, token, onTestCasesChanged }) => {
             <Form.Item
               className="flex-1 mb-0"
               name={[field.name, "inputs", index, "value"]}
-              rules={[{ required: true, message: "Vui lòng nhập giá trị" }]}
+              rules={[
+                { required: true, message: "Vui lòng nhập giá trị" },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    const type = getFieldValue([
+                      field.name,
+                      "inputs",
+                      index,
+                      "type",
+                    ]);
+                    if (!type || !value) return Promise.resolve();
+
+                    const validation = validateValueByType(value, type);
+                    if (!validation.isValid) {
+                      return Promise.reject(new Error(validation.message));
+                    }
+                    return Promise.resolve();
+                  },
+                }),
+              ]}
             >
               <Input
                 placeholder="Nhập giá trị"
@@ -695,6 +701,20 @@ const TestCaseManager = ({ problemId, token, onTestCasesChanged }) => {
                     className="flex-1 mb-0"
                     rules={[
                       { required: true, message: "Vui lòng nhập giá trị" },
+                      ({ getFieldValue }) => ({
+                        validator(_, value) {
+                          const type = getFieldValue(["output", "type"]);
+                          if (!type || !value) return Promise.resolve();
+
+                          const validation = validateValueByType(value, type);
+                          if (!validation.isValid) {
+                            return Promise.reject(
+                              new Error(validation.message)
+                            );
+                          }
+                          return Promise.resolve();
+                        },
+                      }),
                     ]}
                   >
                     <Input

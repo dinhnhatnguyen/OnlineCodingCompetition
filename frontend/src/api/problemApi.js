@@ -80,12 +80,54 @@ export const deleteProblem = async (id, token) => {
 };
 
 export const createProblemWithTestCases = async (data, token) => {
-  const response = await axios.post(
-    "http://localhost:8080/api/problems/with-test-cases",
-    data,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  return response.data;
+  try {
+    console.log(
+      "Sending request to create problem with test cases:",
+      JSON.stringify(data, null, 2)
+    );
+
+    // Validate the data structure before sending
+    if (!data.createProblem) {
+      throw new Error("Missing createProblem data");
+    }
+
+    if (!data.createTestCases || !Array.isArray(data.createTestCases)) {
+      throw new Error("Missing or invalid createTestCases data");
+    }
+
+    if (data.createTestCases.length < 2) {
+      throw new Error("At least 2 test cases are required");
+    }
+
+    // Validate each test case has required fields
+    data.createTestCases.forEach((testCase, index) => {
+      const requiredFields = ["inputData", "expectedOutputData", "description"];
+      requiredFields.forEach((field) => {
+        if (!testCase[field]) {
+          throw new Error(
+            `Test case ${index + 1} is missing required field: ${field}`
+          );
+        }
+      });
+    });
+
+    const response = await axios.post(
+      "http://localhost:8080/api/problems/with-test-cases",
+      data,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    console.log("Successfully created problem with test cases:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("Error creating problem with test cases:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      data: data,
+    });
+    throw error;
+  }
 };
 
 export const updateProblemWithTestCases = async (id, data, token) => {
@@ -117,6 +159,17 @@ export const getMyProblems = async (token) => {
     return response.data;
   } catch (error) {
     console.error("Error fetching my problems:", error);
+    throw error;
+  }
+};
+
+// Lấy tất cả các chủ đề có sẵn từ database
+export const getAllTopics = async () => {
+  try {
+    const response = await axios.get(`${API_URL}/topics`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching topics:", error);
     throw error;
   }
 };

@@ -24,6 +24,11 @@ import {
   DeleteOutlined,
   InfoCircleOutlined,
 } from "@ant-design/icons";
+import { validateFunctionSignature } from "../../utils/functionSignatureValidator";
+import { validateAndFixTestCasesForAPI } from "../../utils/testCaseValidation";
+import SuperchargedTestCaseManager from "./SuperchargedTestCaseManager";
+import TestCaseDebugger from "./TestCaseDebugger";
+import { getAllTopics } from "../../api/problemApi";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -238,6 +243,9 @@ const FunctionSignatureForm = ({ language, form }) => {
       parameterTypes: values.parameterTypes || [],
       returnType: values.returnType || "",
     };
+
+    // Validate signature
+    const validation = validateFunctionSignature;
     // Ensure the signature is valid before updating
     if (
       signature.functionName ||
@@ -492,7 +500,26 @@ const AdvancedProblemForm = ({
   const [form] = Form.useForm();
   const [activeTab, setActiveTab] = useState("1");
   const [topics, setTopics] = useState(initialValues?.topics || []);
-  const [newTopic, setNewTopic] = useState("");
+  const [showDebugger, setShowDebugger] = useState(false);
+  const [availableTopics, setAvailableTopics] = useState([]);
+  const [loadingTopics, setLoadingTopics] = useState(false);
+
+  // Test function to debug form data
+  const testFormData = () => {
+    console.log("=== TESTING FORM DATA ===");
+    const values = form.getFieldsValue();
+    const testCases = form.getFieldValue("testCases");
+    console.log("All form values:", values);
+    console.log("Test cases specifically:", testCases);
+    console.log("Test cases length:", testCases?.length);
+    console.log("Test cases type:", typeof testCases);
+    console.log("Test cases is array:", Array.isArray(testCases));
+
+    if (testCases && testCases.length > 0) {
+      console.log("First test case:", testCases[0]);
+      console.log("First test case keys:", Object.keys(testCases[0]));
+    }
+  };
 
   // Track which languages are enabled
   const [languageEnabled, setLanguageEnabled] = useState({
@@ -510,6 +537,24 @@ const AdvancedProblemForm = ({
     }
   }, [initialValues]);
 
+  // Load available topics from database
+  useEffect(() => {
+    const loadTopics = async () => {
+      try {
+        setLoadingTopics(true);
+        const topics = await getAllTopics();
+        setAvailableTopics(topics);
+      } catch (error) {
+        console.error("Error loading topics:", error);
+        message.error("Không thể tải danh sách chủ đề");
+      } finally {
+        setLoadingTopics(false);
+      }
+    };
+
+    loadTopics();
+  }, []);
+
   const handleSupportedLanguagesChange = (language, checked) => {
     setLanguageEnabled((prev) => ({
       ...prev,
@@ -519,6 +564,13 @@ const AdvancedProblemForm = ({
 
   const handleSubmit = async (values) => {
     try {
+      console.log("=== FORM SUBMIT STARTED ===");
+      console.log("Form values received:", values);
+
+      // Force sync test cases from SuperchargedTestCaseManager
+      const currentFormTestCases = form.getFieldValue("testCases");
+      console.log("Current form test cases:", currentFormTestCases);
+
       // Kiểm tra xem có ít nhất một ngôn ngữ được bật không
       const enabledLanguages = Object.entries(languageEnabled).filter(
         ([, enabled]) => enabled
@@ -573,55 +625,76 @@ const AdvancedProblemForm = ({
         return;
       }
 
-      // Format test cases data từ dữ liệu người dùng nhập
+      // Format and validate test cases data
       let formattedTestCases = [];
-      if (isCreating && values.testCases) {
-        formattedTestCases = values.testCases.map((testCase, index) => {
-          // Lấy dữ liệu input trực tiếp từ form
-          const inputs =
-            form.getFieldValue(["testCases", index, "inputs"]) || [];
-          const inputData = JSON.stringify(
-            inputs
-              .filter((input) => input && input.value && input.type)
-              .map((input) => ({
-                input: input.value,
-                dataType: input.type,
-              }))
+
+      console.log("=== DEBUG TEST CASES ===");
+      console.log("isCreating:", isCreating);
+      console.log("values:", values);
+      console.log("values.testCases:", values.testCases);
+      console.log(
+        "form.getFieldValue('testCases'):",
+        form.getFieldValue("testCases")
+      );
+
+      // Try to get test cases from multiple sources
+      const testCasesFromValues = values.testCases;
+      const testCasesFromForm = form.getFieldValue("testCases");
+      const allFormValues = form.getFieldsValue();
+      const testCasesFromAllValues = allFormValues.testCases;
+
+      // Use the first non-empty source, prioritizing form values
+      const testCasesToUse =
+        testCasesFromForm ||
+        testCasesFromAllValues ||
+        testCasesFromValues ||
+        [];
+
+      console.log("testCasesToUse:", testCasesToUse);
+      console.log("testCasesToUse.length:", testCasesToUse.length);
+      console.log("testCasesToUse type:", typeof testCasesToUse);
+      console.log("testCasesToUse is array:", Array.isArray(testCasesToUse));
+
+      if (isCreating) {
+        if (
+          !testCasesToUse ||
+          !Array.isArray(testCasesToUse) ||
+          testCasesToUse.length === 0
+        ) {
+          console.error("No test cases found!");
+          message.error("Vui lòng tạo ít nhất 2 test cases trước khi submit");
+          return;
+        }
+
+        if (testCasesToUse.length < 2) {
+          console.error("Not enough test cases!");
+          message.error("Cần ít nhất 2 test cases để tạo bài toán");
+          return;
+        }
+        console.log("Processing test cases:", testCasesToUse);
+
+        // Use the validation utility to ensure proper format
+        const validation = validateAndFixTestCasesForAPI(testCasesToUse);
+
+        if (!validation.isValid) {
+          console.error("Test case validation errors:", validation.errors);
+          message.error(
+            `Test case validation failed: ${validation.errors.join(", ")}`
           );
+          return;
+        }
 
-          // Lấy dữ liệu output trực tiếp từ form
-          const expectedOutput = form.getFieldValue([
-            "testCases",
-            index,
-            "expectedOutput",
-          ]);
-          const expectedOutputType = form.getFieldValue([
-            "testCases",
-            index,
-            "expectedOutputType",
-          ]);
-          const expectedOutputData = JSON.stringify({
-            expectedOutput: expectedOutput,
-            dataType: expectedOutputType,
-          });
+        formattedTestCases = validation.fixedTestCases;
+        console.log("Validated and fixed test cases:", formattedTestCases);
 
-          return {
-            inputData,
-            expectedOutputData,
-            inputType: inputs[0]?.type || "array",
-            outputType: expectedOutputType || "integer",
-            description: testCase.description || `Test case ${index + 1}`,
-            isExample: testCase.isExample || false,
-            isHidden: testCase.isHidden || false,
-            timeLimit: testCase.timeLimit || 1000,
-            memoryLimit: testCase.memoryLimit || 262144,
-            weight: testCase.weight || 1.0,
-            testOrder: index + 1,
-            comparisonMode: testCase.comparisonMode || "EXACT",
-            epsilon: testCase.epsilon || null,
-          };
-        });
+        if (validation.errors.length > 0) {
+          message.warning(
+            `Test cases were auto-fixed: ${validation.errors.join(", ")}`
+          );
+        }
       }
+
+      console.log("Final formatted test cases for API:", formattedTestCases);
 
       // Prepare data for submission
       const formData = {
@@ -759,41 +832,28 @@ const AdvancedProblemForm = ({
 
             <div className="mb-4">
               <label className="block mb-2">Chủ đề</label>
-              <Space wrap>
-                {topics.map((topic, index) => (
-                  <Tag
-                    key={index}
-                    closable
-                    onClose={() => setTopics(topics.filter((t) => t !== topic))}
-                  >
+              <Select
+                mode="tags"
+                style={{ width: "100%" }}
+                placeholder="Chọn chủ đề có sẵn hoặc nhập chủ đề mới"
+                value={topics}
+                onChange={setTopics}
+                loading={loadingTopics}
+                notFoundContent={
+                  loadingTopics ? "Đang tải..." : "Không tìm thấy chủ đề"
+                }
+                tokenSeparators={[","]}
+                maxTagCount="responsive"
+              >
+                {availableTopics.map((topic) => (
+                  <Option key={topic} value={topic}>
                     {topic}
-                  </Tag>
+                  </Option>
                 ))}
-              </Space>
-              <div className="mt-2 flex gap-2">
-                <Input
-                  value={newTopic}
-                  onChange={(e) => setNewTopic(e.target.value)}
-                  onPressEnter={(e) => {
-                    e.preventDefault();
-                    if (newTopic && !topics.includes(newTopic)) {
-                      setTopics([...topics, newTopic]);
-                      setNewTopic("");
-                    }
-                  }}
-                  placeholder="Thêm chủ đề mới"
-                />
-                <Button
-                  type="primary"
-                  onClick={() => {
-                    if (newTopic && !topics.includes(newTopic)) {
-                      setTopics([...topics, newTopic]);
-                      setNewTopic("");
-                    }
-                  }}
-                >
-                  <PlusOutlined /> Thêm
-                </Button>
+              </Select>
+              <div className="text-sm text-gray-500 mt-1">
+                💡 Bạn có thể chọn từ danh sách có sẵn hoặc gõ để thêm chủ đề
+                mới
               </div>
             </div>
           </Card>
@@ -868,255 +928,60 @@ const AdvancedProblemForm = ({
         </TabPane>
 
         {isCreating && (
-          <TabPane tab="Test Cases" key="3">
-            <Card className="mb-6">
-              <Alert
-                message="Hướng dẫn tạo Test Cases"
-                description={
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3">
-                      Tạo test cases hiệu quả cho bài toán
-                    </h3>
-                    <div
-                      className="mb-4"
-                      dangerouslySetInnerHTML={{
-                        __html: VI_INSTRUCTIONS.testCaseGuide,
-                      }}
-                    ></div>
+          <TabPane tab="⚡ Test Cases" key="3">
+            <SuperchargedTestCaseManager
+              form={form}
+              onTestCasesChange={(testCases) => {
+                console.log(
+                  "AdvancedProblemForm - onTestCasesChange called with:",
+                  testCases
+                );
+                // Update form with new test cases
+                form.setFieldValue("testCases", testCases);
 
-                    <h3 className="text-lg font-semibold mb-2">
-                      {VI_INSTRUCTIONS.inputFormatTitle}
-                    </h3>
-                    <pre className="bg-gray-100 p-3 rounded mb-3 text-sm">
-                      {VI_INSTRUCTIONS.inputFormatDesc}
-                    </pre>
+                // Verify the form field was set
+                const formTestCases = form.getFieldValue("testCases");
+                console.log(
+                  "AdvancedProblemForm - Form test cases after setting:",
+                  formTestCases
+                );
 
-                    <h3 className="text-lg font-semibold mb-2">
-                      {VI_INSTRUCTIONS.outputFormatTitle}
-                    </h3>
-                    <pre className="bg-gray-100 p-3 rounded mb-3 text-sm">
-                      {VI_INSTRUCTIONS.outputFormatDesc}
-                    </pre>
-
-                    <div
-                      className="mb-2 mt-4"
-                      dangerouslySetInnerHTML={{
-                        __html: VI_INSTRUCTIONS.testCaseValidationTips,
-                      }}
-                    ></div>
-                  </div>
-                }
-                type="info"
-                showIcon
-                className="mb-6"
-              />
-
-              <Form.List name="testCases">
-                {(fields, { add, remove }) => (
-                  <>
-                    {fields.map((field, index) => (
-                      <Card
-                        key={field.key}
-                        className="mb-4"
-                        title={
-                          <Space>
-                            <span className="font-medium">
-                              Test Case #{index + 1}
-                            </span>
-                          </Space>
-                        }
-                        extra={
-                          <Space>
-                            {index > 0 && (
-                              <Button
-                                danger
-                                icon={<DeleteOutlined />}
-                                onClick={() => remove(field.name)}
-                              >
-                                Xóa
-                              </Button>
-                            )}
-                          </Space>
-                        }
-                      >
-                        <Form.Item {...field} label="Dữ liệu đầu vào" required>
-                          <TestCaseInputForm form={form} field={field} />
-                        </Form.Item>
-
-                        <Form.Item
-                          {...field}
-                          name={[field.name, "expectedOutput"]}
-                          label="Giá trị đầu ra mong đợi"
-                          rules={[
-                            {
-                              required: true,
-                              message: "Vui lòng nhập giá trị đầu ra",
-                            },
-                          ]}
-                        >
-                          <div className="flex items-center gap-2">
-                            <Input
-                              className="flex-1"
-                              placeholder="Nhập giá trị đầu ra"
-                              onChange={(e) => {
-                                const type = form.getFieldValue([
-                                  field.name,
-                                  "expectedOutputType",
-                                ]);
-                                form.setFieldValue(
-                                  [field.name, "expectedOutputData"],
-                                  JSON.stringify({
-                                    expectedOutput: e.target.value,
-                                    dataType: type,
-                                  })
-                                );
-                              }}
-                            />
-                            <Form.Item
-                              {...field}
-                              name={[field.name, "expectedOutputType"]}
-                              className="flex-1 mb-0"
-                              rules={[
-                                {
-                                  required: true,
-                                  message: "Vui lòng chọn kiểu dữ liệu",
-                                },
-                              ]}
-                            >
-                              <Select
-                                placeholder="Chọn kiểu dữ liệu"
-                                onChange={(value) => {
-                                  const output = form.getFieldValue([
-                                    field.name,
-                                    "expectedOutput",
-                                  ]);
-                                  form.setFieldValue(
-                                    [field.name, "expectedOutputData"],
-                                    JSON.stringify({
-                                      expectedOutput: output,
-                                      dataType: value,
-                                    })
-                                  );
-                                }}
-                              >
-                                {Object.entries(DATA_TYPES.java).map(
-                                  ([key, types]) => (
-                                    <Select.OptGroup
-                                      key={key}
-                                      label={key.toUpperCase()}
-                                    >
-                                      {types.split(", ").map((type) => (
-                                        <Option
-                                          key={`${key}-${type}`}
-                                          value={type}
-                                        >
-                                          {type}
-                                        </Option>
-                                      ))}
-                                    </Select.OptGroup>
-                                  )
-                                )}
-                              </Select>
-                            </Form.Item>
-                          </div>
-                        </Form.Item>
-
-                        <Form.Item
-                          {...field}
-                          name={[field.name, "description"]}
-                          label="Mô tả"
-                          rules={[
-                            { required: true, message: "Vui lòng nhập mô tả" },
-                          ]}
-                        >
-                          <Input placeholder="Ví dụ: Test với mảng số nguyên khác nhau" />
-                        </Form.Item>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <Form.Item
-                            {...field}
-                            name={[field.name, "timeLimit"]}
-                            label="Giới hạn thời gian (ms)"
-                            rules={[
-                              {
-                                required: true,
-                                message: "Vui lòng nhập giới hạn thời gian",
-                              },
-                            ]}
-                          >
-                            <InputNumber
-                              min={100}
-                              max={10000}
-                              className="w-full"
-                            />
-                          </Form.Item>
-
-                          <Form.Item
-                            {...field}
-                            name={[field.name, "memoryLimit"]}
-                            label="Giới hạn bộ nhớ (KB)"
-                            rules={[
-                              {
-                                required: true,
-                                message: "Vui lòng nhập giới hạn bộ nhớ",
-                              },
-                            ]}
-                          >
-                            <InputNumber
-                              min={1024}
-                              max={1048576}
-                              className="w-full"
-                            />
-                          </Form.Item>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <Form.Item
-                            {...field}
-                            name={[field.name, "isExample"]}
-                            valuePropName="checked"
-                            label="Hiển thị như ví dụ"
-                          >
-                            <Switch />
-                          </Form.Item>
-
-                          <Form.Item
-                            {...field}
-                            name={[field.name, "isHidden"]}
-                            valuePropName="checked"
-                            label="Test case ẩn"
-                          >
-                            <Switch />
-                          </Form.Item>
-                        </div>
-                      </Card>
-                    ))}
-
-                    <Form.Item>
-                      <Button
-                        type="dashed"
-                        onClick={() => add(TEST_CASE_TEMPLATE)}
-                        block
-                        icon={<PlusOutlined />}
-                      >
-                        Thêm Test Case
-                      </Button>
-                    </Form.Item>
-                  </>
-                )}
-              </Form.List>
-            </Card>
+                message.success(`Đã cập nhật ${testCases.length} test cases!`);
+              }}
+            />
           </TabPane>
         )}
       </Tabs>
+
+      {/* Hidden field to ensure test cases are included in form submission */}
+      {isCreating && (
+        <Form.Item name="testCases" style={{ display: "none" }}>
+          <Input type="hidden" />
+        </Form.Item>
+      )}
 
       <Form.Item>
         <Space>
           <Button type="primary" htmlType="submit" loading={loading}>
             {isCreating ? "Tạo bài toán" : "Cập nhật bài toán"}
           </Button>
+          {isCreating && (
+            <>
+              <Button
+                type="dashed"
+                onClick={() => setShowDebugger(!showDebugger)}
+              >
+                {showDebugger ? "Hide" : "Show"} Debugger
+              </Button>
+              <Button type="default" onClick={testFormData}>
+                🔍 Test Form Data
+              </Button>
+            </>
+          )}
         </Space>
       </Form.Item>
+
+      {isCreating && <TestCaseDebugger form={form} visible={showDebugger} />}
     </Form>
   );
 };

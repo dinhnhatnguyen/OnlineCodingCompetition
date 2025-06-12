@@ -8,10 +8,10 @@ export default function ContestsPage() {
   return (
     <div className="bg-black min-h-screen w-full flex flex-col justify-between">
       <Helmet>
-        <title>Contests - AlgoPractice</title>
+        <title>Cuộc thi - OCCS</title>
         <meta
           name="description"
-          content="Participate in coding contests to test your skills and compete with other developers. Join upcoming contests or view past contests results."
+          content="Tham gia các cuộc thi lập trình để kiểm tra kỹ năng và cạnh tranh với các lập trình viên khác. Tham gia cuộc thi sắp tới hoặc xem kết quả cuộc thi đã qua."
         />
       </Helmet>
       <Header />

@@ -33,6 +33,8 @@ import CreateAdvancedProblem from "./pages/admin/CreateAdvancedProblem";
 import EditProblem from "./pages/admin/EditProblem";
 import EditAdvancedProblem from "./pages/admin/EditAdvancedProblem";
 import TestCaseManagerPage from "./pages/admin/TestCaseManagerPage";
+import TestCaseDemo from "./pages/admin/TestCaseDemo";
+import TestComponentLoad from "./components/admin/TestComponentLoad";
 import ContestManagement from "./pages/admin/ContestManagement";
 import CreateContest from "./pages/admin/CreateContest";
 import EditContest from "./pages/admin/EditContest";
@@ -103,6 +105,11 @@ function App() {
                 path="problems/testcases/:id"
                 element={<TestCaseManagerPage />}
               />
+              <Route path="problems/testcase-demo" element={<TestCaseDemo />} />
+              <Route
+                path="problems/test-load"
+                element={<TestComponentLoad />}
+              />
               <Route path="problems/deleted" element={<DeletedProblems />} />
               <Route path="contests" element={<ContestManagement />} />
               <Route path="contests/create" element={<CreateContest />} />
@@ -135,6 +142,7 @@ function App() {
                 path="problems/testcases/:id"
                 element={<TestCaseManagerPage />}
               />
+              <Route path="problems/testcase-demo" element={<TestCaseDemo />} />
               <Route path="problems/deleted" element={<DeletedProblems />} />
               <Route path="contests" element={<ContestManagement />} />
               <Route path="contests/create" element={<CreateContest />} />

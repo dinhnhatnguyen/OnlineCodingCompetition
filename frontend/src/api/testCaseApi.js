@@ -69,3 +69,31 @@ export const deleteAllTestCasesByProblemId = async (problemId, token) => {
   });
   return response.data;
 };
+
+// Get test case analytics
+export const getTestCaseAnalytics = async (problemId, token) => {
+  const response = await axios.get(`${API_URL}/analytics/${problemId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data;
+};
+
+// Batch update test cases
+export const batchUpdateTestCases = async (problemId, request, token) => {
+  const response = await axios.put(
+    `${API_URL}/batch-update/${problemId}`,
+    request,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+  return response.data;
+};
+
+// Validate test cases
+export const validateTestCases = async (testCases, token) => {
+  const response = await axios.post(`${API_URL}/validate`, testCases, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data;
+};

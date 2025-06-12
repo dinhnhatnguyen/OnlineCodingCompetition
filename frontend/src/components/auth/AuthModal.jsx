@@ -36,7 +36,7 @@ const AuthModal = ({
     try {
       if (mode === "signup") {
         if (form.password !== form.confirmPassword) {
-          setError("Passwords do not match");
+          setError("Mật khẩu không khớp");
           setLoading(false);
           return;
         }
@@ -50,20 +50,20 @@ const AuthModal = ({
 
         if (response && response.message) {
           if (response.message == "User registered successfully!") {
-            showMessage("Sign up successful! Redirecting...", "success");
+            showMessage("Đăng ký thành công! Đang chuyển hướng...", "success");
             onClose();
           } else {
             setError(response.message);
           }
         } else {
-          setError("Unexpected response from server");
+          setError("Phản hồi không mong đợi từ máy chủ");
         }
       } else {
         await onSuccess({
           username: form.username,
           password: form.password,
         });
-        showMessage("Sign in successful!", "success");
+        showMessage("Đăng nhập thành công!", "success");
         onClose();
       }
     } catch (err) {
@@ -86,11 +86,11 @@ const AuthModal = ({
           &times;
         </button>
         <h2 className="text-2xl font-bold mb-4 text-center">
-          {mode === "signin" ? "Sign In" : "Sign Up"}
+          {mode === "signin" ? "Đăng nhập" : "Đăng ký"}
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block mb-1">Username</label>
+            <label className="block mb-1">Tên đăng nhập</label>
             <input
               name="username"
               value={form.username}
@@ -113,7 +113,7 @@ const AuthModal = ({
             </div>
           )}
           <div>
-            <label className="block mb-1">Password</label>
+            <label className="block mb-1">Mật khẩu</label>
             <div className="relative">
               <input
                 name="password"
@@ -145,7 +145,7 @@ const AuthModal = ({
           </div>
           {mode === "signup" && (
             <div>
-              <label className="block mb-1">Confirm Password</label>
+              <label className="block mb-1">Xác nhận mật khẩu</label>
               <div className="relative">
                 <input
                   name="confirmPassword"
@@ -173,13 +173,17 @@ const AuthModal = ({
             className="w-full primary-btn mt-2"
             disabled={loading}
           >
-            {loading ? "Loading..." : mode === "signin" ? "Sign In" : "Sign Up"}
+            {loading
+              ? "Đang xử lý..."
+              : mode === "signin"
+              ? "Đăng nhập"
+              : "Đăng ký"}
           </button>
         </form>
         <div className="text-center mt-4 text-gray-400">
           {mode === "signin" ? (
             <>
-              Don&apos;t have an account?{" "}
+              Chưa có tài khoản?{" "}
               <button
                 className="text-primary-pink hover:underline"
                 onClick={() => {
@@ -187,12 +191,12 @@ const AuthModal = ({
                   setError("");
                 }}
               >
-                Sign up
+                Đăng ký
               </button>
             </>
           ) : (
             <>
-              Already have an account?{" "}
+              Đã có tài khoản?{" "}
               <button
                 className="text-primary-pink hover:underline"
                 onClick={() => {
@@ -200,7 +204,7 @@ const AuthModal = ({
                   setError("");
                 }}
               >
-                Sign in
+                Đăng nhập
               </button>
             </>
           )}

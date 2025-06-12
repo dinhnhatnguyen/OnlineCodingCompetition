@@ -11,11 +11,11 @@ const Navbar = () => {
     <Menu>
       {user?.role === "ADMIN" && (
         <Menu.Item key="admin-problems">
-          <Link to="/admin/problems">Manage Problems</Link>
+          <Link to="/admin/problems">Quản lý bài tập</Link>
         </Menu.Item>
       )}
       <Menu.Item key="logout" onClick={logout}>
-        Sign Out
+        Đăng xuất
       </Menu.Item>
     </Menu>
   );
@@ -24,15 +24,15 @@ const Navbar = () => {
     <nav className="bg-gray-800 text-white p-4">
       <div className="container mx-auto flex justify-between items-center">
         <Link to="/" className="text-xl font-bold">
-          Online Coding Competition
+          Hệ thống thi lập trình trực tuyến
         </Link>
 
         <div className="flex items-center space-x-4">
           <Link to="/problems" className="hover:text-gray-300">
-            Problems
+            Bài tập
           </Link>
           <Link to="/contests" className="hover:text-gray-300">
-            Contests
+            Cuộc thi
           </Link>
           {user ? (
             <Dropdown overlay={userMenu} trigger={["click"]}>
@@ -42,7 +42,7 @@ const Navbar = () => {
             </Dropdown>
           ) : (
             <Link to="/login">
-              <Button type="primary">Sign In</Button>
+              <Button type="primary">Đăng nhập</Button>
             </Link>
           )}
         </div>

@@ -70,7 +70,7 @@ const Problems = () => {
       <div className="bg-black text-white min-h-screen flex flex-col">
         <Header />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center p-10">Loading...</div>
+          <div className="text-center p-10">Đang tải...</div>
         </div>
         <Footer />
       </div>
@@ -81,7 +81,7 @@ const Problems = () => {
       <Header />
       <main className="flex-1 max-w-7xl mx-auto w-full py-6 px-4">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Problems</h1>
+          <h1 className="text-3xl font-bold">Bài tập</h1>
 
           <div className="flex gap-3">
             <div className="relative">
@@ -101,7 +101,7 @@ const Problems = () => {
               </div>
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder="Tìm kiếm..."
                 className="bg-zinc-900 text-white pl-10 pr-3 py-2 rounded w-72 focus:outline-none border border-zinc-700"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -113,10 +113,10 @@ const Problems = () => {
               onChange={(e) => setDifficultyFilter(e.target.value)}
               className="bg-zinc-900 text-white px-4 py-2 rounded border border-zinc-700 focus:outline-none appearance-none"
             >
-              <option value="all">All Difficulties</option>
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
+              <option value="all">Tất cả độ khó</option>
+              <option value="easy">Dễ</option>
+              <option value="medium">Trung bình</option>
+              <option value="hard">Khó</option>
             </select>
           </div>
         </div>
@@ -125,11 +125,11 @@ const Problems = () => {
           <table className="w-full">
             <thead>
               <tr className="border-b border-zinc-800 text-gray-400 text-left text-sm uppercase">
-                <th className="py-3 px-6">Status</th>
-                <th className="py-3 px-6">Title</th>
-                <th className="py-3 px-6">Difficulty</th>
-                <th className="py-3 px-6">Topics</th>
-                <th className="py-3 px-6 text-right">Success Rate</th>
+                <th className="py-3 px-6">Trạng thái</th>
+                <th className="py-3 px-6">Tiêu đề</th>
+                <th className="py-3 px-6">Độ khó</th>
+                <th className="py-3 px-6">Chủ đề</th>
+                <th className="py-3 px-6 text-right">Tỷ lệ thành công</th>
               </tr>
             </thead>
             <tbody>
@@ -200,7 +200,7 @@ const Problems = () => {
               {filteredProblems.length === 0 && (
                 <tr>
                   <td colSpan="5" className="py-6 text-center text-gray-500">
-                    No problems match your search
+                    Không tìm thấy bài tập nào phù hợp
                   </td>
                 </tr>
               )}
@@ -210,7 +210,8 @@ const Problems = () => {
 
         <div className="flex justify-between items-center mt-4 text-sm text-gray-400">
           <div>
-            Showing 1 to {filteredProblems.length} of {problems.length} results
+            Hiển thị 1 đến {filteredProblems.length} trong tổng số{" "}
+            {problems.length} kết quả
           </div>
           <div className="flex gap-2">
             <button

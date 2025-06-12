@@ -70,6 +70,12 @@ const Dashboard = () => {
           label: "Tạo bài tập ",
           onClick: () => navigate("/admin/problems/create-advanced"),
         },
+        {
+          key: "2-2",
+          icon: <CodeOutlined />,
+          label: "🧪 Test Case Demo",
+          onClick: () => navigate("/admin/problems/testcase-demo"),
+        },
       ],
     },
     {

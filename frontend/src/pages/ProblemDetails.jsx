@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
@@ -7,6 +7,11 @@ import { submitCode, pollSubmissionStatus } from "../api/submissionApi";
 import MonacoEditor from "@monaco-editor/react";
 import ReactMarkdown from "react-markdown";
 import axios from "axios";
+import offlineDataCollector from "../services/offlineDataCollector";
+import firebaseDebugger from "../utils/firebaseDebugger";
+import firebaseLogger from "../utils/firebaseLogger";
+import { useCodeEditorTracking } from "../hooks/useCodeEditorTracking";
+import { getUserInfo } from "../api/userApi";
 
 const languageMap = {
   javascript: "javascript",
@@ -58,6 +63,7 @@ const getTemplate = (problem, lang) => {
 const ProblemDetails = () => {
   const { id } = useParams();
   const [problem, setProblem] = useState(null);
+  const [allProblems, setAllProblems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [language, setLanguage] = useState("javascript");
@@ -68,9 +74,48 @@ const ProblemDetails = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submissionId, setSubmissionId] = useState(null);
 
+  // Enhanced data collection states
+  const [sessionId, setSessionId] = useState(null);
+  const [userId, setUserId] = useState(null);
+  const [autoSaveInterval, setAutoSaveInterval] = useState(null);
+
+  // Code editor tracking hook
+  const { initializeTracking } = useCodeEditorTracking(language, code);
+
+  // Initialize user ID and Firebase data collection manager
+  useEffect(() => {
+    const initializeUser = async () => {
+      try {
+        console.log("Initializing user information...");
+
+        // Try to get user info from API with fallback to token
+        const userInfo = await getUserInfo();
+        setUserId(userInfo.id);
+
+        // Initialize Offline Data Collector with complete user info
+        await offlineDataCollector.initialize(userInfo.id, userInfo.username);
+      } catch (error) {
+        console.error("Error initializing user:", error);
+
+        // Demo mode fallback
+        const demoUserId = 999;
+        setUserId(demoUserId);
+        await offlineDataCollector.initialize(demoUserId, "Demo User");
+      }
+    };
+
+    initializeUser();
+
+    // Cleanup function
+    return () => {
+      offlineDataCollector.cleanup();
+    };
+  }, []);
+
   useEffect(() => {
     getProblems()
       .then((data) => {
+        setAllProblems(data);
         const found = data.find((p) => String(p.id) === String(id));
         setProblem(found);
         setLoading(false);
@@ -84,18 +129,157 @@ const ProblemDetails = () => {
       });
   }, [id]);
 
+  // Separate effect for starting session when both problem and userId are available
+  useEffect(() => {
+    if (problem && userId && !sessionId) {
+      startOfflineSession(problem);
+    }
+  }, [problem, userId, sessionId]);
+
   useEffect(() => {
     if (problem) {
       setCode(getTemplate(problem, language));
     }
   }, [problem, language]);
 
-  // Removed run code functionality
+  // Cleanup on unmount and page unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (sessionId) {
+        try {
+          firebaseLogger.pageUnloadSave(sessionId);
+
+          // Use sendBeacon for reliable data sending during page unload
+          const endData = {
+            sessionId: sessionId,
+            userId: userId,
+            endTime: new Date().toISOString(),
+            status: "completed",
+            trigger: "page_unload",
+          };
+
+          // Try to send data using sendBeacon (more reliable for page unload)
+          if (navigator.sendBeacon) {
+            const blob = new Blob([JSON.stringify(endData)], {
+              type: "application/json",
+            });
+            navigator.sendBeacon("/api/firebase-sync", blob);
+          }
+
+          // Also try synchronous Firebase call (may not complete)
+          offlineDataCollector.endSession();
+        } catch (error) {
+          firebaseLogger.error("sync", "Error during page unload sync", error, {
+            sessionId,
+          });
+        }
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden" && sessionId) {
+        // Page is being hidden, save data
+        firebaseLogger.visibilityChangeSave(sessionId);
+        offlineDataCollector.uploadOfflineData();
+      }
+    };
+
+    // Add event listeners for page unload
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Cleanup function
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+
+      // Clear auto-save interval
+      if (autoSaveInterval) {
+        clearInterval(autoSaveInterval);
+        setAutoSaveInterval(null);
+      }
+
+      if (sessionId) {
+        offlineDataCollector.endSession();
+      }
+    };
+  }, [sessionId]);
+
+  /**
+   * Start offline data collection session
+   * Bắt đầu session thu thập dữ liệu offline
+   */
+  const startOfflineSession = async (problemData) => {
+    try {
+      const newSessionId =
+        offlineDataCollector.startProblemSession(problemData);
+      setSessionId(newSessionId);
+
+      // Debug: Make debugger available in console
+      if (typeof window !== "undefined") {
+        window.debugFirebaseData = () =>
+          firebaseDebugger.checkFirebaseData(userId);
+        window.testFirebaseConnection = () =>
+          firebaseDebugger.testFirebaseConnection();
+        window.getFirebaseUploadStatus = () => firebaseLogger.getUploadStatus();
+        window.getFirebaseLogs = (category, level, limit) =>
+          firebaseLogger.getLogs(category, level, limit);
+        window.testFirebaseWrite = async () => {
+          try {
+            console.log("Testing Firebase write...");
+            const testData = {
+              userId: userId,
+              problemId: problem.id,
+              testData: "Firebase connection test",
+              timestamp: new Date().toISOString(),
+            };
+            await offlineDataCollector.testFirebaseConnection(testData);
+            console.log("Firebase write test successful");
+          } catch (error) {
+            console.error("Firebase write test failed:", error);
+          }
+        };
+        console.log(
+          "Debug commands available: debugFirebaseData(), testFirebaseConnection(), getFirebaseUploadStatus(), getFirebaseLogs(), testFirebaseWrite()"
+        );
+      }
+    } catch (error) {
+      console.error("Error starting comprehensive Firebase session:", error);
+    }
+  };
+
+  /**
+   * Handle Monaco editor mount
+   * Xử lý khi Monaco editor được mount
+   */
+  const handleEditorDidMount = (editor) => {
+    // Initialize code tracking
+    const cleanup = initializeTracking(editor);
+
+    // Store cleanup function for later use
+    if (cleanup) {
+      // Could store this in a ref if needed for manual cleanup
+    }
+  };
+
+  /**
+   * Handle code change in editor
+   * Xử lý thay đổi code trong editor
+   */
+  const handleCodeChange = (newCode) => {
+    setCode(newCode);
+
+    // Record code change using offline collector
+    if (sessionId && newCode !== undefined) {
+      offlineDataCollector.recordCodeChange(newCode, language);
+    }
+  };
 
   // Submit solution
   const handleSubmit = async () => {
     setSubmitting(true);
     setSubmitResults(null);
+
     try {
       const payload = {
         problemId: problem.id,
@@ -109,6 +293,26 @@ const ProblemDetails = () => {
       // Poll for submission results
       const result = await pollSubmissionStatus(response.id);
       setSubmitResults(result);
+
+      // Record submission attempt in enhanced service
+      if (sessionId) {
+        const submissionData = {
+          language: language,
+          wasSuccessful: result.status === "ACCEPTED",
+          difficultyLevel: problem.difficulty,
+          topics: problem.topics || [],
+          dataTypes: extractDataTypesFromTestCases(problem.testCases || []),
+          additionalMetadata: JSON.stringify({
+            submissionId: response.id,
+            runtimeMs: result.runtimeMs,
+            memoryUsedKb: result.memoryUsedKb,
+            passedTestCases: result.passedTestCases,
+            totalTestCases: result.totalTestCases,
+          }),
+        };
+
+        offlineDataCollector.recordSubmissionAttempt(submissionData);
+      }
 
       // If solved, mark as solved
       if (result.status === "ACCEPTED") {
@@ -129,6 +333,27 @@ const ProblemDetails = () => {
       }
     } catch (error) {
       console.error("Submit error:", error);
+
+      // Record failed submission attempt
+      if (sessionId) {
+        const failedSubmissionData = {
+          language: language,
+          wasSuccessful: false,
+          difficultyLevel: problem.difficulty,
+          topics: problem.topics || [],
+          dataTypes: extractDataTypesFromTestCases(problem.testCases || []),
+          additionalMetadata: JSON.stringify({
+            error: error.message,
+          }),
+        };
+
+        try {
+          offlineDataCollector.recordSubmissionAttempt(failedSubmissionData);
+        } catch (dataError) {
+          console.warn("Failed to record failed submission:", dataError);
+        }
+      }
+
       setSubmitResults({
         status: "ERROR",
         error: error.message || "Failed to submit code",
@@ -136,6 +361,34 @@ const ProblemDetails = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  /**
+   * Extract data types from test cases
+   * Trích xuất kiểu dữ liệu từ test cases
+   */
+  const extractDataTypesFromTestCases = (testCases) => {
+    const dataTypes = new Set();
+
+    testCases.forEach((testCase) => {
+      try {
+        if (testCase.inputData) {
+          const inputData = JSON.parse(testCase.inputData);
+          if (Array.isArray(inputData)) {
+            dataTypes.add("Array");
+            inputData.forEach((item) => {
+              if (item.dataType) {
+                dataTypes.add(item.dataType);
+              }
+            });
+          }
+        }
+      } catch (error) {
+        // Ignore parsing errors
+      }
+    });
+
+    return Array.from(dataTypes);
   };
 
   if (loading) return <div className="text-center py-10">Loading...</div>;
@@ -283,7 +536,8 @@ const ProblemDetails = () => {
                 language={languageMap[language]}
                 theme="vs-dark"
                 value={code}
-                onChange={setCode}
+                onChange={handleCodeChange}
+                onMount={handleEditorDidMount}
                 options={{
                   minimap: { enabled: false },
                   scrollBeyondLastLine: false,

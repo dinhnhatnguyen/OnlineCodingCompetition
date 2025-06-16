@@ -110,6 +110,19 @@ public class UserDetailsImpl implements UserDetails {
         return true;
     }
 
+    /**
+     * Get user role from authorities
+     * Lấy role của user từ authorities
+     */
+    public String getRole() {
+        if (authorities != null && !authorities.isEmpty()) {
+            String authority = authorities.iterator().next().getAuthority();
+            // Remove "ROLE_" prefix if present
+            return authority.startsWith("ROLE_") ? authority.substring(5) : authority;
+        }
+        return "STUDENT"; // Default role
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

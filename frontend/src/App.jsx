@@ -40,6 +40,7 @@ import CreateContest from "./pages/admin/CreateContest";
 import EditContest from "./pages/admin/EditContest";
 import UserManagement from "./pages/admin/UserManagement";
 import DeletedProblems from "./pages/admin/DeletedProblems";
+import FirebaseDebug from "./components/FirebaseDebug";
 
 function App() {
   return (
@@ -59,6 +60,7 @@ function App() {
             />
             <Route path="/submissions/:id" element={<SubmissionDetails />} />
             <Route path="/scratchpad" element={<ScratchPadPage />} />
+            <Route path="/firebase-debug" element={<FirebaseDebug />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
 

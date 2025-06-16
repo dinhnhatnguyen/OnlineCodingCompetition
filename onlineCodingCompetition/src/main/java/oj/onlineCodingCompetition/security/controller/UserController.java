@@ -47,15 +47,36 @@ public class UserController {
     }
 
     /**
+     * Lấy thông tin người dùng hiện tại (cho Firebase data collection)
+     */
+    @GetMapping("/me")
+    public ResponseEntity<UserInfoDTO> getCurrentUser(@AuthenticationPrincipal UserDetails userDetails) {
+        log.debug("Yêu cầu lấy thông tin người dùng hiện tại: {}", userDetails.getUsername());
+
+        User user = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+
+        UserInfoDTO userInfo = new UserInfoDTO(
+            user.getId(),
+            user.getUsername(),
+            user.getEmail(),
+            user.getRole(),
+            user.getCreatedAt()
+        );
+
+        return ResponseEntity.ok(userInfo);
+    }
+
+    /**
      * Lấy thông tin hồ sơ người dùng hiện tại
      */
     @GetMapping("/profile")
     public ResponseEntity<UserProfileResponse> getMyProfile(@AuthenticationPrincipal UserDetails userDetails) {
         log.debug("Yêu cầu lấy hồ sơ người dùng hiện tại: {}", userDetails.getUsername());
-        
+
         User user = userRepository.findByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
-                
+
         return ResponseEntity.ok(userService.getUserProfile(user.getId()));
     }
 

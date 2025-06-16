@@ -9,6 +9,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import oj.onlineCodingCompetition.dto.TestCaseDTO;
+import oj.onlineCodingCompetition.dto.TestCaseAnalyticsDTO;
+import oj.onlineCodingCompetition.dto.BatchUpdateRequest;
+import oj.onlineCodingCompetition.dto.TestCaseValidationResult;
 import oj.onlineCodingCompetition.service.TestCaseService;
 
 import java.util.List;
@@ -110,6 +113,48 @@ public class TestCaseController {
         List<TestCaseDTO> createdTestCases = testCaseService.createTestCases(testCaseDTOs, problemId);
         return new ResponseEntity<>(createdTestCases, HttpStatus.CREATED);
     }
+
+
+
+
+
+    /**
+     * Get test case analytics for a problem (Admin/Instructor only)
+     * Lấy phân tích test case cho một bài toán (Chỉ dành cho Admin/Giảng viên)
+     */
+    @GetMapping("/analytics/{problemId}")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
+    public ResponseEntity<TestCaseAnalyticsDTO> getTestCaseAnalytics(@PathVariable Long problemId) {
+        TestCaseAnalyticsDTO analytics = testCaseService.getTestCaseAnalytics(problemId);
+        return ResponseEntity.ok(analytics);
+    }
+
+    /**
+     * Batch update test cases (Admin/Instructor only)
+     * Cập nhật hàng loạt test case (Chỉ dành cho Admin/Giảng viên)
+     */
+    @PutMapping("/batch-update/{problemId}")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
+    public ResponseEntity<List<TestCaseDTO>> batchUpdateTestCases(
+            @PathVariable Long problemId,
+            @Valid @RequestBody BatchUpdateRequest request) {
+        List<TestCaseDTO> updatedTestCases = testCaseService.batchUpdateTestCases(problemId, request);
+        return ResponseEntity.ok(updatedTestCases);
+    }
+
+    /**
+     * Validate test case data (Admin/Instructor only)
+     * Validate dữ liệu test case (Chỉ dành cho Admin/Giảng viên)
+     */
+    @PostMapping("/validate")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
+    public ResponseEntity<TestCaseValidationResult> validateTestCases(
+            @Valid @RequestBody List<TestCaseDTO> testCases) {
+        TestCaseValidationResult validationResult = testCaseService.validateTestCases(testCases);
+        return ResponseEntity.ok(validationResult);
+    }
+
+
 
     /**
      * Updates an existing test case (Admin/Instructor only)

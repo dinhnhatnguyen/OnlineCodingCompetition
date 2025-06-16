@@ -8,12 +8,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import oj.onlineCodingCompetition.dto.TestCaseDTO;
+import oj.onlineCodingCompetition.dto.TestCaseAnalyticsDTO;
+import oj.onlineCodingCompetition.dto.BatchUpdateRequest;
+import oj.onlineCodingCompetition.dto.TestCaseValidationResult;
 import oj.onlineCodingCompetition.entity.Problem;
 import oj.onlineCodingCompetition.entity.TestCase;
 import oj.onlineCodingCompetition.repository.ProblemRepository;
 import oj.onlineCodingCompetition.repository.TestCaseRepository;
 
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -159,7 +162,8 @@ public class TestCaseService {
     @Transactional
     public TestCaseDTO updateTestCase(Long id, TestCaseDTO testCaseDTO) {
         log.debug("Updating test case with ID: {}", id);
-        TestCase testCase = testCaseRepository.findById(id)
+        // Verify test case exists
+        testCaseRepository.findById(id)
                 .orElseThrow(() -> {
                     log.error("Test case not found with ID: {}", id);
                     return new EntityNotFoundException("Test case not found: " + id);
@@ -281,5 +285,197 @@ public class TestCaseService {
         }
         testCaseRepository.deleteAll(testCases);
         log.info("Successfully deleted {} test cases for problem ID: {}", testCases.size(), problemId);
+    }
+
+
+
+
+
+    /**
+     * Get test case analytics for a problem
+     * Lấy phân tích test case cho một bài toán
+     */
+    @Transactional(readOnly = true)
+    public TestCaseAnalyticsDTO getTestCaseAnalytics(Long problemId) {
+        log.debug("Getting analytics for problem ID: {}", problemId);
+
+        List<TestCase> testCases = testCaseRepository.findByProblemIdOrderByTestOrderAsc(problemId);
+        return calculateAnalytics(testCases);
+    }
+
+    /**
+     * Batch update test cases
+     * Cập nhật hàng loạt test case
+     */
+    @Transactional
+    public List<TestCaseDTO> batchUpdateTestCases(Long problemId, BatchUpdateRequest request) {
+        log.debug("Batch updating test cases for problem ID: {}", problemId);
+
+        List<TestCase> testCases = testCaseRepository.findAllById(request.getTestCaseIds());
+
+        for (TestCase testCase : testCases) {
+            applyBatchUpdates(testCase, request.getUpdates());
+        }
+
+        List<TestCase> updatedTestCases = testCaseRepository.saveAll(testCases);
+        return updatedTestCases.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Validate test cases
+     * Validate test case
+     */
+    public TestCaseValidationResult validateTestCases(List<TestCaseDTO> testCases) {
+        log.debug("Validating {} test cases", testCases.size());
+
+        return performValidation(testCases);
+    }
+
+    // Helper methods
+
+    private TestCaseAnalyticsDTO calculateAnalytics(List<TestCase> testCases) {
+        // Basic statistics
+        int total = testCases.size();
+        int examples = (int) testCases.stream().filter(TestCase::getIsExample).count();
+        int hidden = (int) testCases.stream().filter(TestCase::getIsHidden).count();
+
+        TestCaseAnalyticsDTO.BasicStatistics basicStats = TestCaseAnalyticsDTO.BasicStatistics.builder()
+            .totalTestCases(total)
+            .exampleTestCases(examples)
+            .hiddenTestCases(hidden)
+            .visibleTestCases(total - hidden)
+            .averageWeight(testCases.stream().mapToDouble(TestCase::getWeight).average().orElse(0.0))
+            .validTestCases(total) // Assume all are valid for now
+            .invalidTestCases(0)
+            .build();
+
+        // Quality assessment
+        TestCaseAnalyticsDTO.QualityAssessment qualityAssessment = TestCaseAnalyticsDTO.QualityAssessment.builder()
+            .overallScore(calculateOverallQualityScore(testCases))
+            .coverageScore(Math.min(30, (total / 10) * 30))
+            .exampleScore(examples > 0 ? 20 : 0)
+            .edgeCaseScore(hasEdgeCases(testCases) ? 25 : 0)
+            .stressTestScore(hidden > 0 ? 15 : 0)
+            .descriptionScore(hasGoodDescriptions(testCases) ? 10 : 0)
+            .qualityLevel(getQualityLevel(calculateOverallQualityScore(testCases)))
+            .build();
+
+        return TestCaseAnalyticsDTO.builder()
+            .basicStats(basicStats)
+            .qualityAssessment(qualityAssessment)
+            .build();
+    }
+
+    private void applyBatchUpdates(TestCase testCase, BatchUpdateRequest.TestCaseUpdates updates) {
+        if (updates.getTimeLimit() != null) {
+            testCase.setTimeLimit(updates.getTimeLimit());
+        }
+        if (updates.getMemoryLimit() != null) {
+            testCase.setMemoryLimit(updates.getMemoryLimit());
+        }
+        if (updates.getWeight() != null) {
+            testCase.setWeight(updates.getWeight());
+        }
+        if (updates.getIsExample() != null) {
+            testCase.setIsExample(updates.getIsExample());
+        }
+        if (updates.getIsHidden() != null) {
+            testCase.setIsHidden(updates.getIsHidden());
+        }
+        if (updates.getDescription() != null) {
+            testCase.setDescription(updates.getDescription());
+        }
+    }
+
+    private TestCaseValidationResult performValidation(List<TestCaseDTO> testCases) {
+        List<TestCaseValidationResult.TestCaseValidationError> errors = new ArrayList<>();
+        List<TestCaseValidationResult.TestCaseValidationWarning> warnings = new ArrayList<>();
+
+        for (int i = 0; i < testCases.size(); i++) {
+            TestCaseDTO testCase = testCases.get(i);
+
+            // Validate required fields
+            if (testCase.getDescription() == null || testCase.getDescription().trim().isEmpty()) {
+                errors.add(TestCaseValidationResult.TestCaseValidationError.builder()
+                    .testCaseIndex(i)
+                    .field("description")
+                    .errorType("REQUIRED_FIELD")
+                    .errorMessage("Description is required")
+                    .severity("ERROR")
+                    .build());
+            }
+
+            if (testCase.getInputData() == null || testCase.getInputData().trim().isEmpty()) {
+                errors.add(TestCaseValidationResult.TestCaseValidationError.builder()
+                    .testCaseIndex(i)
+                    .field("inputData")
+                    .errorType("REQUIRED_FIELD")
+                    .errorMessage("Input data is required")
+                    .severity("ERROR")
+                    .build());
+            }
+        }
+
+        return TestCaseValidationResult.builder()
+            .isValid(errors.isEmpty())
+            .totalTestCases(testCases.size())
+            .validTestCases(testCases.size() - errors.size())
+            .invalidTestCases(errors.size())
+            .validationErrors(errors)
+            .validationWarnings(warnings)
+            .build();
+    }
+
+    private int calculateOverallQualityScore(List<TestCase> testCases) {
+        int score = 0;
+        int total = testCases.size();
+
+        // Coverage (30 points)
+        score += Math.min(30, (total / 10) * 30);
+
+        // Examples (20 points)
+        if (testCases.stream().anyMatch(TestCase::getIsExample)) {
+            score += 20;
+        }
+
+        // Edge cases (25 points)
+        if (hasEdgeCases(testCases)) {
+            score += 25;
+        }
+
+        // Stress tests (15 points)
+        if (testCases.stream().anyMatch(TestCase::getIsHidden)) {
+            score += 15;
+        }
+
+        // Descriptions (10 points)
+        if (hasGoodDescriptions(testCases)) {
+            score += 10;
+        }
+
+        return score;
+    }
+
+    private boolean hasEdgeCases(List<TestCase> testCases) {
+        return testCases.stream().anyMatch(tc ->
+            tc.getDescription().toLowerCase().contains("edge") ||
+            tc.getDescription().toLowerCase().contains("empty") ||
+            tc.getDescription().toLowerCase().contains("single")
+        );
+    }
+
+    private boolean hasGoodDescriptions(List<TestCase> testCases) {
+        return testCases.stream().allMatch(tc ->
+            tc.getDescription() != null && tc.getDescription().length() > 5
+        );
+    }
+
+    private String getQualityLevel(int score) {
+        if (score >= 80) return "EXCELLENT";
+        if (score >= 60) return "GOOD";
+        if (score >= 40) return "FAIR";
+        return "POOR";
     }
 }

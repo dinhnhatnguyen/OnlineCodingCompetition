@@ -75,3 +75,92 @@ export const resetPassword = async (data) => {
     throw error;
   }
 };
+
+/**
+ * Get current user information (for Firebase data collection)
+ * Lấy thông tin người dùng hiện tại (cho thu thập dữ liệu Firebase)
+ */
+export const getCurrentUser = async () => {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw new Error("No authentication token found");
+    }
+
+    const response = await axios.get(`${API_URL}/me`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error("Error getting current user:", error);
+    throw error;
+  }
+};
+
+/**
+ * Extract user info from JWT token (fallback method)
+ * Trích xuất thông tin user từ JWT token (phương pháp dự phòng)
+ */
+export const extractUserFromToken = () => {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return null;
+    }
+
+    const parts = token.split(".");
+    if (parts.length !== 3) {
+      throw new Error("Invalid JWT format");
+    }
+
+    const payload = JSON.parse(atob(parts[1]));
+
+    return {
+      userId: payload.userId || payload.sub || payload.id,
+      userName: payload.userName || payload.username || payload.name,
+      email: payload.email,
+      role: payload.role,
+    };
+  } catch (error) {
+    console.error("Error extracting user from token:", error);
+    return null;
+  }
+};
+
+/**
+ * Get user info with fallback
+ * Lấy thông tin user với phương pháp dự phòng
+ */
+export const getUserInfo = async () => {
+  try {
+    // Try to get from API first
+    console.log(" Trying to get user info from API...");
+    const userFromApi = await getCurrentUser();
+    console.log(" Got user info from API:", userFromApi);
+    return userFromApi;
+  } catch (apiError) {
+    console.warn(
+      " Failed to get user from API, trying token extraction:",
+      apiError.message
+    );
+
+    // Fallback to token extraction
+    const userFromToken = extractUserFromToken();
+    if (userFromToken) {
+      console.log(" Got user info from token:", userFromToken);
+      return {
+        id: userFromToken.userId,
+        username: userFromToken.userName,
+        email: userFromToken.email,
+        role: userFromToken.role,
+      };
+    }
+
+    console.error(" Failed to get user info from both API and token");
+    throw new Error("Unable to get user information");
+  }
+};

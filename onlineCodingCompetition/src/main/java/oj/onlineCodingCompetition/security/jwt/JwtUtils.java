@@ -11,7 +11,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
-import java.util.Collections;
 import java.util.Date;
 
 @Component
@@ -29,6 +28,10 @@ public class JwtUtils {
 
         return Jwts.builder()
                 .setSubject(userPrincipal.getUsername())
+                .claim("userId", userPrincipal.getId())
+                .claim("userName", userPrincipal.getUsername())
+                .claim("email", userPrincipal.getEmail())
+                .claim("role", userPrincipal.getRole())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date((new Date()).getTime() + jwtExpirationMs))
                 .signWith(key(), SignatureAlgorithm.HS256)

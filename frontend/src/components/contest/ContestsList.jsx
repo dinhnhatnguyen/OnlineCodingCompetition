@@ -20,7 +20,7 @@ export default function ContestsList() {
         setLoading(false);
       })
       .catch(() => {
-        setError("Failed to load contests");
+        setError("Không thể tải danh sách cuộc thi");
         setLoading(false);
       });
   }, []);
@@ -62,7 +62,7 @@ export default function ContestsList() {
   );
 
   if (loading) {
-    return <div className="text-center text-white py-10">Loading...</div>;
+    return <div className="text-center text-white py-10">Đang tải...</div>;
   }
   if (error) {
     return <div className="text-center text-red-500 py-10">{error}</div>;
@@ -71,12 +71,12 @@ export default function ContestsList() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <h1 className="text-2xl font-bold text-white">Contests</h1>
+        <h1 className="text-2xl font-bold text-white">Cuộc thi</h1>
         <div className="w-full md:w-auto mb-4 md:mb-0">
           <div className="relative w-full md:w-64">
             <input
               type="text"
-              placeholder="Search contests..."
+              placeholder="Tìm kiếm cuộc thi..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="bg-zinc-900 text-white pl-10 pr-3 py-2 rounded w-72 focus:outline-none border border-zinc-700"
@@ -93,10 +93,10 @@ export default function ContestsList() {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
-            <option value="all">All Status</option>
-            <option value="upcoming">Upcoming</option>
-            <option value="ongoing">Ongoing</option>
-            <option value="completed">Completed</option>
+            <option value="all">Tất cả trạng thái</option>
+            <option value="upcoming">Sắp diễn ra</option>
+            <option value="ongoing">Đang diễn ra</option>
+            <option value="completed">Đã kết thúc</option>
           </select>
 
           <select
@@ -104,9 +104,9 @@ export default function ContestsList() {
             value={visibilityFilter}
             onChange={(e) => setVisibilityFilter(e.target.value)}
           >
-            <option value="all">All Visibility</option>
-            <option value="public">Public</option>
-            <option value="private">Private</option>
+            <option value="all">Tất cả quyền truy cập</option>
+            <option value="public">Công khai</option>
+            <option value="private">Riêng tư</option>
           </select>
         </div>
       </div>
@@ -120,11 +120,11 @@ export default function ContestsList() {
           </div>
           <div className="flex justify-between items-center mt-4 text-gray-400 text-sm">
             <span>
-              Showing{" "}
+              Hiển thị{" "}
               {filteredContests.length === 0 ? 0 : currentPage * pageSize + 1}{" "}
-              to{" "}
+              đến{" "}
               {Math.min((currentPage + 1) * pageSize, filteredContests.length)}{" "}
-              of {filteredContests.length} results
+              trong tổng số {filteredContests.length} kết quả
             </span>
             <div className="flex space-x-2">
               <button
@@ -162,12 +162,12 @@ export default function ContestsList() {
       ) : (
         <div className="bg-zinc-900 rounded-lg p-8 text-center">
           <h3 className="text-lg font-medium text-white mb-2">
-            No contests found
+            Không tìm thấy cuộc thi nào
           </h3>
           <p className="text-gray-400">
             {searchTerm
-              ? "No contests match your search criteria. Try a different search term."
-              : "There are no contests available at the moment. Check back soon!"}
+              ? "Không có cuộc thi nào phù hợp với tiêu chí tìm kiếm. Hãy thử từ khóa khác."
+              : "Hiện tại chưa có cuộc thi nào. Hãy quay lại sau!"}
           </p>
         </div>
       )}

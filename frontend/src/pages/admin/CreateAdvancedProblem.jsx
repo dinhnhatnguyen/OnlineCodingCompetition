@@ -18,8 +18,26 @@ const CreateAdvancedProblem = () => {
   const handleSubmit = async (values) => {
     try {
       setSubmitting(true);
+
+      console.log("CreateAdvancedProblem - Submitting values:", values);
+
+      // Validate that we have test cases
+      if (!values.createTestCases || values.createTestCases.length === 0) {
+        showError("Vui lòng tạo ít nhất 2 test cases trước khi submit");
+        return;
+      }
+
+      if (values.createTestCases.length < 2) {
+        showError("Cần ít nhất 2 test cases để tạo bài toán");
+        return;
+      }
+
       const result = await createProblemWithTestCases(values, token);
-      showSuccess("Bài toán đã được tạo thành công!");
+      console.log("Problem created successfully:", result);
+
+      showSuccess(
+        `Bài toán đã được tạo thành công với ${values.createTestCases.length} test cases!`
+      );
       navigate(`/admin/problems/testcases/${result.id}`);
     } catch (error) {
       console.error("Error creating problem:", error);
@@ -27,8 +45,12 @@ const CreateAdvancedProblem = () => {
 
       if (error.response?.status === 403) {
         errorMessage = "Bạn không có quyền tạo bài toán";
+      } else if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.message || "Dữ liệu không hợp lệ";
       } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
       }
 
       showError(errorMessage);

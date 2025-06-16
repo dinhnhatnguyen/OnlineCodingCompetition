@@ -53,13 +53,13 @@ const DashboardHome = () => {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+      <h1 className="text-2xl font-bold mb-6">Bảng điều khiển</h1>
 
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={8}>
           <Card loading={loading}>
             <Statistic
-              title="Total Problems"
+              title="Tổng số bài tập"
               value={problemCount}
               prefix={<CodeOutlined />}
             />
@@ -68,7 +68,7 @@ const DashboardHome = () => {
         <Col xs={24} sm={8}>
           <Card loading={loading}>
             <Statistic
-              title="Total Contests"
+              title="Tổng số cuộc thi"
               value={contestCount}
               prefix={<TrophyOutlined />}
             />
@@ -77,7 +77,7 @@ const DashboardHome = () => {
         <Col xs={24} sm={8}>
           <Card loading={loading}>
             <Statistic
-              title="Role"
+              title="Vai trò"
               value={user?.role?.toUpperCase() || ""}
               prefix={<UserOutlined />}
             />
@@ -88,9 +88,9 @@ const DashboardHome = () => {
       <Row gutter={[16, 16]} className="mt-6">
         <Col xs={24} md={12}>
           <Card
-            title={`Problems ${isAdmin ? "" : "Created by You"}`}
+            title={`Bài tập ${isAdmin ? "" : "do bạn tạo"}`}
             loading={loading}
-            extra={<a href="/admin/problems">View All</a>}
+            extra={<a href="/admin/problems">Xem tất cả</a>}
           >
             <List
               dataSource={recentProblems}
@@ -98,19 +98,19 @@ const DashboardHome = () => {
                 <List.Item>
                   <List.Item.Meta
                     title={item.title}
-                    description={`Difficulty: ${item.difficulty}`}
+                    description={`Độ khó: ${item.difficulty}`}
                   />
                 </List.Item>
               )}
-              locale={{ emptyText: "No problems found" }}
+              locale={{ emptyText: "Không tìm thấy bài tập nào" }}
             />
           </Card>
         </Col>
         <Col xs={24} md={12}>
           <Card
-            title={`Contests ${isAdmin ? "" : "Created by You"}`}
+            title={`Cuộc thi ${isAdmin ? "" : "do bạn tạo"}`}
             loading={loading}
-            extra={<a href="/admin/contests">View All</a>}
+            extra={<a href="/admin/contests">Xem tất cả</a>}
           >
             <List
               dataSource={recentContests}
@@ -118,11 +118,11 @@ const DashboardHome = () => {
                 <List.Item>
                   <List.Item.Meta
                     title={item.title}
-                    description={`Status: ${item.status}`}
+                    description={`Trạng thái: ${item.status}`}
                   />
                 </List.Item>
               )}
-              locale={{ emptyText: "No contests found" }}
+              locale={{ emptyText: "Không tìm thấy cuộc thi nào" }}
             />
           </Card>
         </Col>

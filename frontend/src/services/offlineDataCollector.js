@@ -227,17 +227,51 @@ class OfflineDataCollector {
   }
 
   /**
-   * Add event to current session
-   * Thêm event vào session hiện tại
+   * Add event to current session (simplified format)
+   * Thêm event vào session hiện tại (định dạng đơn giản)
    */
   addEvent(eventType, eventData) {
     if (!this.currentSession) return;
 
-    this.currentSession.events.push({
+    // Simplified event structure
+    const simplifiedEvent = {
       eventType: eventType,
-      eventData: eventData,
       timestamp: new Date().toISOString(),
-    });
+      eventData: this.simplifyEventData(eventData),
+    };
+
+    this.currentSession.events.push(simplifiedEvent);
+  }
+
+  /**
+   * Simplify event data to reduce size
+   * Đơn giản hóa dữ liệu event để giảm kích thước
+   */
+  simplifyEventData(eventData) {
+    if (!eventData) return {};
+
+    const simplified = {};
+
+    // Only keep essential fields with shorter names
+    if (eventData.editCount !== undefined)
+      simplified.editCount = eventData.editCount;
+    if (eventData.codeLength !== undefined)
+      simplified.codeLength = eventData.codeLength;
+    if (eventData.language !== undefined)
+      simplified.language = eventData.language;
+    if (eventData.wasSuccessful !== undefined)
+      simplified.wasSuccessful = eventData.wasSuccessful;
+    if (eventData.totalViewTime !== undefined)
+      simplified.totalViewTime = eventData.totalViewTime;
+    if (eventData.codingDuration !== undefined)
+      simplified.codingDuration = eventData.codingDuration;
+    if (eventData.solvingTime !== undefined)
+      simplified.solvingTime = eventData.solvingTime;
+    if (eventData.attemptNumber !== undefined)
+      simplified.attemptNumber = eventData.attemptNumber;
+    if (eventData.result !== undefined) simplified.result = eventData.result;
+
+    return simplified;
   }
 
   /**
@@ -414,6 +448,38 @@ class OfflineDataCollector {
       offlineSessionsCount: this.sessionData.length,
       isUploading: this.isUploading,
     };
+  }
+
+  /**
+   * Get simplified events for debugging
+   * Lấy events đơn giản để debug
+   */
+  getSimplifiedEvents() {
+    if (!this.currentSession) {
+      console.log("No active session");
+      return [];
+    }
+
+    console.log("📊 Simplified Events Structure:");
+    console.log("events: [");
+
+    this.currentSession.events.forEach((event, index) => {
+      console.log("  {");
+      console.log(`    eventType: "${event.eventType}",`);
+      console.log(`    timestamp: "${event.timestamp}",`);
+      console.log(
+        "    eventData: {",
+        JSON.stringify(event.eventData).slice(1, -1),
+        "}"
+      );
+      console.log(
+        "  }" + (index < this.currentSession.events.length - 1 ? "," : "")
+      );
+    });
+
+    console.log("]");
+
+    return this.currentSession.events;
   }
 
   /**

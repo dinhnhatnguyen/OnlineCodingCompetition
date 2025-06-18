@@ -248,8 +248,10 @@ const ProblemDetails = () => {
             console.error("Firebase write test failed:", error);
           }
         };
+        window.getSimplifiedEvents = () =>
+          offlineDataCollector.getSimplifiedEvents();
         console.log(
-          "Debug commands available: debugFirebaseData(), testFirebaseConnection(), getFirebaseUploadStatus(), getFirebaseLogs(), testFirebaseWrite()"
+          "Debug commands available: debugFirebaseData(), testFirebaseConnection(), getFirebaseUploadStatus(), getFirebaseLogs(), testFirebaseWrite(), getSimplifiedEvents()"
         );
       }
     } catch (error) {

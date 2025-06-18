@@ -4,8 +4,11 @@ import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import { getProblems } from "../api/problemsApi";
 import { getSolvedProblems } from "../api/solvedProblemsApi";
+import { useLanguage } from "../contexts/LanguageContext";
+import LanguageSwitcher from "../components/common/LanguageSwitcher";
 
 const Problems = () => {
+  const { currentLanguage } = useLanguage();
   const [problems, setProblems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [solvedProblems, setSolvedProblems] = useState(new Set());
@@ -15,8 +18,8 @@ const Problems = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Lấy danh sách bài tập
-        const problemsData = await getProblems();
+        // Lấy danh sách bài tập với ngôn ngữ hiện tại
+        const problemsData = await getProblems(currentLanguage);
         setProblems(problemsData);
 
         try {
@@ -34,7 +37,7 @@ const Problems = () => {
     };
 
     fetchData();
-  }, []);
+  }, [currentLanguage]); // Re-fetch when language changes
 
   // Filter problems based on search and difficulty
   const filteredProblems = problems.filter((problem) => {
@@ -83,7 +86,9 @@ const Problems = () => {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Bài tập</h1>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 items-center">
+            {/* Language Switcher for page */}
+            <LanguageSwitcher variant="compact" />
             <div className="relative">
               <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                 <svg

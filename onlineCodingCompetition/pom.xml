@@ -179,6 +179,20 @@
 			<version>2.7.0</version> <!-- Try using the latest version -->
 		</dependency>
 
+		<!-- Google Cloud Translate API -->
+		<dependency>
+			<groupId>com.google.cloud</groupId>
+			<artifactId>google-cloud-translate</artifactId>
+			<version>2.20.0</version>
+		</dependency>
+
+		<!-- Test Dependencies -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
 	</dependencies>
 
 	<build>

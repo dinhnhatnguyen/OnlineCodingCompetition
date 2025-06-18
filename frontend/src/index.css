@@ -100,3 +100,59 @@
 .animate-fade-out-up {
   animation: fade-out-up 0.5s ease-out forwards;
 }
+
+/* Language Switcher Custom Styles */
+.language-switcher-dropdown {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Smooth animations for dropdown */
+@keyframes dropdown-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dropdown-fade-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+}
+
+.language-switcher-dropdown {
+  animation: dropdown-fade-in 0.15s ease-out;
+}
+
+/* Ensure proper z-index for dropdowns */
+.language-switcher-dropdown {
+  z-index: 9999;
+}
+
+/* Custom scrollbar for dropdown if needed */
+.language-switcher-dropdown::-webkit-scrollbar {
+  width: 4px;
+}
+
+.language-switcher-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.language-switcher-dropdown::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+.language-switcher-dropdown::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}

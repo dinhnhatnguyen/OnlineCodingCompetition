@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
-import { getProblems } from "../api/problemsApi";
+import { getProblemById } from "../api/problemsApi";
 import { submitCode, pollSubmissionStatus } from "../api/submissionApi";
 import MonacoEditor from "@monaco-editor/react";
 import ReactMarkdown from "react-markdown";
@@ -12,6 +12,7 @@ import firebaseDebugger from "../utils/firebaseDebugger";
 import firebaseLogger from "../utils/firebaseLogger";
 import { useCodeEditorTracking } from "../hooks/useCodeEditorTracking";
 import { getUserInfo } from "../api/userApi";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const languageMap = {
   javascript: "javascript",
@@ -62,6 +63,7 @@ const getTemplate = (problem, lang) => {
 
 const ProblemDetails = () => {
   const { id } = useParams();
+  const { currentLanguage } = useLanguage();
   const [problem, setProblem] = useState(null);
   const [allProblems, setAllProblems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -113,21 +115,28 @@ const ProblemDetails = () => {
   }, []);
 
   useEffect(() => {
-    getProblems()
-      .then((data) => {
-        setAllProblems(data);
-        const found = data.find((p) => String(p.id) === String(id));
-        setProblem(found);
-        setLoading(false);
-        if (found) {
-          setLanguage(Object.keys(found.functionSignatures)[0] || "javascript");
+    const fetchProblem = async () => {
+      try {
+        setLoading(true);
+        // Get problem with translation support
+        const problemData = await getProblemById(id, currentLanguage);
+        setProblem(problemData);
+
+        if (problemData) {
+          setLanguage(
+            Object.keys(problemData.functionSignatures)[0] || "javascript"
+          );
         }
-      })
-      .catch(() => {
+        setLoading(false);
+      } catch (error) {
+        console.error("Error loading problem:", error);
         setError("Failed to load problem");
         setLoading(false);
-      });
-  }, [id]);
+      }
+    };
+
+    fetchProblem();
+  }, [id, currentLanguage]); // Re-fetch when language changes
 
   // Separate effect for starting session when both problem and userId are available
   useEffect(() => {

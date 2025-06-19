@@ -32,4 +32,5 @@ public class ContestDTO {
     private Long createdById;
     private List<Long> problemIds;
     private boolean chatEnabled;
+    private String contestCode;
 }

@@ -1,12 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getContestById, registerContest } from "../api/contestApi";
+import { getContestById } from "../api/contestApi";
 import { getProblems } from "../api/problemsApi";
-import {
-  getRegistrations,
-  approveRegistration,
-  rejectRegistration,
-} from "../api/contestRegistrationApi";
+import { getRegistrations } from "../api/contestRegistrationApi";
 import { getLeaderboard } from "../api/leaderboardApi";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
@@ -24,8 +20,6 @@ export default function ContestDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [problems, setProblems] = useState([]);
-  const [registerMsg, setRegisterMsg] = useState("");
-  const [registering, setRegistering] = useState(false);
   const [tab, setTab] = useState("overview");
   const [registrations, setRegistrations] = useState([]);
   const [regLoading, setRegLoading] = useState(false);
@@ -133,100 +127,7 @@ export default function ContestDetails() {
     // eslint-disable-next-line
   }, [contest, user, token]);
 
-  const handleRegister = async () => {
-    if (!token) {
-      setRegisterMsg("You must be signed in to register.");
-      showNotification("You must be signed in to register", "warning");
-      return;
-    }
-    setRegistering(true);
-    setRegisterMsg("");
-    try {
-      await registerContest(id, token);
-      setRegisterMsg("Registration successful! Waiting for approval.");
-      showNotification(
-        "Registration successful! Waiting for approval.",
-        "success"
-      );
-      refreshRegistrations();
-    } catch (e) {
-      console.error("Registration error:", e);
-
-      let errorMsg = "";
-      if (e.response?.status === 401) {
-        errorMsg = "Session expired. Please sign in again.";
-      } else if (e.response?.status === 500) {
-        errorMsg =
-          "Internal Server Error. Please contact admin or try again later.";
-      } else if (e.response?.data?.message?.includes("đã đăng ký")) {
-        errorMsg = "You have already registered for this contest.";
-        refreshRegistrations();
-      } else if (e.response?.data?.message?.includes("số lượng")) {
-        errorMsg = "This contest has reached maximum number of participants.";
-      } else {
-        errorMsg = e.response?.data?.message || "Registration failed!";
-      }
-
-      setRegisterMsg(errorMsg);
-      showNotification(errorMsg, "error");
-    }
-    setRegistering(false);
-  };
-
-  const handleApprove = async (registrationId) => {
-    try {
-      await approveRegistration(registrationId, token);
-      setRegistrations((prev) =>
-        prev.map((r) =>
-          r.id === registrationId ? { ...r, status: "APPROVED" } : r
-        )
-      );
-
-      // Find user info to include in notification
-      const regInfo = registrations.find((r) => r.id === registrationId);
-      showNotification(
-        `Registration for ${regInfo?.username || "user"} approved successfully`,
-        "success"
-      );
-
-      if (userRegistration?.id === registrationId) {
-        setRegisterMsg("Your registration has been approved!");
-      }
-      getContestById(id, token).then((data) => {
-        setContest(data);
-      });
-    } catch (error) {
-      console.error("Error approving registration:", error);
-      setRegError("Failed to approve registration");
-      showNotification("Failed to approve registration", "error");
-    }
-  };
-
-  const handleReject = async (registrationId) => {
-    try {
-      await rejectRegistration(registrationId, token);
-      setRegistrations((prev) =>
-        prev.map((r) =>
-          r.id === registrationId ? { ...r, status: "REJECTED" } : r
-        )
-      );
-
-      // Find user info to include in notification
-      const regInfo = registrations.find((r) => r.id === registrationId);
-      showNotification(
-        `Registration for ${regInfo?.username || "user"} rejected`,
-        "warning"
-      );
-
-      if (userRegistration?.id === registrationId) {
-        setRegisterMsg("Your registration has been rejected.");
-      }
-    } catch (error) {
-      console.error("Error rejecting registration:", error);
-      setRegError("Failed to reject registration");
-      showNotification("Failed to reject registration", "error");
-    }
-  };
+  // Registration functions removed - users now join via contest code
 
   const userRegistration = registrations.find(
     (r) => r.username === user?.username
@@ -342,20 +243,7 @@ export default function ContestDetails() {
           >
             Bảng xếp hạng
           </button>
-          {(user?.role === "admin" ||
-            (user?.role === "instructor" &&
-              contest.createdById === user.id)) && (
-            <button
-              className={`px-4 py-2 rounded ${
-                tab === "registrations"
-                  ? "bg-zinc-800 text-white"
-                  : "bg-zinc-900 text-gray-400"
-              }`}
-              onClick={() => setTab("registrations")}
-            >
-              Đăng ký
-            </button>
-          )}
+          {/* Registrations tab removed - moved to dedicated admin interface */}
         </div>
         {/* Display access restriction message if needed */}
         {tab === "problems" &&
@@ -393,24 +281,6 @@ export default function ContestDetails() {
 
         {tab === "overview" && (
           <>
-            {user && userRegistration && !contest.public && (
-              <div
-                className={`mb-4 px-4 py-2 rounded text-sm font-medium ${
-                  userRegistration.status === "APPROVED"
-                    ? "bg-green-700 text-white"
-                    : userRegistration.status === "REJECTED"
-                    ? "bg-red-700 text-white"
-                    : "bg-yellow-700 text-white"
-                }`}
-              >
-                {userRegistration.status === "APPROVED" &&
-                  "Your registration has been approved! You can join the contest."}
-                {userRegistration.status === "REJECTED" &&
-                  "Your registration was rejected."}
-                {userRegistration.status === "PENDING" &&
-                  "Your registration is pending approval."}
-              </div>
-            )}
             <div className="flex flex-col md:flex-row gap-6">
               <section className="flex-1">
                 <div className="bg-zinc-900 rounded-lg p-6 mb-4">
@@ -494,52 +364,7 @@ export default function ContestDetails() {
                     </div>
                     <div>{contest.problemIds.length} problems</div>
                   </div>
-                  {(contest.status === "UPCOMING" ||
-                    contest.status === "ONGOING") &&
-                    !userRegistration &&
-                    !contest.public && (
-                      <button
-                        className="bg-[#722055] hover:bg-[#50153a] text-white font-semibold rounded-full px-4 py-2 w-full"
-                        onClick={handleRegister}
-                        disabled={registering}
-                      >
-                        {registering ? "Registering..." : "Register"}
-                      </button>
-                    )}
-                  {userRegistration && (
-                    <div
-                      className={`mt-2 py-2 px-4 rounded-md text-center text-sm font-medium ${
-                        userRegistration.status === "APPROVED"
-                          ? "bg-green-700 text-white"
-                          : userRegistration.status === "REJECTED"
-                          ? "bg-red-700 text-white"
-                          : "bg-yellow-600 text-white"
-                      }`}
-                    >
-                      {userRegistration.status === "APPROVED" && (
-                        <>
-                          Registration Approved
-                          {contest.status === "ONGOING" && (
-                            <button
-                              className="mt-2 bg-[#722055] hover:bg-[#50153a] text-white font-semibold rounded-full px-4 py-2 w-full"
-                              onClick={() => setTab("problems")}
-                            >
-                              View Problems
-                            </button>
-                          )}
-                        </>
-                      )}
-                      {userRegistration.status === "REJECTED" &&
-                        "Registration Rejected"}
-                      {userRegistration.status === "PENDING" &&
-                        "Registration Pending"}
-                    </div>
-                  )}
-                  {registerMsg && !userRegistration && (
-                    <div className="text-center text-sm mt-2 text-pink-400">
-                      {registerMsg}
-                    </div>
-                  )}
+                  {/* Registration removed - users now join via contest code */}
                 </div>
               </aside>
             </div>
@@ -574,76 +399,7 @@ export default function ContestDetails() {
           <LeaderboardTab contestId={id} token={token} />
         )}
 
-        {tab === "registrations" && (
-          <div className="bg-zinc-900 rounded-lg p-6 mb-4">
-            <h2 className="text-lg font-bold mb-2">Quản lý đăng ký</h2>
-            {regLoading ? (
-              <div className="text-white">Đang tải...</div>
-            ) : regError ? (
-              <div className="text-red-500">{regError}</div>
-            ) : (
-              <table className="min-w-full text-sm text-left">
-                <thead>
-                  <tr className="text-gray-400">
-                    <th className="py-2 px-2">Tên người dùng</th>
-                    <th className="py-2 px-2">Email</th>
-                    <th className="py-2 px-2">Trạng thái</th>
-                    <th className="py-2 px-2">Hành động</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {registrations.map((r) => (
-                    <tr key={r.id} className="border-b border-zinc-800">
-                      <td className="py-2 px-2">{r.username}</td>
-                      <td className="py-2 px-2">{r.email}</td>
-                      <td className="py-2 px-2">
-                        <span
-                          className={`px-2 py-1 rounded text-xs ${
-                            r.status === "APPROVED"
-                              ? "bg-green-700 text-white"
-                              : r.status === "REJECTED"
-                              ? "bg-red-700 text-white"
-                              : "bg-yellow-700 text-white"
-                          }`}
-                        >
-                          {r.status === "APPROVED"
-                            ? "Đã duyệt"
-                            : r.status === "REJECTED"
-                            ? "Từ chối"
-                            : "Chờ duyệt"}
-                        </span>
-                      </td>
-                      <td className="py-2 px-2">
-                        {r.status === "PENDING" && (
-                          <>
-                            <button
-                              className="bg-green-600 text-white px-2 py-1 rounded mr-2"
-                              onClick={() => handleApprove(r.id)}
-                            >
-                              Duyệt
-                            </button>
-                            <button
-                              className="bg-red-600 text-white px-2 py-1 rounded"
-                              onClick={() => handleReject(r.id)}
-                            >
-                              Từ chối
-                            </button>
-                          </>
-                        )}
-                        {r.status === "APPROVED" && (
-                          <span className="text-green-500">Đã duyệt</span>
-                        )}
-                        {r.status === "REJECTED" && (
-                          <span className="text-red-500">Đã từ chối</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        )}
+        {/* Registrations tab removed - moved to dedicated admin interface */}
       </main>
       <Footer />
     </div>

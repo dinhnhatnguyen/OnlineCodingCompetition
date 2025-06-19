@@ -2,9 +2,11 @@ package oj.onlineCodingCompetition.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import oj.onlineCodingCompetition.dto.ContestDTO;
 import oj.onlineCodingCompetition.entity.Contest;
 import oj.onlineCodingCompetition.repository.ContestRepository;
 import org.springframework.data.domain.Page;
@@ -410,6 +412,29 @@ public class ProblemController {
             @Valid @RequestBody ProblemDTO problemDTO) {
         log.debug("REST request to update problem with ID: {}", id);
         return ResponseEntity.ok(problemService.updateProblem(id, problemDTO));
+    }
+
+    /**
+     * Gets all contests that contain a specific problem
+     * Lấy tất cả cuộc thi chứa bài toán cụ thể
+     *
+     * @param id Problem ID (ID của bài toán)
+     * @return List of contests containing the problem (Danh sách cuộc thi chứa bài toán)
+     */
+    @GetMapping("/{id}/contests")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
+    public ResponseEntity<List<ContestDTO>> getContestsContainingProblem(@PathVariable Long id) {
+        log.debug("REST request to get contests containing problem with ID: {}", id);
+        try {
+            List<ContestDTO> contests = problemService.getContestsContainingProblem(id);
+            return ResponseEntity.ok(contests);
+        } catch (EntityNotFoundException e) {
+            log.error("Problem not found with ID: {}", id);
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Error getting contests for problem with ID: {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     /**

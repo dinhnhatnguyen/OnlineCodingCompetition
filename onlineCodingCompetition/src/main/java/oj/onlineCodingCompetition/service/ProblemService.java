@@ -11,10 +11,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import oj.onlineCodingCompetition.dto.ContestDTO;
 import oj.onlineCodingCompetition.dto.ProblemDTO;
 import oj.onlineCodingCompetition.dto.TestCaseDTO;
 import oj.onlineCodingCompetition.entity.Problem;
 import oj.onlineCodingCompetition.entity.TestCase;
+import oj.onlineCodingCompetition.exception.ProblemDeletionException;
 import oj.onlineCodingCompetition.repository.ProblemRepository;
 import oj.onlineCodingCompetition.repository.TestCaseRepository;
 import oj.onlineCodingCompetition.security.entity.User;
@@ -383,11 +385,38 @@ public class ProblemService {
     }
 
     /**
+     * Gets all contests that contain a specific problem
+     * Lấy tất cả cuộc thi chứa bài toán cụ thể
+     *
+     * @param problemId Problem ID / ID bài toán
+     * @return List of contests containing the problem / Danh sách cuộc thi chứa bài toán
+     */
+    @Transactional(readOnly = true)
+    public List<ContestDTO> getContestsContainingProblem(Long problemId) {
+        log.debug("Getting contests containing problem with ID: {}", problemId);
+
+        // Kiểm tra bài toán tồn tại
+        Problem problem = problemRepository.findById(problemId)
+                .orElseThrow(() -> new EntityNotFoundException("Problem not found with id: " + problemId));
+
+        // Lấy danh sách cuộc thi chứa bài toán này
+        List<Contest> contests = problem.getContests().stream()
+                .filter(contest -> !contest.isDeleted()) // Chỉ lấy cuộc thi chưa bị xóa
+                .collect(Collectors.toList());
+
+        // Chuyển đổi sang DTO với thông tin chi tiết
+        return contests.stream()
+                .map(this::convertContestToDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Soft deletes a problem
      * Xóa mềm một bài toán
-     * 
+     *
      * @param id Problem ID / ID bài toán
      * @param userId User performing deletion / ID người xóa
+     * @throws ProblemDeletionException if problem is in active contests
      */
     @Transactional
     public void deleteProblem(Long id, Long userId) {
@@ -395,11 +424,30 @@ public class ProblemService {
         Problem problem = problemRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Problem not found with id: " + id));
 
+        // Kiểm tra xem bài toán có đang nằm trong cuộc thi đang diễn ra không
+        List<Contest> ongoingContests = problem.getContests().stream()
+                .filter(contest -> !contest.isDeleted() && contest.getStatus() == Contest.ContestStatus.ONGOING)
+                .collect(Collectors.toList());
+
+        if (!ongoingContests.isEmpty()) {
+            // Chuyển đổi sang DTO để trả về thông tin chi tiết
+            List<ContestDTO> ongoingContestDTOs = ongoingContests.stream()
+                    .map(this::convertContestToDTO)
+                    .collect(Collectors.toList());
+
+            String message = String.format(
+                "Không thể xóa bài toán này vì đang được sử dụng trong %d cuộc thi đang diễn ra",
+                ongoingContests.size()
+            );
+
+            throw new ProblemDeletionException(message, ongoingContestDTOs);
+        }
+
         // Đánh dấu problem là đã xóa
         problem.setDeleted(true);
         problem.setDeletedAt(LocalDateTime.now());
         problem.setDeletedBy(userId);
-        
+
         // Lưu thay đổi
         problemRepository.save(problem);
         log.info("Problem soft deleted successfully with ID: {} by user: {}", id, userId);
@@ -574,5 +622,39 @@ public class ProblemService {
         }
         
         return savedProblem;
+    }
+
+    /**
+     * Converts Contest entity to ContestDTO with detailed information
+     * Chuyển đổi Contest entity sang ContestDTO với thông tin chi tiết
+     *
+     * @param contest Contest entity / Contest entity
+     * @return ContestDTO with detailed information / ContestDTO với thông tin chi tiết
+     */
+    private ContestDTO convertContestToDTO(Contest contest) {
+        ContestDTO dto = modelMapper.map(contest, ContestDTO.class);
+
+        // Set additional information
+        dto.setCreatedById(contest.getCreatedBy().getId());
+
+        // Explicitly set status to ensure proper mapping
+        dto.setStatus(contest.getStatus().toString());
+
+        // Count current participants (approved registrations)
+        long participantCount = contest.getRegistrations().stream()
+                .filter(registration -> "APPROVED".equals(registration.getStatus().toString()))
+                .count();
+        dto.setCurrentParticipants((int) participantCount);
+
+        // Set problem count (only non-deleted problems)
+        if (contest.getProblems() != null) {
+            List<Long> problemIds = contest.getProblems().stream()
+                    .filter(problem -> !problem.isDeleted())
+                    .map(Problem::getId)
+                    .collect(Collectors.toList());
+            dto.setProblemIds(problemIds);
+        }
+
+        return dto;
     }
 }

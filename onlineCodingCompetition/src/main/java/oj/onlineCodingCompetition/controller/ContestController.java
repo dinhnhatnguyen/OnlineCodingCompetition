@@ -256,4 +256,94 @@ public class ContestController {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
         return ResponseEntity.ok(contestService.getContestsByCreatedBy(user.getId()));
     }
+
+    /**
+     * Gets contest by contest code
+     * Lấy cuộc thi theo mã cuộc thi
+     *
+     * @param contestCode Contest code (Mã cuộc thi)
+     * @return Contest details (Thông tin cuộc thi)
+     */
+    @GetMapping("/code/{contestCode}")
+    public ResponseEntity<ContestDTO> getContestByCode(@PathVariable String contestCode) {
+        log.debug("Yêu cầu lấy cuộc thi theo mã: {}", contestCode);
+        return ResponseEntity.ok(contestService.getContestByCode(contestCode));
+    }
+
+    /**
+     * Registers user for contest using contest code
+     * Đăng ký người dùng vào cuộc thi bằng mã cuộc thi
+     *
+     * @param contestCode Contest code (Mã cuộc thi)
+     * @param userDetails Current user details (Thông tin người dùng hiện tại)
+     * @return Registration details (Thông tin đăng ký)
+     */
+    @PostMapping("/code/{contestCode}/register")
+    @PreAuthorize("hasAnyRole('STUDENT', 'INSTRUCTOR', 'ADMIN','USER')")
+    public ResponseEntity<ContestRegistrationDTO> registerByCode(
+            @PathVariable String contestCode,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        log.debug("Yêu cầu đăng ký cuộc thi bằng mã: {} cho user: {}", contestCode, userDetails != null ? userDetails.getUsername() : "null");
+        log.debug("User authorities: {}", userDetails != null ? userDetails.getAuthorities() : "null");
+
+        User user = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
+
+        return ResponseEntity.ok(contestService.registerUserByCode(contestCode, user.getId()));
+    }
+
+    /**
+     * Gets current user's contest registrations
+     * Lấy danh sách đăng ký cuộc thi của người dùng hiện tại
+     *
+     * @param userDetails Current user details (Thông tin người dùng hiện tại)
+     * @return List of user's contest registrations (Danh sách đăng ký cuộc thi của người dùng)
+     */
+    @GetMapping("/my-registrations")
+    @PreAuthorize("hasAnyRole('STUDENT', 'INSTRUCTOR', 'ADMIN','USER')")
+    public ResponseEntity<List<ContestRegistrationDTO>> getMyRegistrations(@AuthenticationPrincipal UserDetails userDetails) {
+        log.debug("Yêu cầu lấy danh sách đăng ký cuộc thi của user: {}", userDetails.getUsername());
+
+        User user = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
+
+        return ResponseEntity.ok(contestService.getUserRegistrations(user.getId()));
+    }
+
+    /**
+     * Removes a problem from a contest (Admin/Instructor only)
+     * Xóa một bài toán khỏi cuộc thi (Chỉ dành cho Admin/Giảng viên)
+     *
+     * @param contestId Contest ID (ID của cuộc thi)
+     * @param problemId Problem ID (ID của bài toán)
+     * @param userDetails Current user details (Thông tin người dùng hiện tại)
+     * @return Response message (Thông báo phản hồi)
+     */
+    @DeleteMapping("/{contestId}/problems/{problemId}")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
+    public ResponseEntity<?> removeProblemFromContest(
+            @PathVariable Long contestId,
+            @PathVariable Long problemId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        log.debug("Yêu cầu xóa bài toán {} khỏi cuộc thi {}", problemId, contestId);
+        try {
+            User user = userRepository.findByUsername(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
+
+            contestService.removeProblemFromContest(contestId, problemId, user.getId());
+            return ResponseEntity.ok()
+                    .body(new MessageResponse("Đã xóa bài toán khỏi cuộc thi thành công"));
+        } catch (IllegalStateException e) {
+            log.error("Cannot remove problem from contest: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new MessageResponse(e.getMessage()));
+        } catch (EntityNotFoundException e) {
+            log.error("Contest or problem not found: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Error removing problem from contest", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new MessageResponse("Có lỗi xảy ra khi xóa bài toán khỏi cuộc thi"));
+        }
+    }
 }

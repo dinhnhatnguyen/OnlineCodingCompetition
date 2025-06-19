@@ -140,3 +140,49 @@ export const registerContest = async (contestId, token) => {
     throw error;
   }
 };
+
+// Contest Code APIs
+export const getContestByCode = async (contestCode) => {
+  try {
+    const response = await axios.get(`${API_URL}/code/${contestCode}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error getting contest by code:", error);
+    throw error;
+  }
+};
+
+export const registerByContestCode = async (contestCode, token) => {
+  try {
+    const response = await axios.post(
+      `${API_URL}/code/${contestCode}/register`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error registering by contest code:", error);
+    throw error;
+  }
+};
+
+// Get user's registered contests
+export const getMyContests = async (token) => {
+  try {
+    const response = await axios.get(`${API_URL}/my-registrations`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error getting my contests:", error);
+    throw error;
+  }
+};

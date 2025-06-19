@@ -33,6 +33,8 @@ import EditContest from "./pages/admin/EditContest";
 import UserManagement from "./pages/admin/UserManagement";
 import DeletedProblems from "./pages/admin/DeletedProblems";
 import FirebaseDebug from "./components/FirebaseDebug";
+import JoinContest from "./pages/JoinContest";
+import ContestRegistrationManagement from "./pages/admin/ContestRegistrationManagement";
 
 function App() {
   return (
@@ -42,6 +44,7 @@ function App() {
       <Route path="/problems" element={<Problems />} />
       <Route path="/problems/:id" element={<ProblemDetails />} />
       <Route path="/contests" element={<ContestsPage />} />
+      <Route path="/contests/join" element={<JoinContest />} />
       <Route path="/contests/:id" element={<ContestDetails />} />
       <Route
         path="/contests/:contestId/problems/:id"
@@ -102,6 +105,10 @@ function App() {
         <Route path="contests" element={<ContestManagement />} />
         <Route path="contests/create" element={<CreateContest />} />
         <Route path="contests/edit/:id" element={<EditContest />} />
+        <Route
+          path="contests/:contestId/registrations"
+          element={<ContestRegistrationManagement />}
+        />
         <Route path="users" element={<UserManagement />} />
       </Route>
 
@@ -135,6 +142,10 @@ function App() {
         <Route path="contests" element={<ContestManagement />} />
         <Route path="contests/create" element={<CreateContest />} />
         <Route path="contests/edit/:id" element={<EditContest />} />
+        <Route
+          path="contests/:contestId/registrations"
+          element={<ContestRegistrationManagement />}
+        />
       </Route>
 
       {/* 404 route */}

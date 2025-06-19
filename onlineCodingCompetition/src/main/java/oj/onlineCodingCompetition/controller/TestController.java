@@ -1,10 +1,16 @@
 package oj.onlineCodingCompetition.controller;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Controller class for testing role-based access control
@@ -67,5 +73,21 @@ public class TestController {
     @PreAuthorize("hasRole('ADMIN')")
     public String adminAccess() {
         return "Admin Board.";
+    }
+
+    /**
+     * Test endpoint to check current user authentication and roles
+     */
+    @GetMapping("/whoami")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, Object>> whoAmI(@AuthenticationPrincipal UserDetails userDetails) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("username", userDetails.getUsername());
+        response.put("authorities", userDetails.getAuthorities());
+        response.put("isEnabled", userDetails.isEnabled());
+        response.put("isAccountNonExpired", userDetails.isAccountNonExpired());
+        response.put("isAccountNonLocked", userDetails.isAccountNonLocked());
+        response.put("isCredentialsNonExpired", userDetails.isCredentialsNonExpired());
+        return ResponseEntity.ok(response);
     }
 }

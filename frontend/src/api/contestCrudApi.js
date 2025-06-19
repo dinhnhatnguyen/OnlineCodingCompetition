@@ -115,3 +115,56 @@ export const getMyContests = async (token) => {
     throw error;
   }
 };
+
+export const removeProblemFromContest = async (contestId, problemId, token) => {
+  try {
+    if (!contestId || !problemId) {
+      throw new Error("Contest ID and Problem ID are required");
+    }
+
+    if (!token) {
+      throw new Error("Authorization token is required");
+    }
+
+    console.log(`Removing problem ${problemId} from contest ${contestId}`);
+
+    const response = await axios.delete(
+      `${API_URL}/${contestId}/problems/${problemId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (response.status === 200) {
+      return {
+        success: true,
+        message:
+          response.data.message || "Đã xóa bài toán khỏi cuộc thi thành công",
+      };
+    }
+
+    throw new Error(`Unexpected response status: ${response.status}`);
+  } catch (error) {
+    console.error("Error removing problem from contest:", error);
+
+    // Handle specific error cases
+    if (error.response?.status === 409) {
+      throw new Error(
+        error.response.data.message ||
+          "Không thể xóa bài toán khỏi cuộc thi đang diễn ra"
+      );
+    }
+
+    if (error.response?.status === 404) {
+      throw new Error("Không tìm thấy cuộc thi hoặc bài toán");
+    }
+
+    throw new Error(
+      error.response?.data?.message ||
+        error.message ||
+        "Có lỗi xảy ra khi xóa bài toán khỏi cuộc thi"
+    );
+  }
+};

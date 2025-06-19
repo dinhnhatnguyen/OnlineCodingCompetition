@@ -14,5 +14,4 @@ public class OnlineCodingCompetitionApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(OnlineCodingCompetitionApplication.class, args);
 	}
-
 }

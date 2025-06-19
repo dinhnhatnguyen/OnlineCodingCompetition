@@ -41,8 +41,12 @@ def generate_test_cases(code: str, K_candidates: int, problem_id : int) -> [dict
         raise ValueError("No response received from the LLM.")
     response_content = response.content.strip()
     result = json.loads(response_content)
-    with open(f"test_cases/problem_{problem_id}.json", "w") as f:
-        json.dump(result, f, indent=4)
+    log = {
+        "problem_id": problem_id,
+        "result": result,
+    }
+    with open(f"test_cases_log.json", "a") as f:
+        json.dump(log, f, indent=4)
     return result
 # title = "Nhân 2 số nguyên"
 # description = "Viết một hàm nhận vào hai số và trả về tích của chúng. Input là a và b, output là tích của a và b. Giới hạn của a và b là từ 0 đến 10^9."

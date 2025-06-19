@@ -1,0 +1,85 @@
+{
+    "problem_id": 2,
+    "result": [
+        {
+            "input": [
+                3,
+                5
+            ],
+            "output": 15,
+            "description": "Nh\u00e2n hai s\u1ed1 nguy\u00ean d\u01b0\u01a1ng nh\u1ecf."
+        },
+        {
+            "input": [
+                0,
+                10
+            ],
+            "output": 0,
+            "description": "M\u1ed9t trong hai s\u1ed1 l\u00e0 0."
+        },
+        {
+            "input": [
+                1,
+                999999999
+            ],
+            "output": 999999999,
+            "description": "M\u1ed9t s\u1ed1 l\u00e0 1, s\u1ed1 c\u00f2n l\u1ea1i r\u1ea5t l\u1edbn."
+        },
+        {
+            "input": [
+                1000000000,
+                0
+            ],
+            "output": 0,
+            "description": "S\u1ed1 l\u1edbn nh\u1ea5t nh\u00e2n v\u1edbi 0."
+        },
+        {
+            "input": [
+                1000,
+                1000
+            ],
+            "output": 1000000,
+            "description": "Nh\u00e2n hai s\u1ed1 nguy\u00ean b\u1eb1ng nhau."
+        },
+        {
+            "input": [
+                123456789,
+                987654321
+            ],
+            "output": 121932631112635269,
+            "description": "Nh\u00e2n hai s\u1ed1 nguy\u00ean l\u1edbn b\u1ea5t k\u1ef3."
+        },
+        {
+            "input": [
+                999999999,
+                999999999
+            ],
+            "output": 999999998000000001,
+            "description": "Nh\u00e2n hai s\u1ed1 nguy\u00ean s\u00e1t gi\u00e1 tr\u1ecb l\u1edbn nh\u1ea5t."
+        },
+        {
+            "input": [
+                2,
+                500000000
+            ],
+            "output": 1000000000,
+            "description": "Nh\u00e2n \u0111\u1ec3 \u0111\u1ea1t k\u1ebft qu\u1ea3 l\u00e0 gi\u1edbi h\u1ea1n tr\u00ean."
+        },
+        {
+            "input": [
+                7,
+                8
+            ],
+            "output": 56,
+            "description": "Nh\u00e2n hai s\u1ed1 nguy\u00ean nh\u1ecf."
+        },
+        {
+            "input": [
+                10,
+                1000000000
+            ],
+            "output": 10000000000,
+            "description": "Nh\u00e2n s\u1ed1 r\u1ea5t nh\u1ecf v\u1edbi s\u1ed1 r\u1ea5t l\u1edbn."
+        }
+    ]
+}

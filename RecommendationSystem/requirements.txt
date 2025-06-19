@@ -1,0 +1,15 @@
+# langchain
+# langchain_google_genai
+# langchain_experimental
+# langchain_community
+pandas 
+# langchain_core 
+# faiss-cpu  
+fastapi  
+litellm 
+uvicorn
+neo4j_graphrag
+neo4j
+sklearn
+psycopg2-binary
+sqlalchemy

@@ -1,0 +1,29 @@
+services:
+  app:
+    build: .
+    container_name: recommendation_app
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:RecommendationSystem\app
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - db_network
+  # db:
+  #   image: postgres:15
+  #   container_name: recommendation_db
+  #   restart: always
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: mat_khau
+  #     POSTGRES_DB: ten_database
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:
+networks:
+  db_network:
+    driver: bridge

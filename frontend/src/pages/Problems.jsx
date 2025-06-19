@@ -4,6 +4,7 @@ import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import { getProblems } from "../api/problemsApi";
 import { getSolvedProblems } from "../api/solvedProblemsApi";
+import { getAllTopics } from "../api/problemApi";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useAuth } from "../contexts/AuthContext";
 import { safeAuthenticatedCall } from "../utils/authUtils";
@@ -17,6 +18,8 @@ const Problems = () => {
   const [solvedProblems, setSolvedProblems] = useState(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState("all");
+  const [topicFilter, setTopicFilter] = useState("all");
+  const [availableTopics, setAvailableTopics] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -24,6 +27,15 @@ const Problems = () => {
         // Lấy danh sách bài tập với ngôn ngữ hiện tại
         const problemsData = await getProblems(currentLanguage);
         setProblems(problemsData);
+
+        // Lấy danh sách topics
+        try {
+          const topicsData = await getAllTopics();
+          setAvailableTopics(topicsData);
+        } catch (err) {
+          console.error("Error fetching topics:", err);
+          setAvailableTopics([]);
+        }
 
         // Chỉ lấy danh sách bài đã giải nếu user đã đăng nhập
         try {
@@ -51,7 +63,7 @@ const Problems = () => {
     fetchData();
   }, [currentLanguage, user]); // Re-fetch when language or user changes
 
-  // Filter problems based on search and difficulty
+  // Filter problems based on search, difficulty, and topic
   const filteredProblems = problems.filter((problem) => {
     // Search filter
     const matchesSearch =
@@ -63,8 +75,59 @@ const Problems = () => {
       difficultyFilter === "all" ||
       problem.difficulty.toLowerCase() === difficultyFilter;
 
-    return matchesSearch && matchesDifficulty;
+    // Topic filter
+    const matchesTopic =
+      topicFilter === "all" ||
+      (problem.topics && problem.topics.includes(topicFilter));
+
+    return matchesSearch && matchesDifficulty && matchesTopic;
   });
+
+  // Translations
+  const translations = {
+    vi: {
+      title: "Bài tập",
+      search: "Tìm kiếm...",
+      allDifficulties: "Tất cả độ khó",
+      easy: "Dễ",
+      medium: "Trung bình",
+      hard: "Khó",
+      allTopics: "Tất cả chủ đề",
+      status: "Trạng thái",
+      problemTitle: "Tiêu đề",
+      difficulty: "Độ khó",
+      topics: "Chủ đề",
+      successRate: "Tỷ lệ thành công",
+      noResults: "Không tìm thấy bài tập nào phù hợp",
+      showing: "Hiển thị",
+      to: "đến",
+      of: "trong tổng số",
+      results: "kết quả",
+      loading: "Đang tải...",
+    },
+    en: {
+      title: "Problems",
+      search: "Search...",
+      allDifficulties: "All Difficulties",
+      easy: "Easy",
+      medium: "Medium",
+      hard: "Hard",
+      allTopics: "All Topics",
+      status: "Status",
+      problemTitle: "Title",
+      difficulty: "Difficulty",
+      topics: "Topics",
+      successRate: "Success Rate",
+      noResults: "No problems found matching your criteria",
+      showing: "Showing",
+      to: "to",
+      of: "of",
+      results: "results",
+      loading: "Loading...",
+    },
+  };
+
+  const t = translations[currentLanguage] || translations.en;
 
   // Get difficulty badge style
   const getDifficultyBadge = (difficulty) => {
@@ -85,7 +148,7 @@ const Problems = () => {
       <div className="bg-black text-white min-h-screen flex flex-col">
         <Header />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center p-10">Đang tải...</div>
+          <div className="text-center p-10">{t.loading}</div>
         </div>
         <Footer />
       </div>
@@ -96,7 +159,7 @@ const Problems = () => {
       <Header />
       <main className="flex-1 max-w-7xl mx-auto w-full py-6 px-4">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Bài tập</h1>
+          <h1 className="text-3xl font-bold">{t.title}</h1>
 
           <div className="flex gap-3 items-center">
             {/* Language Switcher for page */}
@@ -118,7 +181,7 @@ const Problems = () => {
               </div>
               <input
                 type="text"
-                placeholder="Tìm kiếm..."
+                placeholder={t.search}
                 className="bg-zinc-900 text-white pl-10 pr-3 py-2 rounded w-72 focus:outline-none border border-zinc-700"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -130,10 +193,23 @@ const Problems = () => {
               onChange={(e) => setDifficultyFilter(e.target.value)}
               className="bg-zinc-900 text-white px-4 py-2 rounded border border-zinc-700 focus:outline-none appearance-none"
             >
-              <option value="all">Tất cả độ khó</option>
-              <option value="easy">Dễ</option>
-              <option value="medium">Trung bình</option>
-              <option value="hard">Khó</option>
+              <option value="all">{t.allDifficulties}</option>
+              <option value="easy">{t.easy}</option>
+              <option value="medium">{t.medium}</option>
+              <option value="hard">{t.hard}</option>
+            </select>
+
+            <select
+              value={topicFilter}
+              onChange={(e) => setTopicFilter(e.target.value)}
+              className="bg-zinc-900 text-white px-4 py-2 rounded border border-zinc-700 focus:outline-none appearance-none"
+            >
+              <option value="all">{t.allTopics}</option>
+              {availableTopics.map((topic) => (
+                <option key={topic} value={topic}>
+                  {topic}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -142,11 +218,11 @@ const Problems = () => {
           <table className="w-full">
             <thead>
               <tr className="border-b border-zinc-800 text-gray-400 text-left text-sm uppercase">
-                <th className="py-3 px-6">Trạng thái</th>
-                <th className="py-3 px-6">Tiêu đề</th>
-                <th className="py-3 px-6">Độ khó</th>
-                <th className="py-3 px-6">Chủ đề</th>
-                <th className="py-3 px-6 text-right">Tỷ lệ thành công</th>
+                <th className="py-3 px-6">{t.status}</th>
+                <th className="py-3 px-6">{t.problemTitle}</th>
+                <th className="py-3 px-6">{t.difficulty}</th>
+                <th className="py-3 px-6">{t.topics}</th>
+                <th className="py-3 px-6 text-right">{t.successRate}</th>
               </tr>
             </thead>
             <tbody>
@@ -217,7 +293,7 @@ const Problems = () => {
               {filteredProblems.length === 0 && (
                 <tr>
                   <td colSpan="5" className="py-6 text-center text-gray-500">
-                    Không tìm thấy bài tập nào phù hợp
+                    {t.noResults}
                   </td>
                 </tr>
               )}
@@ -227,8 +303,8 @@ const Problems = () => {
 
         <div className="flex justify-between items-center mt-4 text-sm text-gray-400">
           <div>
-            Hiển thị 1 đến {filteredProblems.length} trong tổng số{" "}
-            {problems.length} kết quả
+            {t.showing} 1 {t.to} {filteredProblems.length} {t.of}{" "}
+            {problems.length} {t.results}
           </div>
           <div className="flex gap-2">
             <button

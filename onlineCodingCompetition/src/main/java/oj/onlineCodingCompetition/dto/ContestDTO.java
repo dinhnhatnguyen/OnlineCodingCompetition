@@ -31,4 +31,5 @@ public class ContestDTO {
     private Integer currentParticipants;
     private Long createdById;
     private List<Long> problemIds;
+    private boolean chatEnabled;
 }

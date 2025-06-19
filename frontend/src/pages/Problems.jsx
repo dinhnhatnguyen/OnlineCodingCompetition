@@ -5,10 +5,13 @@ import Footer from "../components/layout/Footer";
 import { getProblems } from "../api/problemsApi";
 import { getSolvedProblems } from "../api/solvedProblemsApi";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useAuth } from "../contexts/AuthContext";
+import { safeAuthenticatedCall } from "../utils/authUtils";
 import LanguageSwitcher from "../components/common/LanguageSwitcher";
 
 const Problems = () => {
   const { currentLanguage } = useLanguage();
+  const { user, logout } = useAuth();
   const [problems, setProblems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [solvedProblems, setSolvedProblems] = useState(new Set());
@@ -22,12 +25,21 @@ const Problems = () => {
         const problemsData = await getProblems(currentLanguage);
         setProblems(problemsData);
 
+        // Chỉ lấy danh sách bài đã giải nếu user đã đăng nhập
         try {
-          // Lấy danh sách bài đã giải
-          const solvedData = await getSolvedProblems();
-          setSolvedProblems(new Set(solvedData));
+          const solvedData = await safeAuthenticatedCall(
+            getSolvedProblems,
+            user,
+            logout
+          );
+          if (solvedData) {
+            setSolvedProblems(new Set(solvedData));
+          } else {
+            setSolvedProblems(new Set());
+          }
         } catch (err) {
           console.error("Error fetching solved problems:", err);
+          setSolvedProblems(new Set());
         }
       } catch (error) {
         console.error("Error loading problems:", error);
@@ -37,7 +49,7 @@ const Problems = () => {
     };
 
     fetchData();
-  }, [currentLanguage]); // Re-fetch when language changes
+  }, [currentLanguage, user]); // Re-fetch when language or user changes
 
   // Filter problems based on search and difficulty
   const filteredProblems = problems.filter((problem) => {

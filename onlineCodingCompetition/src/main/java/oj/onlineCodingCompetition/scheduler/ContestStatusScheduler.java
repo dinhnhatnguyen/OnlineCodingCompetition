@@ -14,7 +14,8 @@ public class ContestStatusScheduler {
     private final ContestService contestService;
 
     // Chạy mỗi phút để cập nhật trạng thái cuộc thi
-    @Scheduled(fixedRate = 60000) // 60000ms = 1 phút
+    // Delay 30 giây để đảm bảo schema đã được update
+    @Scheduled(fixedRate = 60000, initialDelay = 30000) // 60000ms = 1 phút, delay 30s
     public void updateContestStatuses() {
         log.debug("Bắt đầu cập nhật trạng thái cuộc thi");
         try {

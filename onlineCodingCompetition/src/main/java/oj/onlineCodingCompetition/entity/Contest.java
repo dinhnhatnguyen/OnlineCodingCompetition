@@ -89,6 +89,10 @@ public class Contest {
     @Column(name = "deleted_by")
     private Long deletedBy;
 
+    // Chat feature control
+    @Column(name = "chat_enabled", nullable = false)
+    private boolean chatEnabled = false;
+
     public enum ContestStatus {
         DRAFT,      // Nháp
         UPCOMING,   // Sắp diễn ra

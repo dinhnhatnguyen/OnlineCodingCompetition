@@ -80,6 +80,7 @@ public class ContestService {
         contest.setCreatedAt(LocalDateTime.now());
         contest.setPublic(contestDTO.isPublic());
         contest.setMaxParticipants(contestDTO.getMaxParticipants());
+        contest.setChatEnabled(contestDTO.isChatEnabled());
 
         // Xử lý trạng thái
         Contest.ContestStatus requestedStatus = contestDTO.getStatus() != null 
@@ -139,6 +140,7 @@ public class ContestService {
         
         // Cập nhật thuộc tính public
         existingContest.setPublic(contestDTO.isPublic());
+        existingContest.setChatEnabled(contestDTO.isChatEnabled());
 
         if (contestDTO.getMaxParticipants() != null) {
             existingContest.setMaxParticipants(contestDTO.getMaxParticipants());
@@ -504,7 +506,8 @@ public class ContestService {
         dto.setStartTime(contest.getStartTime());
         dto.setEndTime(contest.getEndTime());
         dto.setPublic(contest.isPublic()); // Sửa lại: không đảo ngược giá trị
-        
+        dto.setChatEnabled(contest.isChatEnabled());
+
         // Tính số người tham gia hiện tại (đã được duyệt)
         long approvedCount = contestRegistrationRepository.countByContestIdAndStatus(
                 contest.getId(), ContestRegistration.RegistrationStatus.APPROVED);

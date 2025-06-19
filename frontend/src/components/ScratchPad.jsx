@@ -291,12 +291,12 @@ const ScratchPad = () => {
                   <pre className="whitespace-pre-wrap mb-3 font-mono text-white">
                     {output}
                   </pre>
-                  {runtime !== null && memory !== null && (
+                  {/* {runtime !== null && memory !== null && (
                     <div className="text-xs text-zinc-400 mt-2 p-2 border border-zinc-700 rounded bg-zinc-900">
                       <span className="block">⏱️ Runtime: {runtime}ms</span>
                       <span className="block">💾 Memory: {memory}KB</span>
                     </div>
-                  )}
+                  )} */}
                 </>
               ) : (
                 <div className="text-zinc-500 italic">

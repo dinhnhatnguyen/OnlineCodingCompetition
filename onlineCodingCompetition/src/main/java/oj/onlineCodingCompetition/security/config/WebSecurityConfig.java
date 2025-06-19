@@ -82,6 +82,16 @@ public class WebSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/contests").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/contests/{id}").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/contests/{id}/register").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/problems/comments/problem/{problemId}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/problems/comments/{commentId}/replies").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/problems/comments/problem/{problemId}/count").permitAll()
+                        .requestMatchers("/api/problems/comments/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/problems/reports/types").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/problems/reports/statuses").permitAll()
+                        .requestMatchers("/api/problems/reports/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/problems/reports/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/contests/chat/contest/{contestId}/status").permitAll()
+                        .requestMatchers("/api/contests/chat/**").authenticated()
                         .anyRequest().authenticated()
                 );
 

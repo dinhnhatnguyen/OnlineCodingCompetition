@@ -8,6 +8,7 @@ import {
   PlusOutlined,
   UnorderedListOutlined,
   UserOutlined,
+  ExclamationCircleOutlined,
 } from "@ant-design/icons";
 import Header from "../../components/layout/Header";
 import { useAuth } from "../../contexts/AuthContext";
@@ -103,6 +104,12 @@ const Dashboard = () => {
       label: "Quản lý người dùng",
       onClick: () => navigate("/admin/users"),
       // style: { display: isAdmin ? "block" : "none" }, // Chỉ hiển thị cho admin
+    },
+    {
+      key: "5",
+      icon: <ExclamationCircleOutlined />,
+      label: "Quản lý báo cáo",
+      onClick: () => navigate("/admin/reports"),
     },
   ];
 

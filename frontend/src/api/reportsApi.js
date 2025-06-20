@@ -13,9 +13,7 @@ export const createReport = async (reportData) => {
     });
     return response.data;
   } catch (error) {
-    throw new Error(
-      error.response?.data?.message || "Lỗi khi tạo báo cáo"
-    );
+    throw new Error(error.response?.data?.message || "Lỗi khi tạo báo cáo");
   }
 };
 
@@ -61,9 +59,7 @@ export const deleteReport = async (reportId) => {
       },
     });
   } catch (error) {
-    throw new Error(
-      error.response?.data?.message || "Lỗi khi xóa báo cáo"
-    );
+    throw new Error(error.response?.data?.message || "Lỗi khi xóa báo cáo");
   }
 };
 
@@ -87,6 +83,22 @@ export const getReportStatuses = async () => {
   } catch (error) {
     throw new Error(
       error.response?.data?.message || "Lỗi khi lấy trạng thái báo cáo"
+    );
+  }
+};
+
+// Lấy thống kê báo cáo (Admin only)
+export const getReportsStatistics = async () => {
+  try {
+    const response = await axios.get(`${API_URL}/admin/statistics`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.message || "Lỗi khi lấy thống kê báo cáo"
     );
   }
 };
@@ -142,9 +154,7 @@ export const reviewReport = async (reportId, reviewData) => {
     );
     return response.data;
   } catch (error) {
-    throw new Error(
-      error.response?.data?.message || "Lỗi khi xem xét báo cáo"
-    );
+    throw new Error(error.response?.data?.message || "Lỗi khi xem xét báo cáo");
   }
 };
 

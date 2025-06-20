@@ -21,6 +21,7 @@ load_dotenv(dotenv_path)
 user = os.getenv("DB_USER")
 password = os.getenv("DB_PASSWORD")
 db_name = os.getenv("DB_NAME")
+db_host = os.getenv("DB_HOST", "localhost")  # Default to localhost if not specified
 db_port = os.getenv("DB_PORT", "5432")  # Default to 5432 if not specified
 
 # Validate environment variables
@@ -31,7 +32,7 @@ if not all([user, password, db_name]):
 # Tạo kết nối đến cơ sở dữ liệu PostgreSQL
 def create_db_connection():
     try:
-        engine = create_engine(f'postgresql+psycopg2://{user}:{password}@localhost:{db_port}/{db_name}')
+        engine = create_engine(f'postgresql+psycopg2://{user}:{password}@{db_host}:{db_port}/{db_name}')
         return engine
     except Exception as e:
         raise ConnectionError(f"Failed to create database connection: {str(e)}")

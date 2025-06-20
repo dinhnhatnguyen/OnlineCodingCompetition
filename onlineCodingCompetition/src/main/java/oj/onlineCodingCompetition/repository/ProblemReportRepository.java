@@ -82,4 +82,22 @@ public interface ProblemReportRepository extends JpaRepository<ProblemReport, Lo
      */
     @Query("SELECT COUNT(pr) > 0 FROM ProblemReport pr WHERE pr.problem = :problem AND pr.reportedBy = :user AND pr.deleted = false")
     boolean existsByProblemAndReportedByAndDeletedFalse(@Param("problem") Problem problem, @Param("user") User user);
+
+    /**
+     * Đếm tổng số báo cáo chưa bị xóa
+     */
+    @Query("SELECT COUNT(pr) FROM ProblemReport pr WHERE pr.deleted = false")
+    Long countByDeletedFalse();
+
+    /**
+     * Đếm báo cáo theo trạng thái
+     */
+    @Query("SELECT COUNT(pr) FROM ProblemReport pr WHERE pr.status = :status AND pr.deleted = false")
+    Long countByStatusAndDeletedFalse(@Param("status") ProblemReport.ReportStatus status);
+
+    /**
+     * Đếm báo cáo theo loại
+     */
+    @Query("SELECT COUNT(pr) FROM ProblemReport pr WHERE pr.reportType = :reportType AND pr.deleted = false")
+    Long countByReportTypeAndDeletedFalse(@Param("reportType") ProblemReport.ReportType reportType);
 }

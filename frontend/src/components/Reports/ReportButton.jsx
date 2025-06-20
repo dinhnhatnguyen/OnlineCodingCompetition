@@ -23,7 +23,7 @@ const ReportButton = ({ problemId, problemTitle }) => {
     },
   };
 
-  const t = translations[currentLanguage] || translations.en; // Fallback to English
+  const t = translations[currentLanguage] || translations.vi; // Default to Vietnamese
 
   const handleReportClick = () => {
     if (!user) {
@@ -41,7 +41,7 @@ const ReportButton = ({ problemId, problemTitle }) => {
     <>
       <button
         onClick={handleReportClick}
-        className="inline-flex items-center px-3 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+        className="inline-flex items-center px-3 py-2 text-sm font-medium text-red-400 bg-red-900/20 border border-red-700/50 rounded-md hover:bg-red-900/30 hover:text-red-300 hover:border-red-600/70 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:ring-offset-2 focus:ring-offset-black transition-all duration-200"
         title={user ? t.reportTooltip : t.loginRequired}
       >
         <svg

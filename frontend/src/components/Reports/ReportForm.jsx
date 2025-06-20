@@ -6,7 +6,7 @@ import { createReport, getReportTypes } from "../../api/reportsApi";
 
 const ReportForm = ({ problemId, problemTitle, onClose, onSuccess }) => {
   const { user } = useAuth();
-  const { language } = useLanguage();
+  const { currentLanguage } = useLanguage();
   const { showToast } = useToast();
   const [reportTypes, setReportTypes] = useState({});
   const [formData, setFormData] = useState({
@@ -31,6 +31,7 @@ const ReportForm = ({ problemId, problemTitle, onClose, onSuccess }) => {
       loginRequired: "Bạn cần đăng nhập để báo cáo lỗi",
       reportSuccess: "Báo cáo đã được gửi thành công",
       fillAllFields: "Vui lòng điền đầy đủ thông tin",
+      problemLabel: "Bài toán:",
     },
     en: {
       reportProblem: "Report Problem Issue",
@@ -45,10 +46,11 @@ const ReportForm = ({ problemId, problemTitle, onClose, onSuccess }) => {
       loginRequired: "You need to login to report issues",
       reportSuccess: "Report submitted successfully",
       fillAllFields: "Please fill in all required fields",
+      problemLabel: "Problem:",
     },
   };
 
-  const t = translations[language];
+  const t = translations[currentLanguage] || translations.vi;
 
   useEffect(() => {
     loadReportTypes();
@@ -98,12 +100,14 @@ const ReportForm = ({ problemId, problemTitle, onClose, onSuccess }) => {
 
   if (!user) {
     return (
-      <div className="bg-white rounded-lg shadow-lg p-6 max-w-md mx-auto">
-        <h3 className="text-lg font-semibold mb-4">{t.reportProblem}</h3>
-        <p className="text-gray-600 mb-4">{t.loginRequired}</p>
+      <div className="bg-zinc-900 border border-zinc-700 rounded-lg shadow-lg p-6 max-w-md mx-auto">
+        <h3 className="text-lg font-semibold mb-4 text-white">
+          {t.reportProblem}
+        </h3>
+        <p className="text-gray-400 mb-4">{t.loginRequired}</p>
         <button
           onClick={onClose}
-          className="w-full px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+          className="w-full px-4 py-2 bg-zinc-700 text-gray-300 rounded-md hover:bg-zinc-600 transition-colors duration-200"
         >
           {t.cancel}
         </button>
@@ -112,26 +116,31 @@ const ReportForm = ({ problemId, problemTitle, onClose, onSuccess }) => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
-      <h3 className="text-xl font-semibold mb-4">{t.reportProblem}</h3>
-      
+    <div className="bg-zinc-900 border border-zinc-700 rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
+      <h3 className="text-xl font-semibold mb-4 text-white">
+        {t.reportProblem}
+      </h3>
+
       {problemTitle && (
-        <div className="mb-4 p-3 bg-gray-50 rounded-md">
-          <p className="text-sm text-gray-600">Bài toán: <span className="font-medium">{problemTitle}</span></p>
+        <div className="mb-4 p-3 bg-zinc-800 border border-zinc-700 rounded-md">
+          <p className="text-sm text-gray-300">
+            {t.problemLabel}{" "}
+            <span className="font-medium text-white">{problemTitle}</span>
+          </p>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Report Type */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-300 mb-1">
             {t.reportType} *
           </label>
           <select
             name="reportType"
             value={formData.reportType}
             onChange={handleInputChange}
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full p-2 bg-zinc-800 border border-zinc-600 text-white rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-zinc-700"
             required
             disabled={isSubmitting}
           >
@@ -146,7 +155,7 @@ const ReportForm = ({ problemId, problemTitle, onClose, onSuccess }) => {
 
         {/* Title */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-300 mb-1">
             {t.title} *
           </label>
           <input
@@ -155,7 +164,7 @@ const ReportForm = ({ problemId, problemTitle, onClose, onSuccess }) => {
             value={formData.title}
             onChange={handleInputChange}
             placeholder={t.titlePlaceholder}
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full p-2 bg-zinc-800 border border-zinc-600 text-white placeholder-gray-400 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-zinc-700"
             required
             disabled={isSubmitting}
           />
@@ -163,7 +172,7 @@ const ReportForm = ({ problemId, problemTitle, onClose, onSuccess }) => {
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-300 mb-1">
             {t.description} *
           </label>
           <textarea
@@ -172,25 +181,29 @@ const ReportForm = ({ problemId, problemTitle, onClose, onSuccess }) => {
             onChange={handleInputChange}
             placeholder={t.descriptionPlaceholder}
             rows="4"
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            className="w-full p-2 bg-zinc-800 border border-zinc-600 text-white placeholder-gray-400 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-zinc-700 resize-none"
             required
             disabled={isSubmitting}
           />
         </div>
 
         {/* Buttons */}
-        <div className="flex space-x-3 pt-4">
+        <div className="flex space-x-6 pt-4" style={{ gap: "10px" }}>
           <button
             type="submit"
-            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+            className="flex-1 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 !text-white font-medium rounded-md hover:from-red-700 hover:to-red-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all duration-200"
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Đang gửi..." : t.submit}
+            {isSubmitting
+              ? currentLanguage === "vi"
+                ? "Đang gửi..."
+                : "Submitting..."
+              : t.submit}
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+            className="flex-1 px-4 py-2 bg-zinc-700 !text-gray-300 font-medium rounded-md hover:bg-zinc-600 disabled:opacity-50 shadow-sm transition-all duration-200"
             disabled={isSubmitting}
           >
             {t.cancel}

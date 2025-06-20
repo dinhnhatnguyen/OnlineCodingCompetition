@@ -36,6 +36,7 @@ import UserManagement from "./pages/admin/UserManagement";
 import DeletedProblems from "./pages/admin/DeletedProblems";
 import JoinContest from "./pages/JoinContest";
 import ContestRegistrationManagement from "./pages/admin/ContestRegistrationManagement";
+import ReportsManagement from "./pages/admin/ReportsManagement";
 
 function App() {
   return (
@@ -113,6 +114,7 @@ function App() {
           element={<ContestRegistrationManagement />}
         />
         <Route path="users" element={<UserManagement />} />
+        <Route path="reports" element={<ReportsManagement />} />
       </Route>
 
       {/* Instructor routes */}
@@ -150,6 +152,7 @@ function App() {
           path="contests/:contestId/registrations"
           element={<ContestRegistrationManagement />}
         />
+        <Route path="reports" element={<ReportsManagement />} />
       </Route>
 
       {/* 404 route */}

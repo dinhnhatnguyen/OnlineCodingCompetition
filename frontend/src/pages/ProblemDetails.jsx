@@ -566,10 +566,10 @@ const ProblemDetails = () => {
                 </h1>
                 {getDifficultyBadge(problem.difficulty)}
               </div>
-              {/* <ReportButton
-              problemId={parseInt(id)}
-              problemTitle={problem.title}
-            /> */}
+              <ReportButton
+                problemId={parseInt(id)}
+                problemTitle={problem.title}
+              />
             </div>
             <div className="mb-4">
               <div className="prose prose-invert text-white max-w-none w-full">

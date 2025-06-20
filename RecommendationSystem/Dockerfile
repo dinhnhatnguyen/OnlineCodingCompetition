@@ -1,20 +1,45 @@
 # Use official Python image as base
 FROM python:3.10-slim
 
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Install system dependencies (only curl for health check)
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
 # Set working directory
 WORKDIR /app
 
-# Copy requirements (nếu có)
+# Copy requirements first for better caching
 COPY requirements.txt ./
 
-# Cài đặt các thư viện cần thiết
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy toàn bộ mã nguồn vào container
-COPY . .
+# Copy application code
+COPY app/ ./app/
+COPY dataset/ ./dataset/
+
+# Change ownership to non-root user
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
 
 # Expose port 3000
 EXPOSE 3000
 
-# Chạy FastAPI app với Uvicorn trên cổng 3000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3000"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/ || exit 1
+
+# Run the application
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3000", "--workers", "1"]

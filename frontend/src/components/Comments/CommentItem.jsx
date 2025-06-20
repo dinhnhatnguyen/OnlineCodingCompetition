@@ -121,7 +121,10 @@ const CommentItem = ({ comment, onReply, onUpdate, onDelete, level = 0 }) => {
 
           {/* Actions */}
           {user && (
-            <div className="flex items-center space-x-2">
+            <div
+              className="flex items-center space-x-2"
+              style={{ gap: "10px" }}
+            >
               {comment.canEdit && (
                 <button
                   onClick={() => setIsEditing(!isEditing)}

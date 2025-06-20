@@ -1,29 +1,40 @@
+version: "3.8"
+
 services:
-  app:
-    build: .
-    container_name: recommendation_app
+  recommendation-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: recommendation_system
+    restart: unless-stopped
     ports:
       - "3000:3000"
-    volumes:
-      - .:RecommendationSystem\app
     environment:
       - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    env_file:
+      - .env
+    # Remove volume mount for production stability
+    # volumes:
+    #   - ./app:/app/app:ro  # Read-only mount for development
     networks:
-      - db_network
-  # db:
-  #   image: postgres:15
-  #   container_name: recommendation_db
-  #   restart: always
-  #   environment:
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: mat_khau
-  #     POSTGRES_DB: ten_database
-  #   ports:
-  #     - "5432:5432"
-  #   volumes:
-  #     - pgdata:/var/lib/postgresql/data
-volumes:
-  pgdata:
+      - recommendation_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Resource limits for stability
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "0.5"
+        reservations:
+          memory: 512M
+          cpus: "0.25"
+
 networks:
-  db_network:
+  recommendation_network:
     driver: bridge

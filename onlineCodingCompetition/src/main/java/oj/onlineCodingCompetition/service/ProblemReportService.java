@@ -7,6 +7,9 @@ import oj.onlineCodingCompetition.dto.ProblemReportDTO;
 import oj.onlineCodingCompetition.dto.ReviewReportRequest;
 import oj.onlineCodingCompetition.entity.Problem;
 import oj.onlineCodingCompetition.entity.ProblemReport;
+import oj.onlineCodingCompetition.exception.DuplicateReportException;
+import oj.onlineCodingCompetition.exception.ReportAccessDeniedException;
+import oj.onlineCodingCompetition.exception.ReportNotFoundException;
 import oj.onlineCodingCompetition.repository.ProblemReportRepository;
 import oj.onlineCodingCompetition.repository.ProblemRepository;
 import oj.onlineCodingCompetition.security.entity.User;
@@ -18,6 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -37,19 +42,19 @@ public class ProblemReportService {
 
         // Tìm user
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy user: " + username));
+                .orElseThrow(() -> new ReportNotFoundException("Không tìm thấy user: " + username));
 
         // Tìm problem
         Problem problem = problemRepository.findById(request.getProblemId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy problem với ID: " + request.getProblemId()));
+                .orElseThrow(() -> new ReportNotFoundException("Không tìm thấy problem với ID: " + request.getProblemId()));
 
         if (problem.isDeleted()) {
-            throw new RuntimeException("Problem đã bị xóa");
+            throw new ReportNotFoundException("Problem đã bị xóa");
         }
 
         // Kiểm tra user đã báo cáo problem này chưa
         if (reportRepository.existsByProblemAndReportedByAndDeletedFalse(problem, user)) {
-            throw new RuntimeException("Bạn đã báo cáo problem này rồi");
+            throw new DuplicateReportException("Bạn đã báo cáo problem này rồi");
         }
 
         // Tạo report
@@ -143,14 +148,14 @@ public class ProblemReportService {
         log.debug("Xem xét báo cáo {} bởi admin {}", reportId, adminUsername);
 
         User admin = userRepository.findByUsername(adminUsername)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy admin: " + adminUsername));
+                .orElseThrow(() -> new ReportNotFoundException("Không tìm thấy admin: " + adminUsername));
 
-        if (!"admin".equals(admin.getRole())) {
-            throw new RuntimeException("Chỉ admin mới có thể xem xét báo cáo");
+        if (!"ADMIN".equalsIgnoreCase(admin.getRole())) {
+            throw new ReportAccessDeniedException("Chỉ admin mới có thể xem xét báo cáo");
         }
 
         ProblemReport report = reportRepository.findByIdAndDeletedFalse(reportId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy báo cáo"));
+                .orElseThrow(() -> new ReportNotFoundException("Không tìm thấy báo cáo"));
 
         // Cập nhật trạng thái và phản hồi
         report.setStatus(request.getStatus());
@@ -171,14 +176,14 @@ public class ProblemReportService {
         log.debug("Xóa báo cáo {} bởi user {}", reportId, username);
 
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy user: " + username));
+                .orElseThrow(() -> new ReportNotFoundException("Không tìm thấy user: " + username));
 
         ProblemReport report = reportRepository.findByIdAndDeletedFalse(reportId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy báo cáo"));
+                .orElseThrow(() -> new ReportNotFoundException("Không tìm thấy báo cáo"));
 
         // Kiểm tra quyền xóa (chỉ người tạo hoặc admin)
-        if (!report.getReportedBy().getId().equals(user.getId()) && !"admin".equals(user.getRole())) {
-            throw new RuntimeException("Bạn không có quyền xóa báo cáo này");
+        if (!report.getReportedBy().getId().equals(user.getId()) && !"ADMIN".equalsIgnoreCase(user.getRole())) {
+            throw new ReportAccessDeniedException("Bạn không có quyền xóa báo cáo này");
         }
 
         report.setDeleted(true);
@@ -195,6 +200,44 @@ public class ProblemReportService {
     @Transactional(readOnly = true)
     public Long countPendingReports() {
         return reportRepository.countPendingReports();
+    }
+
+    /**
+     * Lấy thống kê báo cáo (Admin only)
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getReportsStatistics() {
+        log.debug("Lấy thống kê báo cáo");
+
+        Map<String, Object> statistics = new HashMap<>();
+
+        // Tổng số báo cáo
+        Long totalReports = reportRepository.countByDeletedFalse();
+        statistics.put("total", totalReports);
+
+        // Báo cáo theo trạng thái
+        Long pendingReports = reportRepository.countByStatusAndDeletedFalse(ProblemReport.ReportStatus.PENDING);
+        Long inReviewReports = reportRepository.countByStatusAndDeletedFalse(ProblemReport.ReportStatus.IN_REVIEW);
+        Long resolvedReports = reportRepository.countByStatusAndDeletedFalse(ProblemReport.ReportStatus.RESOLVED);
+        Long rejectedReports = reportRepository.countByStatusAndDeletedFalse(ProblemReport.ReportStatus.REJECTED);
+        Long closedReports = reportRepository.countByStatusAndDeletedFalse(ProblemReport.ReportStatus.CLOSED);
+
+        statistics.put("pending", pendingReports);
+        statistics.put("inReview", inReviewReports);
+        statistics.put("resolved", resolvedReports);
+        statistics.put("rejected", rejectedReports);
+        statistics.put("closed", closedReports);
+
+        // Báo cáo theo loại
+        Map<String, Long> reportsByType = new HashMap<>();
+        for (ProblemReport.ReportType type : ProblemReport.ReportType.values()) {
+            Long count = reportRepository.countByReportTypeAndDeletedFalse(type);
+            reportsByType.put(type.name(), count);
+        }
+        statistics.put("byType", reportsByType);
+
+        log.debug("Thống kê báo cáo: {}", statistics);
+        return statistics;
     }
 
     /**
@@ -222,8 +265,8 @@ public class ProblemReportService {
 
         // Set permissions
         if (currentUser != null) {
-            dto.setCanReview("admin".equals(currentUser.getRole()));
-            dto.setCanEdit(report.getReportedBy().getId().equals(currentUser.getId()) && 
+            dto.setCanReview("ADMIN".equalsIgnoreCase(currentUser.getRole()));
+            dto.setCanEdit(report.getReportedBy().getId().equals(currentUser.getId()) &&
                           report.getStatus() == ProblemReport.ReportStatus.PENDING);
         } else {
             dto.setCanReview(false);

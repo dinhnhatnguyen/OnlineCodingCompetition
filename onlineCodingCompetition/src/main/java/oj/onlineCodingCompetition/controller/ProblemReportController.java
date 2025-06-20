@@ -168,9 +168,9 @@ public class ProblemReportController {
     @GetMapping("/types")
     @Operation(summary = "Lấy loại báo cáo", description = "Lấy danh sách các loại báo cáo có sẵn")
     public ResponseEntity<Map<String, String>> getReportTypes() {
-        
+
         log.debug("REST request to get report types");
-        
+
         Map<String, String> reportTypes = Map.of(
             "INCORRECT_TEST_CASE", ProblemReport.ReportType.INCORRECT_TEST_CASE.getDisplayName(),
             "UNCLEAR_PROBLEM_STATEMENT", ProblemReport.ReportType.UNCLEAR_PROBLEM_STATEMENT.getDisplayName(),
@@ -179,8 +179,21 @@ public class ProblemReportController {
             "TYPO_OR_GRAMMAR", ProblemReport.ReportType.TYPO_OR_GRAMMAR.getDisplayName(),
             "OTHER", ProblemReport.ReportType.OTHER.getDisplayName()
         );
-        
+
         return ResponseEntity.ok(reportTypes);
+    }
+
+    /**
+     * Lấy thống kê báo cáo (Admin only)
+     */
+    @GetMapping("/admin/statistics")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Lấy thống kê báo cáo", description = "Lấy thống kê tổng quan về báo cáo (chỉ admin)")
+    public ResponseEntity<Map<String, Object>> getReportsStatistics() {
+        log.debug("REST request to get reports statistics");
+
+        Map<String, Object> statistics = reportService.getReportsStatistics();
+        return ResponseEntity.ok(statistics);
     }
 
     /**

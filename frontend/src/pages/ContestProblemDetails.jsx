@@ -11,6 +11,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { useNotification } from "../contexts/NotificationContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import LanguageSwitcher from "../components/common/LanguageSwitcher";
+import SimilarProblems from "../components/recommendation/SimilarProblems";
+import NextProblemButton from "../components/recommendation/NextProblemButton";
 import axios from "axios";
 
 const languageMap = {
@@ -786,7 +788,7 @@ const ContestProblemDetails = () => {
                 <button
                   onClick={handleSubmit}
                   disabled={submitting}
-                  className={`w-full px-3 xl:px-4 py-2 xl:py-3 rounded-lg font-medium transition-colors text-sm xl:text-base ${
+                  className={`flex-1 px-3 xl:px-4 py-2 xl:py-3 rounded-lg font-medium transition-colors text-sm xl:text-base ${
                     submitting
                       ? "bg-green-800 text-gray-300 cursor-not-allowed"
                       : "bg-green-600 hover:bg-green-700 text-white"
@@ -800,6 +802,18 @@ const ContestProblemDetails = () => {
                     ? "Nộp bài"
                     : "Submit"}
                 </button>
+
+                {/* Next Problem Button - Show after successful submission or always for contest */}
+                {(submitResults?.status === "ACCEPTED" || true) && (
+                  <NextProblemButton
+                    problemTitle={problem.title}
+                    currentProblemId={parseInt(id)}
+                    contestId={parseInt(contestId)}
+                    size="medium"
+                    variant="outline"
+                    className="flex-shrink-0"
+                  />
+                )}
               </div>
 
               {submitResults && (
@@ -859,6 +873,18 @@ const ContestProblemDetails = () => {
           </div>
         </div>
       </main>
+
+      {/* Similar Problems Section - Only show for contest problems */}
+      <div className="container mx-auto px-4 pb-8 max-w-7xl">
+        <SimilarProblems
+          problemTitle={problem.title}
+          currentProblemId={parseInt(id)}
+          contestId={parseInt(contestId)}
+          maxRecommendations={5}
+          className="mb-8"
+        />
+      </div>
+
       <Footer />
     </div>
   );

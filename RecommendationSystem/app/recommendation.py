@@ -6,30 +6,51 @@ import os
 import psycopg2
 from sqlalchemy import create_engine
 
-load_dotenv()
+# Tự động tìm file .env trong thư mục hiện tại hoặc thư mục cha
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+dotenv_path = os.path.join(parent_dir, '.env')
+
+# Fallback cho các đường dẫn khác nếu cần
+if not os.path.exists(dotenv_path):
+    # Thử tìm trong thư mục gốc của project
+    project_root = os.path.dirname(parent_dir)
+    dotenv_path = os.path.join(project_root, 'RecommendationSystem', '.env')
+
+load_dotenv(dotenv_path)
 user = os.getenv("DB_USER")
 password = os.getenv("DB_PASSWORD")
 db_name = os.getenv("DB_NAME")
+db_port = os.getenv("DB_PORT", "5432")  # Default to 5432 if not specified
+
+# Validate environment variables
+if not all([user, password, db_name]):
+    raise ValueError(f"Missing database environment variables: DB_USER={user}, DB_PASSWORD={'***' if password else None}, DB_NAME={db_name}")
 
 
 # Tạo kết nối đến cơ sở dữ liệu PostgreSQL
 def create_db_connection():
-    engine = create_engine(f'postgresql+psycopg2://{user}:{password}@localhost:5432/{db_name}')
-    return engine
+    try:
+        engine = create_engine(f'postgresql+psycopg2://{user}:{password}@localhost:{db_port}/{db_name}')
+        return engine
+    except Exception as e:
+        raise ConnectionError(f"Failed to create database connection: {str(e)}")
 
 # Hàm lấy dữ liệu từ PostgreSQL và xử lý với pandas
 def get_books_from_db():
-    engine = create_db_connection()
-    with engine.connect() as conn:
-        sql = """
-            SELECT title,id, 
-            COALESCE(constraints, '') || ' ' || COALESCE(description, '') AS combined 
-            FROM problems
-            WHERE deleted = true;
-        """
-        df = pd.read_sql_query(sql, conn)
-    conn.close()
-    return df
+    try:
+        engine = create_db_connection()
+        with engine.connect() as conn:
+            sql = """
+                SELECT title, id,
+                COALESCE(constraints, '') || ' ' || COALESCE(description, '') AS combined
+                FROM problems
+                WHERE deleted = false;
+            """
+            df = pd.read_sql_query(sql, conn)
+        return df
+    except Exception as e:
+        raise RuntimeError(f"Failed to fetch data from database: {str(e)}")
 
 def recommend_books(data):
     df = get_books_from_db()

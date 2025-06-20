@@ -8,7 +8,7 @@ import MonacoEditor from "@monaco-editor/react";
 import ReactMarkdown from "react-markdown";
 import axios from "axios";
 import offlineDataCollector from "../services/offlineDataCollector";
-import firebaseDebugger from "../utils/firebaseDebugger";
+// // import firebaseDebugger from "../utils/firebaseDebugger"; // Removed - file not needed
 import firebaseLogger from "../utils/firebaseLogger";
 import { useCodeEditorTracking } from "../hooks/useCodeEditorTracking";
 import { getUserInfo } from "../api/userApi";
@@ -16,6 +16,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { useAuth } from "../contexts/AuthContext";
 import CommentsSection from "../components/Comments/CommentsSection";
 import ReportButton from "../components/Reports/ReportButton";
+import RecommendationSection from "../components/recommendation/RecommendationSection";
 
 const languageMap = {
   javascript: "javascript",
@@ -292,9 +293,9 @@ const ProblemDetails = () => {
       // Debug: Make debugger available in console
       if (typeof window !== "undefined") {
         window.debugFirebaseData = () =>
-          firebaseDebugger.checkFirebaseData(userId);
+          console.log("Firebase debugger not available");
         window.testFirebaseConnection = () =>
-          firebaseDebugger.testFirebaseConnection();
+          console.log("Firebase connection test not available");
         window.getFirebaseUploadStatus = () => firebaseLogger.getUploadStatus();
         window.getFirebaseLogs = (category, level, limit) =>
           firebaseLogger.getLogs(category, level, limit);
@@ -951,6 +952,18 @@ const ProblemDetails = () => {
           </section>
         </div>
       </main>
+
+      {/* Recommendation Section - Only show for standalone problems (not in contests) */}
+      <div className="container mx-auto px-4 pb-8 max-w-7xl">
+        <RecommendationSection
+          problemTitle={problem.title}
+          currentProblemId={parseInt(id)}
+          contestId={null} // Explicitly set to null for standalone problems
+          maxRecommendations={6}
+          showStats={true}
+          showDebug={import.meta.env.DEV}
+        />
+      </div>
 
       {/* Comments Section */}
       <div className="container mx-auto px-4 pb-8 max-w-7xl">

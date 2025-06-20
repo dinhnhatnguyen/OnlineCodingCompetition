@@ -31,7 +31,7 @@ async def recommend_books(request: Request):
     data = await request.json()
     results = recommend_books_func(data)
     if isinstance(results, str):
-        return JSONResponse(content={"error": results}, status_code=404)
+        return JSONResponse(content={"error": results}, status_code=200)
     return JSONResponse(content=results, status_code=200)
 
 # params : user_id, num_recommendations (optionsal, default=5 amount)

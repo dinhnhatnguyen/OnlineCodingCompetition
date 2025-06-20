@@ -181,7 +181,7 @@ const CommentsSection = ({ problemId, user: propUser }) => {
             <div className="mt-3 flex justify-end">
               <button
                 onClick={handleSubmitComment}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="px-6 py-2.5 bg-gradient-to-r from-[#722055] to-pink-600 text-white font-semibold rounded-xl hover:from-[#8b2a5b] hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl hover:shadow-[#722055]/25 transform hover:scale-105"
                 disabled={isSubmitting || newComment.trim() === ""}
               >
                 {t.postComment}

@@ -11,6 +11,7 @@ const { Step } = Steps;
 
 const CreateAdvancedProblem = () => {
   const [submitting, setSubmitting] = useState(false);
+  const [testCases, setTestCases] = useState([]);
   const { token } = useAuth();
   const navigate = useNavigate();
   const { showSuccess, showError, showInfo } = useToast();
@@ -20,6 +21,13 @@ const CreateAdvancedProblem = () => {
       setSubmitting(true);
 
       console.log("CreateAdvancedProblem - Submitting values:", values);
+      console.log(
+        "CreateAdvancedProblem - Current testCases state:",
+        testCases
+      );
+
+      // The values from AdvancedProblemForm should already contain the correct structure
+      // values = { createProblem: {...}, createTestCases: [...] }
 
       // Validate that we have test cases
       if (!values.createTestCases || values.createTestCases.length === 0) {
@@ -31,6 +39,11 @@ const CreateAdvancedProblem = () => {
         showError("Cần ít nhất 2 test cases để tạo bài toán");
         return;
       }
+
+      console.log(
+        "CreateAdvancedProblem - Validated test cases:",
+        values.createTestCases
+      );
 
       const result = await createProblemWithTestCases(values, token);
       console.log("Problem created successfully:", result);
@@ -59,31 +72,13 @@ const CreateAdvancedProblem = () => {
     }
   };
 
-  const handleTestCaseChange = (testCases) => {
-    setTestCases(testCases);
-    showInfo(`Đã cập nhật ${testCases.length} test case`);
-  };
-
-  const handleAddTestCase = () => {
-    const newTestCase = {
-      id: Date.now(),
-      inputData: "",
-      expectedOutputData: "",
-      isExample: false,
-      isHidden: false,
-      timeLimit: 1000,
-      memoryLimit: 262144,
-      weight: 1,
-      testOrder: testCases.length + 1,
-    };
-    setTestCases([...testCases, newTestCase]);
-    showInfo("Đã thêm test case mới");
-  };
-
-  const handleDeleteTestCase = (index) => {
-    const updatedTestCases = testCases.filter((_, i) => i !== index);
-    setTestCases(updatedTestCases);
-    showInfo("Đã xóa test case");
+  const handleTestCasesChange = (newTestCases) => {
+    console.log(
+      "CreateAdvancedProblem - handleTestCasesChange called with:",
+      newTestCases
+    );
+    setTestCases(newTestCases);
+    showInfo(`Đã cập nhật ${newTestCases.length} test cases`);
   };
 
   return (
@@ -188,6 +183,7 @@ const CreateAdvancedProblem = () => {
           onSubmit={handleSubmit}
           loading={submitting}
           isCreating={true}
+          onTestCasesChange={handleTestCasesChange}
         />
       </Card>
     </div>

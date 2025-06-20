@@ -33,24 +33,50 @@ const EnhancedTestCaseForm = ({ form, onTestCasesChange }) => {
   // Enhanced sync with form data - better handling of imported test cases
   useEffect(() => {
     const formTestCases = form.getFieldValue("testCases") || [];
+    console.log(
+      "🔄 EnhancedTestCaseForm - Initial useEffect: formTestCases from form:",
+      formTestCases.length,
+      "items"
+    );
+    console.log(
+      "🔄 EnhancedTestCaseForm - Form test cases data:",
+      formTestCases
+    );
     setTestCases(formTestCases);
     updateStats(formTestCases);
   }, [form]);
 
-  // Additional effect to watch for form field changes and imported test cases
+  // Periodic sync to catch external updates (like from AI generation)
   useEffect(() => {
-    const handleFormChange = () => {
-      const formTestCases = form.getFieldValue("testCases") || [];
-      if (JSON.stringify(formTestCases) !== JSON.stringify(testCases)) {
-        setTestCases(formTestCases);
-        updateStats(formTestCases);
+    const handleFormValuesChange = () => {
+      const currentFormTestCases = form.getFieldValue("testCases") || [];
+
+      // Check if there's a difference in length or content
+      if (
+        currentFormTestCases.length !== testCases.length ||
+        JSON.stringify(currentFormTestCases) !== JSON.stringify(testCases)
+      ) {
+        console.log(
+          "🔄 EnhancedTestCaseForm - External update detected, syncing..."
+        );
+        console.log("  📋 Current local testCases:", testCases.length, "items");
+        console.log(
+          "  📝 Form testCases:",
+          currentFormTestCases.length,
+          "items"
+        );
+        console.log("  📊 Form test cases data:", currentFormTestCases);
+
+        setTestCases(currentFormTestCases);
+        updateStats(currentFormTestCases);
+        console.log("✅ EnhancedTestCaseForm - Sync completed");
       }
     };
 
-    // Set up a listener for form changes to catch imported test cases
-    const interval = setInterval(handleFormChange, 100);
+    // Check for updates periodically
+    const interval = setInterval(handleFormValuesChange, 300);
     return () => clearInterval(interval);
-  }, [form, testCases]);
+  }, [testCases]);
 
   const updateStats = (testCaseList) => {
     const newStats = {
@@ -65,10 +91,31 @@ const EnhancedTestCaseForm = ({ form, onTestCasesChange }) => {
   };
 
   const handleTestCasesUpdate = (newTestCases) => {
+    console.log(
+      "EnhancedTestCaseForm - handleTestCasesUpdate called with:",
+      newTestCases.length,
+      "test cases"
+    );
+    console.log("EnhancedTestCaseForm - New test cases:", newTestCases);
+
+    // Update local state first
     setTestCases(newTestCases);
+
+    // Update form field
     form.setFieldValue("testCases", newTestCases);
+
+    // Update stats
     updateStats(newTestCases);
+
+    // Notify parent component
     onTestCasesChange?.(newTestCases);
+
+    // Force a re-render by triggering form validation
+    form.validateFields(["testCases"]).catch(() => {
+      // Ignore validation errors, we just want to trigger re-render
+    });
+
+    console.log("EnhancedTestCaseForm - handleTestCasesUpdate completed");
   };
 
   const addTestCase = () => {

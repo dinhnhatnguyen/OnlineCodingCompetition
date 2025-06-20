@@ -3,7 +3,8 @@ package oj.onlineCodingCompetition.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.Data;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,13 +31,29 @@ import java.util.stream.Collectors;
  * - Example test case management / Quản lý test case mẫu
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class TestCaseService {
 
     private final TestCaseRepository testCaseRepository;
     private final ProblemRepository problemRepository;
     private final ObjectMapper objectMapper;
+
+    // Lazy injection to avoid circular dependencies
+    @Autowired(required = false)
+    @Lazy
+    private DataTypeNormalizer dataTypeNormalizer;
+
+    @Autowired(required = false)
+    @Lazy
+    private LanguageAdapter languageAdapter;
+
+    public TestCaseService(TestCaseRepository testCaseRepository,
+                          ProblemRepository problemRepository,
+                          ObjectMapper objectMapper) {
+        this.testCaseRepository = testCaseRepository;
+        this.problemRepository = problemRepository;
+        this.objectMapper = objectMapper;
+    }
 
     /**
      * Data class for test case input
@@ -477,5 +494,126 @@ public class TestCaseService {
         if (score >= 60) return "GOOD";
         if (score >= 40) return "FAIR";
         return "POOR";
+    }
+
+    // ==================== CROSS-LANGUAGE COMPATIBILITY METHODS ====================
+
+    /**
+     * Convert test case data for specific programming language
+     * Chuyển đổi dữ liệu test case cho ngôn ngữ lập trình cụ thể
+     */
+    public TestCaseDTO convertTestCaseForLanguage(TestCaseDTO testCase, String targetLanguage) {
+        try {
+            log.debug("Converting test case {} for language {}", testCase.getId(), targetLanguage);
+
+            // Check if cross-language services are available
+            if (languageAdapter == null || dataTypeNormalizer == null) {
+                log.warn("Cross-language services not available, returning original test case");
+                return testCase;
+            }
+
+            // Convert input data
+            String convertedInputData = languageAdapter.convertInputForLanguage(
+                testCase.getInputData(), targetLanguage);
+
+            // Convert expected output data
+            String convertedOutputData = languageAdapter.convertOutputForLanguage(
+                testCase.getExpectedOutputData(), targetLanguage);
+
+            // Create new DTO with converted data
+            TestCaseDTO convertedTestCase = new TestCaseDTO();
+            convertedTestCase.setId(testCase.getId());
+            convertedTestCase.setProblemId(testCase.getProblemId());
+            convertedTestCase.setInputData(convertedInputData);
+            convertedTestCase.setExpectedOutputData(convertedOutputData);
+            convertedTestCase.setDescription(testCase.getDescription());
+            convertedTestCase.setIsExample(testCase.getIsExample());
+            convertedTestCase.setIsHidden(testCase.getIsHidden());
+            convertedTestCase.setTimeLimit(testCase.getTimeLimit());
+            convertedTestCase.setMemoryLimit(testCase.getMemoryLimit());
+            convertedTestCase.setWeight(testCase.getWeight());
+            convertedTestCase.setTestOrder(testCase.getTestOrder());
+            convertedTestCase.setComparisonMode(testCase.getComparisonMode());
+            convertedTestCase.setEpsilon(testCase.getEpsilon());
+
+            // Convert data types
+            DataTypeNormalizer.UniversalType inputUniversalType =
+                dataTypeNormalizer.toUniversalType(testCase.getInputType(), "java");
+            DataTypeNormalizer.UniversalType outputUniversalType =
+                dataTypeNormalizer.toUniversalType(testCase.getOutputType(), "java");
+
+            convertedTestCase.setInputType(
+                dataTypeNormalizer.toLanguageType(inputUniversalType, targetLanguage));
+            convertedTestCase.setOutputType(
+                dataTypeNormalizer.toLanguageType(outputUniversalType, targetLanguage));
+
+            log.debug("Successfully converted test case for language {}", targetLanguage);
+            return convertedTestCase;
+
+        } catch (Exception e) {
+            log.error("Error converting test case for language {}: {}", targetLanguage, e.getMessage());
+            throw new RuntimeException("Failed to convert test case for language: " + targetLanguage, e);
+        }
+    }
+
+    /**
+     * Get test cases converted for specific language
+     * Lấy test cases đã chuyển đổi cho ngôn ngữ cụ thể
+     */
+    public List<TestCaseDTO> getTestCasesForLanguage(Long problemId, String language) {
+        List<TestCaseDTO> originalTestCases = getAllTestCasesByProblemId(problemId);
+
+        return originalTestCases.stream()
+            .map(testCase -> convertTestCaseForLanguage(testCase, language))
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * Normalize data types across languages
+     * Chuẩn hóa kiểu dữ liệu giữa các ngôn ngữ
+     */
+    public String normalizeDataType(String dataType, String fromLanguage, String toLanguage) {
+        if (dataTypeNormalizer == null) {
+            log.warn("DataTypeNormalizer not available, returning original data type");
+            return dataType;
+        }
+        return dataTypeNormalizer.normalizeDataType(dataType, fromLanguage, toLanguage);
+    }
+
+    /**
+     * Check if test case needs conversion for target language
+     * Kiểm tra test case có cần chuyển đổi cho ngôn ngữ đích không
+     */
+    public boolean needsLanguageConversion(String sourceLanguage, String targetLanguage) {
+        if (languageAdapter == null) {
+            log.warn("LanguageAdapter not available, assuming no conversion needed");
+            return false;
+        }
+        return languageAdapter.needsConversion(sourceLanguage, targetLanguage);
+    }
+
+    /**
+     * Get supported programming languages
+     * Lấy danh sách ngôn ngữ lập trình được hỗ trợ
+     */
+    public Set<String> getSupportedLanguages() {
+        if (dataTypeNormalizer == null) {
+            log.warn("DataTypeNormalizer not available, returning default languages");
+            return Set.of("java", "python", "cpp", "javascript");
+        }
+        return dataTypeNormalizer.getSupportedLanguages();
+    }
+
+    /**
+     * Validate data type compatibility across languages
+     * Xác thực tính tương thích kiểu dữ liệu giữa các ngôn ngữ
+     */
+    public boolean isDataTypeCompatible(String dataType, String language) {
+        if (dataTypeNormalizer == null) {
+            log.warn("DataTypeNormalizer not available, assuming compatibility");
+            return true;
+        }
+        return dataTypeNormalizer.isLanguageSupported(language) &&
+               dataTypeNormalizer.toUniversalType(dataType, language) != DataTypeNormalizer.UniversalType.OBJECT;
     }
 }

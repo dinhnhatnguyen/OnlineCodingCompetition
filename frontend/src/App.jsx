@@ -27,6 +27,8 @@ import EditAdvancedProblem from "./pages/admin/EditAdvancedProblem";
 import TestCaseManagerPage from "./pages/admin/TestCaseManagerPage";
 import TestCaseDemo from "./pages/admin/TestCaseDemo";
 import TestComponentLoad from "./components/admin/TestComponentLoad";
+import AITestSimple from "./components/admin/AITestSimple";
+import AIValidationDemo from "./components/admin/AIValidationDemo";
 import ContestManagement from "./pages/admin/ContestManagement";
 import CreateContest from "./pages/admin/CreateContest";
 import EditContest from "./pages/admin/EditContest";
@@ -53,6 +55,8 @@ function App() {
       <Route path="/submissions/:id" element={<SubmissionDetails />} />
       <Route path="/scratchpad" element={<ScratchPadPage />} />
       <Route path="/firebase-debug" element={<FirebaseDebug />} />
+      <Route path="/ai-test" element={<AITestSimple />} />
+      <Route path="/ai-validation" element={<AIValidationDemo />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
 
@@ -101,6 +105,7 @@ function App() {
         />
         <Route path="problems/testcase-demo" element={<TestCaseDemo />} />
         <Route path="problems/test-load" element={<TestComponentLoad />} />
+        <Route path="problems/ai-test" element={<AITestSimple />} />
         <Route path="problems/deleted" element={<DeletedProblems />} />
         <Route path="contests" element={<ContestManagement />} />
         <Route path="contests/create" element={<CreateContest />} />
@@ -138,6 +143,7 @@ function App() {
           element={<TestCaseManagerPage />}
         />
         <Route path="problems/testcase-demo" element={<TestCaseDemo />} />
+        <Route path="problems/ai-test" element={<AITestSimple />} />
         <Route path="problems/deleted" element={<DeletedProblems />} />
         <Route path="contests" element={<ContestManagement />} />
         <Route path="contests/create" element={<CreateContest />} />

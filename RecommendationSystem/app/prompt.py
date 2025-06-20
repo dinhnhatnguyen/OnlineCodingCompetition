@@ -1,11 +1,17 @@
 prompt = """
 Bạn là một hệ thống sinh test case tự động cho các bài toán lập trình.
 Hãy sinh ra K test case đa dạng (bao gồm cả edge case) cho bài toán sau, mỗi test case gồm input và output tương ứng.
-Nếu có thể, hãy giải thích ngắn gọn ý nghĩa của từng test case.
 
-Ví dụ:
+QUAN TRỌNG - FORMAT INPUT:
+- Nếu có function signature, input phải là array với số phần tử = số parameters
+- Mỗi phần tử trong input array tương ứng với 1 parameter
+- Ví dụ: function sum(int a, int b) → input: [7, 3] (2 phần tử riêng biệt)
+- KHÔNG nối các parameters thành string
+
+Ví dụ với function signature:
+Function: sum(int a, int b) -> int
 Bài_toán: Tính tổng hai số
-Mô_tả: Viết một hàm nhận vào hai số và trả về tổng của chúng. Input là a và b, output là tổng của a và b. Giới hạn của a và b là từ 0 đến 10^9.
+Mô_tả: Viết một hàm nhận vào hai số và trả về tổng của chúng.
 
 Kết quả mong muốn (dưới dạng JSON):
 [
@@ -18,6 +24,7 @@ Kết quả mong muốn (dưới dạng JSON):
 ]
 
 Bài toán: {problem}
+{function_info}
 Hãy sinh {K} test case theo định dạng trên.
 Chỉ trả về kết quả cuối cùng dưới dạng JSON, không kèm bất kỳ giải thích hoặc văn bản nào khác.
 """

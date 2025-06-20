@@ -27,12 +27,15 @@ import {
   CopyOutlined,
   ExclamationCircleOutlined,
   MoreOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
 import * as testCaseApi from "../../api/testCaseApi";
 import {
   validateValueByType,
   getExampleValueByType,
 } from "../../utils/dataTypeValidator";
+import BulkEditModal from "./BulkEditModal";
+import { useToast } from "../../contexts/ToastContext";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -87,6 +90,14 @@ const TestCaseManager = ({ problemId, token, onTestCasesChanged }) => {
   const [editingTestCase, setEditingTestCase] = useState(null);
   const [activeTab, setActiveTab] = useState("1");
 
+  // Bulk operations state
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+  const [bulkEditModalVisible, setBulkEditModalVisible] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  // Toast notifications
+  const { showSuccess, showError, showInfo } = useToast();
+
   // Get example value based on type
   const getExampleValue = (type) => {
     return getExampleValueByType(type);
@@ -107,7 +118,7 @@ const TestCaseManager = ({ problemId, token, onTestCasesChanged }) => {
       );
       setTestCases(testCasesData);
     } catch (error) {
-      message.error("Không thể tải test cases: " + error.message);
+      showError("Không thể tải test cases: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -119,6 +130,102 @@ const TestCaseManager = ({ problemId, token, onTestCasesChanged }) => {
       dataType: form.getFieldValue([field.name, "type"]),
     }));
     form.setFieldValue("inputData", JSON.stringify(inputs));
+  };
+
+  // Bulk operations handlers
+  const handleRowSelectionChange = (selectedKeys) => {
+    setSelectedRowKeys(selectedKeys);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedRowKeys([]);
+  };
+
+  const handleBulkEdit = () => {
+    setBulkEditModalVisible(true);
+  };
+
+  const handleBulkDelete = () => {
+    Modal.confirm({
+      title: "Xác nhận xóa hàng loạt",
+      icon: <ExclamationCircleOutlined />,
+      content: `Bạn có chắc chắn muốn xóa ${selectedRowKeys.length} test cases đã chọn không?`,
+      okText: "Xóa",
+      okType: "danger",
+      cancelText: "Hủy",
+      onOk: async () => {
+        try {
+          setBulkLoading(true);
+          // Delete selected test cases
+          for (const id of selectedRowKeys) {
+            await testCaseApi.deleteTestCase(id, token);
+          }
+          await fetchTestCases();
+          setSelectedRowKeys([]);
+          showSuccess(
+            `Đã xóa ${selectedRowKeys.length} test cases thành công!`
+          );
+        } catch (error) {
+          showError("Có lỗi xảy ra khi xóa test cases: " + error.message);
+        } finally {
+          setBulkLoading(false);
+        }
+      },
+    });
+  };
+
+  const handleBulkDuplicate = async () => {
+    try {
+      setBulkLoading(true);
+      const selectedTestCases = testCases.filter((tc) =>
+        selectedRowKeys.includes(tc.id)
+      );
+
+      for (const testCase of selectedTestCases) {
+        const duplicatedTestCase = {
+          ...testCase,
+          id: undefined, // Remove ID to create new
+          description: `${testCase.description} (Bản sao)`,
+          testOrder: testCases.length + 1,
+        };
+        await testCaseApi.createTestCase(duplicatedTestCase, token);
+      }
+
+      await fetchTestCases();
+      setSelectedRowKeys([]);
+      showSuccess(
+        `Đã sao chép ${selectedTestCases.length} test cases thành công!`
+      );
+    } catch (error) {
+      showError("Có lỗi xảy ra khi sao chép test cases: " + error.message);
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleBulkEditSubmit = async (updates) => {
+    try {
+      setBulkLoading(true);
+
+      const request = {
+        testCaseIds: selectedRowKeys,
+        updates: updates,
+        operation: "UPDATE",
+      };
+
+      await testCaseApi.batchUpdateTestCases(problemId, request, token);
+      await fetchTestCases();
+      setSelectedRowKeys([]);
+      setBulkEditModalVisible(false);
+
+      showSuccess(
+        `Đã cập nhật ${selectedRowKeys.length} test cases thành công!`
+      );
+    } catch (error) {
+      showError("Có lỗi xảy ra khi cập nhật test cases: " + error.message);
+    } finally {
+      setBulkLoading(false);
+    }
   };
 
   const updateOutputData = () => {
@@ -519,6 +626,16 @@ const TestCaseManager = ({ problemId, token, onTestCasesChanged }) => {
     );
   };
 
+  // Row selection configuration
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: handleRowSelectionChange,
+    getCheckboxProps: (record) => ({
+      disabled: false,
+      name: record.id,
+    }),
+  };
+
   return (
     <div className="test-case-manager">
       <div className="header-actions mb-4 flex justify-between items-center">
@@ -532,14 +649,65 @@ const TestCaseManager = ({ problemId, token, onTestCasesChanged }) => {
         </Button>
       </div>
 
+      {/* Bulk Operations Toolbar */}
+      {selectedRowKeys.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 shadow-sm">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+              <span className="text-blue-700 font-medium">
+                Đã chọn {selectedRowKeys.length} test case
+                {selectedRowKeys.length > 1 ? "s" : ""}
+              </span>
+              <Button
+                size="small"
+                onClick={handleClearSelection}
+                className="text-blue-600 hover:text-blue-800 border-blue-300 hover:border-blue-400"
+              >
+                Bỏ chọn tất cả
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+              <Button
+                type="primary"
+                icon={<EditOutlined />}
+                onClick={handleBulkEdit}
+                loading={bulkLoading}
+                className="flex-1 sm:flex-none"
+              >
+                <span className="hidden sm:inline">Chỉnh sửa hàng loạt</span>
+                <span className="sm:hidden">Chỉnh sửa</span>
+              </Button>
+              <Button
+                icon={<CopyOutlined />}
+                onClick={handleBulkDuplicate}
+                loading={bulkLoading}
+                className="flex-1 sm:flex-none"
+              >
+                Sao chép
+              </Button>
+              <Button
+                danger
+                icon={<DeleteOutlined />}
+                onClick={handleBulkDelete}
+                loading={bulkLoading}
+                className="flex-1 sm:flex-none"
+              >
+                Xóa
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Table
         columns={columns}
         dataSource={testCases}
         rowKey="id"
-        loading={loading}
+        loading={loading || bulkLoading}
         pagination={{ pageSize: 10 }}
         bordered
         size="middle"
+        rowSelection={rowSelection}
       />
 
       <Modal
@@ -904,6 +1072,15 @@ const TestCaseManager = ({ problemId, token, onTestCasesChanged }) => {
           </Tabs>
         </Form>
       </Modal>
+
+      {/* Bulk Edit Modal */}
+      <BulkEditModal
+        visible={bulkEditModalVisible}
+        onCancel={() => setBulkEditModalVisible(false)}
+        onOk={handleBulkEditSubmit}
+        selectedCount={selectedRowKeys.length}
+        loading={bulkLoading}
+      />
     </div>
   );
 };

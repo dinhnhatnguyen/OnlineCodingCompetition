@@ -1,11 +1,21 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from app.recommendation import recommend_books as recommend_books_func
 # ,recommend_personalized_books
 from app.automation_testcase import generate_test_cases
 
 
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for development
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
 @app.post('/test')
 async def test(request: Request):
     data = await request.json()
@@ -36,9 +46,15 @@ async def create_test_case_automation(request: Request):
     data = await request.json()
     title = data.get('title')
     description = data.get('description')
+    constraints = data.get('constraints', '')
+    function_signature = data.get('functionSignature')
+
     code = f"Bài_toán:{title}\nMô_tả:{description}"
+    if constraints:
+        code += f"\nRàng_buộc:{constraints}"
+
     K = data.get('K', 5)
-    return JSONResponse(content=generate_test_cases(code, K, 2), status_code=200)
+    return JSONResponse(content=generate_test_cases(code, K, 2, function_signature), status_code=200)
 @app.get("/")
 async def root():
     return JSONResponse(content={"message": "Welcome to the AI Service API!"}, status_code=200)

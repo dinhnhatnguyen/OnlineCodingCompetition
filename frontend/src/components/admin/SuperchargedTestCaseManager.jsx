@@ -19,6 +19,7 @@ import {
   ThunderboltOutlined,
   EyeOutlined,
   EditOutlined,
+  RobotOutlined,
 } from "@ant-design/icons";
 
 // Import all our enhanced components
@@ -29,6 +30,7 @@ import TestCaseAnalytics from "./TestCaseAnalytics";
 import AdvancedPatternTemplates from "./AdvancedPatternTemplates";
 import QuickStartGuide from "./QuickStartGuide";
 import TestCaseCreationGuide from "./TestCaseCreationGuide";
+import AITestCaseGenerationTab from "./AITestCaseGenerationTab";
 
 const { TabPane } = Tabs;
 
@@ -38,12 +40,21 @@ const SuperchargedTestCaseManager = ({ form, onTestCasesChange }) => {
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showQuickStart, setShowQuickStart] = useState(false);
   const [showCreationGuide, setShowCreationGuide] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0); // Add refresh key for forcing re-render
   const [stats, setStats] = useState({
     total: 0,
     valid: 0,
     examples: 0,
     hidden: 0,
   });
+
+  // Function to switch to manual editing tab
+  const switchToManualTab = () => {
+    console.log("🔄 SuperchargedTestCaseManager - Switching to manual tab");
+    console.log("📋 Current testCases length:", testCases.length);
+    setActiveTab("manual");
+    console.log("✅ SuperchargedTestCaseManager - Switched to manual tab");
+  };
 
   // Enhanced sync with form data - watch for changes more effectively
   useEffect(() => {
@@ -82,34 +93,92 @@ const SuperchargedTestCaseManager = ({ form, onTestCasesChange }) => {
   const handleTestCasesUpdate = (newTestCases) => {
     console.log(
       "SuperchargedTestCaseManager - Updating test cases:",
+      newTestCases.length,
+      "items"
+    );
+    console.log(
+      "SuperchargedTestCaseManager - New test cases data:",
       newTestCases
     );
+
     setTestCases(newTestCases);
     form.setFieldValue("testCases", newTestCases);
     updateStats(newTestCases);
     onTestCasesChange?.(newTestCases);
 
+    // Force refresh of EnhancedTestCaseForm
+    setRefreshKey((prev) => prev + 1);
+    console.log(
+      "SuperchargedTestCaseManager - Refresh key updated to:",
+      refreshKey + 1
+    );
+
     // Verify the form field was set correctly
     const formTestCases = form.getFieldValue("testCases");
     console.log(
       "SuperchargedTestCaseManager - Form test cases after update:",
+      formTestCases.length,
+      "items"
+    );
+    console.log(
+      "SuperchargedTestCaseManager - Form test cases data:",
       formTestCases
     );
   };
 
   const handleQuickGenerate = (generatedTestCases) => {
+    console.log("🎯 SuperchargedTestCaseManager - handleQuickGenerate called!");
     console.log(
-      "SuperchargedTestCaseManager - Generated test cases:",
-      generatedTestCases
+      "📝 Generated test cases received:",
+      generatedTestCases.length,
+      "items"
     );
+    console.log("📋 Current test cases:", testCases.length, "items");
+
+    if (!generatedTestCases || !Array.isArray(generatedTestCases)) {
+      console.error("❌ Invalid generated test cases:", generatedTestCases);
+      message.error("Dữ liệu test cases không hợp lệ!");
+      return;
+    }
+
+    if (generatedTestCases.length === 0) {
+      console.warn("⚠️ No test cases to add");
+      message.warning("Không có test cases nào để thêm!");
+      return;
+    }
+
     const currentTestCases = testCases;
     const updatedTestCases = [...currentTestCases, ...generatedTestCases];
     console.log(
-      "SuperchargedTestCaseManager - Updated test cases:",
-      updatedTestCases
+      "📝 Updated test cases (current + generated):",
+      updatedTestCases.length,
+      "total items"
     );
-    handleTestCasesUpdate(updatedTestCases);
-    message.success(`Added ${generatedTestCases.length} test cases!`);
+
+    try {
+      // Update test cases
+      handleTestCasesUpdate(updatedTestCases);
+      console.log("✅ handleTestCasesUpdate called successfully");
+
+      // Show success message
+      message.success(`🎉 Đã thêm ${generatedTestCases.length} test cases!`);
+
+      // Auto-switch to manual editing tab after a short delay
+      setTimeout(() => {
+        console.log("🔄 Switching to manual tab...");
+        switchToManualTab();
+
+        // Show info message after switching
+        setTimeout(() => {
+          message.info(
+            "💡 Đã chuyển đến tab 'Chỉnh sửa thủ công' để bạn có thể xem và chỉnh sửa test cases"
+          );
+        }, 500);
+      }, 1500);
+    } catch (error) {
+      console.error("❌ Error in handleTestCasesUpdate:", error);
+      message.error("Có lỗi xảy ra khi cập nhật test cases!");
+    }
   };
 
   const handleAdvancedTemplate = (templateTestCases) => {
@@ -330,6 +399,25 @@ const SuperchargedTestCaseManager = ({ form, onTestCasesChange }) => {
           </TabPane>
 
           <TabPane
+            tab={renderTabLabel("AI Generation", <RobotOutlined />, 0)}
+            key="ai"
+          >
+            <AITestCaseGenerationTab
+              problemTitle={form.getFieldValue("title")}
+              problemDescription={form.getFieldValue("description")}
+              constraints={form.getFieldValue("constraints")}
+              onTestCasesGenerated={handleQuickGenerate}
+              disabled={false}
+              functionSignatures={{
+                java: form.getFieldValue("javaSignature"),
+                python: form.getFieldValue("pythonSignature"),
+                cpp: form.getFieldValue("cppSignature"),
+                javascript: form.getFieldValue("javascriptSignature"),
+              }}
+            />
+          </TabPane>
+
+          <TabPane
             tab={renderTabLabel("Templates nâng cao", <RocketOutlined />, 0)}
             key="advanced"
           >
@@ -394,6 +482,7 @@ const SuperchargedTestCaseManager = ({ form, onTestCasesChange }) => {
               />
 
               <EnhancedTestCaseForm
+                key={refreshKey}
                 form={form}
                 onTestCasesChange={handleTestCasesUpdate}
               />
@@ -465,11 +554,28 @@ const SuperchargedTestCaseManager = ({ form, onTestCasesChange }) => {
 
               <Button
                 size="small"
-                icon={<ThunderboltOutlined />}
-                onClick={() => setActiveTab("quick")}
+                icon={<RobotOutlined />}
+                onClick={() => setActiveTab("ai")}
                 type="primary"
               >
+                AI
+              </Button>
+
+              <Button
+                size="small"
+                icon={<ThunderboltOutlined />}
+                onClick={() => setActiveTab("quick")}
+              >
                 Thêm nhanh
+              </Button>
+
+              <Button
+                size="small"
+                icon={<EditOutlined />}
+                onClick={switchToManualTab}
+                type={activeTab === "manual" ? "primary" : "default"}
+              >
+                Chỉnh sửa
               </Button>
             </Space>
           </div>

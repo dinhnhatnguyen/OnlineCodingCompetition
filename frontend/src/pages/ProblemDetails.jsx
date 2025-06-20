@@ -668,12 +668,36 @@ const ProblemDetails = () => {
                   let input = "";
                   let output = "";
                   try {
+                    console.log(
+                      "🔍 ProblemDetails - Parsing test case inputData:",
+                      tc.inputData
+                    );
                     const inputArr = JSON.parse(tc.inputData);
+                    console.log(
+                      "🔍 ProblemDetails - Parsed inputArr:",
+                      inputArr
+                    );
                     input = inputArr.map((i) => i.input).join(", ");
+                    console.log(
+                      "🔍 ProblemDetails - Final input display:",
+                      input
+                    );
+
                     const outputObj = JSON.parse(tc.expectedOutputData);
                     output = outputObj.expectedOutput;
-                  } catch {
-                    // ignore
+                  } catch (error) {
+                    console.error(
+                      "❌ ProblemDetails - Error parsing test case data:",
+                      error
+                    );
+                    console.error(
+                      "❌ ProblemDetails - Raw inputData:",
+                      tc.inputData
+                    );
+                    console.error(
+                      "❌ ProblemDetails - Raw expectedOutputData:",
+                      tc.expectedOutputData
+                    );
                   }
                   return (
                     <div

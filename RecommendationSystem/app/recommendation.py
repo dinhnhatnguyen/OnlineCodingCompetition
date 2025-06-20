@@ -6,8 +6,7 @@ import os
 import psycopg2
 from sqlalchemy import create_engine
 
-dotenv_path = "D:/UbuntuSystem/OnlineCodingCompetition/RecommendationSystem/.env" # thay đổi lại đường dẫn file cấu hình của bạn
-load_dotenv(dotenv_path)
+load_dotenv()
 user = os.getenv("DB_USER")
 password = os.getenv("DB_PASSWORD")
 db_name = os.getenv("DB_NAME")

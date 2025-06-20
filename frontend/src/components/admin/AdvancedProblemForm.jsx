@@ -496,6 +496,7 @@ const AdvancedProblemForm = ({
   loading,
   initialValues,
   isCreating = false,
+  onTestCasesChange,
 }) => {
   const [form] = Form.useForm();
   const [activeTab, setActiveTab] = useState("1");
@@ -570,6 +571,11 @@ const AdvancedProblemForm = ({
       // Force sync test cases from SuperchargedTestCaseManager
       const currentFormTestCases = form.getFieldValue("testCases");
       console.log("Current form test cases:", currentFormTestCases);
+      console.log("Current form test cases type:", typeof currentFormTestCases);
+      console.log(
+        "Current form test cases is array:",
+        Array.isArray(currentFormTestCases)
+      );
 
       // Kiểm tra xem có ít nhất một ngôn ngữ được bật không
       const enabledLanguages = Object.entries(languageEnabled).filter(
@@ -595,11 +601,28 @@ const AdvancedProblemForm = ({
         if (enabled) {
           const functionName = values[`${lang}FunctionName`];
           const returnType = values[`${lang}ReturnType`];
-          const parameterTypes = Array.from({
-            length: form.getFieldValue(`${lang}ParameterCount`) || 1,
-          })
-            .map((_, i) => form.getFieldValue(`${lang}ParameterTypes${i}`))
-            .filter(Boolean);
+
+          // Collect all parameter types for this language
+          const parameterTypes = [];
+          let paramIndex = 0;
+          while (true) {
+            const paramType = form.getFieldValue(
+              `${lang}ParameterTypes${paramIndex}`
+            );
+            if (paramType) {
+              parameterTypes.push(paramType);
+              paramIndex++;
+            } else {
+              break;
+            }
+          }
+
+          console.log(`🔍 Function signature for ${lang}:`, {
+            functionName,
+            returnType,
+            parameterTypes,
+            parameterCount: parameterTypes.length,
+          });
 
           if (functionName && returnType && parameterTypes.length > 0) {
             const signature = {
@@ -609,6 +632,14 @@ const AdvancedProblemForm = ({
             };
             functionSignatures[lang] = JSON.stringify(signature);
             hasValidSignature = true;
+
+            console.log(`✅ Valid signature created for ${lang}:`, signature);
+          } else {
+            console.warn(`⚠️ Invalid signature for ${lang}:`, {
+              functionName: !!functionName,
+              returnType: !!returnType,
+              parameterTypesLength: parameterTypes.length,
+            });
           }
         }
       }
@@ -946,6 +977,11 @@ const AdvancedProblemForm = ({
                   formTestCases
                 );
 
+                // Call parent callback if provided
+                if (onTestCasesChange) {
+                  onTestCasesChange(testCases);
+                }
+
                 message.success(`Đã cập nhật ${testCases.length} test cases!`);
               }}
             />
@@ -956,7 +992,7 @@ const AdvancedProblemForm = ({
       {/* Hidden field to ensure test cases are included in form submission */}
       {isCreating && (
         <Form.Item name="testCases" style={{ display: "none" }}>
-          <Input type="hidden" />
+          <Input.TextArea style={{ display: "none" }} />
         </Form.Item>
       )}
 

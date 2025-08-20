@@ -804,7 +804,7 @@ const ContestProblemDetails = () => {
                 </button>
 
                 {/* Next Problem Button - Show after successful submission or always for contest */}
-                {(submitResults?.status === "ACCEPTED" || true) && (
+                {/* {(submitResults?.status === "ACCEPTED" || true) && (
                   <NextProblemButton
                     problemTitle={problem.title}
                     currentProblemId={parseInt(id)}
@@ -813,7 +813,7 @@ const ContestProblemDetails = () => {
                     variant="outline"
                     className="flex-shrink-0"
                   />
-                )}
+                )} */}
               </div>
 
               {submitResults && (

@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
-import ContestCodeRegistration from "../components/Contest/ContestCodeRegistration";
+import ContestCodeRegistration from "../components/contest/ContestCodeRegistration";
 import { useLanguage } from "../contexts/LanguageContext";
 
 const JoinContest = () => {

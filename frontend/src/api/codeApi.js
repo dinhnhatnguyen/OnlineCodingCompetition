@@ -4,7 +4,7 @@ import { API_BASE_URL } from "../config/constants";
 export const runScratchCode = async (code, language, input) => {
   try {
     const token = localStorage.getItem("token");
-    const response = await fetch(`${API_BASE_URL}/api/run/scratch`, {
+    const response = await fetch(`${API_BASE_URL}/run/scratch`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

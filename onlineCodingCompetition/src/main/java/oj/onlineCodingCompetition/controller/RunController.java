@@ -45,6 +45,12 @@ public class RunController {
         return ResponseEntity.ok(runService.runCode(runCodeDTO));
     }
 
+    public ResponseEntity<RunCodeResultDTO> runCode(
+            @Valid @RequestBody RunCodeDTO runCodeDTO) {
+        return ResponseEntity.ok(runService.runCode(runCodeDTO));
+    }
+
+
     /**
      * Runs scratch/practice code with custom input
      * Chạy mã nguồn thử nghiệm/luyện tập với đầu vào tùy chỉnh

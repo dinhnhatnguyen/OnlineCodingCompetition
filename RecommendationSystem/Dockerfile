@@ -8,8 +8,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # Install system dependencies (only curl for health check)
-RUN apt-get update && apt-get install -y \
+RUN apt-get update --allow-releaseinfo-change && apt-get install -y --no-install-recommends \
     curl \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security

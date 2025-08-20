@@ -20,6 +20,8 @@ const Problems = () => {
   const [difficultyFilter, setDifficultyFilter] = useState("all");
   const [topicFilter, setTopicFilter] = useState("all");
   const [availableTopics, setAvailableTopics] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -83,6 +85,13 @@ const Problems = () => {
     return matchesSearch && matchesDifficulty && matchesTopic;
   });
 
+  // Pagination logic
+  const totalPages = Math.ceil(filteredProblems.length / itemsPerPage);
+  const paginatedProblems = filteredProblems.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   // Translations
   const translations = {
     vi: {
@@ -142,6 +151,11 @@ const Problems = () => {
         return "bg-gray-600 text-white";
     }
   };
+
+  // Reset page when filter/search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, difficultyFilter, topicFilter]);
 
   if (loading)
     return (
@@ -226,7 +240,7 @@ const Problems = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredProblems.map((problem) => (
+              {paginatedProblems.map((problem) => (
                 <tr
                   key={problem.id}
                   className="border-b border-zinc-800 hover:bg-zinc-800/50"
@@ -290,7 +304,7 @@ const Problems = () => {
                   </td>
                 </tr>
               ))}
-              {filteredProblems.length === 0 && (
+              {paginatedProblems.length === 0 && (
                 <tr>
                   <td colSpan="5" className="py-6 text-center text-gray-500">
                     {t.noResults}
@@ -303,20 +317,42 @@ const Problems = () => {
 
         <div className="flex justify-between items-center mt-4 text-sm text-gray-400">
           <div>
-            {t.showing} 1 {t.to} {filteredProblems.length} {t.of}{" "}
-            {problems.length} {t.results}
+            {t.showing}{" "}
+            {filteredProblems.length === 0
+              ? 0
+              : (currentPage - 1) * itemsPerPage + 1}{" "}
+            {t.to}{" "}
+            {Math.min(currentPage * itemsPerPage, filteredProblems.length)}{" "}
+            {t.of} {filteredProblems.length} {t.results}
           </div>
           <div className="flex gap-2">
             <button
-              className="px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700"
-              disabled
+              className="px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50"
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
             >
               &lt;
             </button>
-            <button className="px-3 py-1 rounded bg-pink-600 hover:bg-pink-700 text-white">
-              1
-            </button>
-            <button className="px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700">
+            {Array.from({ length: totalPages }, (_, idx) => (
+              <button
+                key={idx + 1}
+                className={`px-3 py-1 rounded ${
+                  currentPage === idx + 1
+                    ? "bg-pink-600 text-white"
+                    : "bg-zinc-800 hover:bg-zinc-700"
+                }`}
+                onClick={() => setCurrentPage(idx + 1)}
+              >
+                {idx + 1}
+              </button>
+            ))}
+            <button
+              className="px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50"
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
+              disabled={currentPage === totalPages || totalPages === 0}
+            >
               &gt;
             </button>
           </div>

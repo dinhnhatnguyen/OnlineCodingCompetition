@@ -77,6 +77,7 @@ public class WebSecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/instructor/**").hasAnyRole("INSTRUCTOR", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/problems").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/api/ui-translations/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/problems/{id}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/problems/{id}/translate").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/contests").permitAll()

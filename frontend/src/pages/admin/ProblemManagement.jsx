@@ -16,9 +16,11 @@ import {
   getProblems,
   getMyProblems,
   deleteProblem,
+  getContestsContainingProblem,
 } from "../../api/problemApi";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
+import ProblemContestsModal from "../../components/admin/ProblemContestsModal";
 
 const DeleteConfirmationModal = ({
   isOpen,
@@ -94,6 +96,8 @@ const ProblemManagement = () => {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [selectedProblem, setSelectedProblem] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [contestsModalVisible, setContestsModalVisible] = useState(false);
+  const [problemWithContests, setProblemWithContests] = useState(null);
   const { user, token } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.role === "admin";
@@ -135,9 +139,36 @@ const ProblemManagement = () => {
     navigate(`/admin/problems/testcases/${problem.id}`);
   };
 
-  const handleDeleteClick = (problem) => {
-    setSelectedProblem(problem);
-    setDeleteModalVisible(true);
+  const handleDeleteClick = async (problem) => {
+    try {
+      // Kiểm tra xem bài toán có đang nằm trong cuộc thi nào không
+      const contests = await getContestsContainingProblem(problem.id, token);
+
+      if (contests && contests.length > 0) {
+        // Có cuộc thi chứa bài toán này, hiển thị modal thông tin
+        setProblemWithContests(problem);
+        setContestsModalVisible(true);
+      } else {
+        // Không có cuộc thi nào, hiển thị modal xác nhận xóa bình thường
+        setSelectedProblem(problem);
+        setDeleteModalVisible(true);
+      }
+    } catch (error) {
+      // Nếu có lỗi khi kiểm tra (ví dụ: 409 Conflict), hiển thị modal contests
+      if (error.response?.status === 409) {
+        const errorData = error.response.data;
+        if (errorData.errors && errorData.errors.activeContests) {
+          setProblemWithContests(problem);
+          setContestsModalVisible(true);
+          return;
+        }
+      }
+
+      console.error("Error checking contests:", error);
+      // Nếu có lỗi khác, vẫn cho phép thử xóa
+      setSelectedProblem(problem);
+      setDeleteModalVisible(true);
+    }
   };
 
   const handleDelete = async () => {
@@ -162,6 +193,18 @@ const ProblemManagement = () => {
       }
     } catch (err) {
       console.error("Error deleting problem:", err);
+
+      // Kiểm tra nếu lỗi là do bài toán đang trong cuộc thi
+      if (err.response?.status === 409) {
+        const errorData = err.response.data;
+        if (errorData.errors && errorData.errors.activeContests) {
+          setDeleteModalVisible(false);
+          setProblemWithContests(selectedProblem);
+          setContestsModalVisible(true);
+          return;
+        }
+      }
+
       showError(err.message || "Lỗi khi xóa bài toán");
     } finally {
       setIsDeleting(false);
@@ -360,6 +403,18 @@ const ProblemManagement = () => {
         onConfirm={handleDelete}
         problem={selectedProblem}
         isLoading={isDeleting}
+      />
+
+      <ProblemContestsModal
+        isOpen={contestsModalVisible}
+        onClose={() => {
+          setContestsModalVisible(false);
+          setProblemWithContests(null);
+        }}
+        problem={problemWithContests}
+        onProblemRemoved={() => {
+          fetchProblems(); // Refresh the problems list
+        }}
       />
     </div>
   );

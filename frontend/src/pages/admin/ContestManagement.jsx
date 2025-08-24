@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Table, Button, Space, Modal, Tag, Tooltip, Badge } from "antd";
+import {
+  Table,
+  Button,
+  Space,
+  Modal,
+  Tag,
+  Tooltip,
+  Badge,
+  message,
+} from "antd";
 import {
   EditOutlined,
   DeleteOutlined,
@@ -11,6 +20,9 @@ import {
   CalendarOutlined,
   TeamOutlined,
   FileOutlined,
+  CopyOutlined,
+  UserOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
 import { getContests, deleteContest } from "../../api/contestCrudApi";
 import { useAuth } from "../../contexts/AuthContext";
@@ -130,6 +142,19 @@ const ContestManagement = () => {
     setContestToDelete(null);
   };
 
+  const handleCopyContestCode = async (contestCode) => {
+    try {
+      await navigator.clipboard.writeText(contestCode);
+      message.success("Contest code copied to clipboard!");
+    } catch (error) {
+      message.error("Failed to copy contest code");
+    }
+  };
+
+  const handleManageRegistrations = (contestId) => {
+    navigate(`/admin/contests/${contestId}/registrations`);
+  };
+
   const getStatusTag = (status) => {
     const colors = {
       ONGOING: "green",
@@ -212,6 +237,32 @@ const ContestManagement = () => {
       width: 120,
     },
     {
+      title: "Contest Code",
+      dataIndex: "contestCode",
+      key: "contestCode",
+      render: (contestCode, record) => {
+        if (!contestCode || record.public) {
+          return <span className="text-gray-400">N/A</span>;
+        }
+        return (
+          <div className="flex items-center space-x-2">
+            <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
+              {contestCode}
+            </code>
+            <Tooltip title="Copy Contest Code">
+              <Button
+                icon={<CopyOutlined />}
+                size="small"
+                type="text"
+                onClick={() => handleCopyContestCode(contestCode)}
+              />
+            </Tooltip>
+          </div>
+        );
+      },
+      width: 150,
+    },
+    {
       title: "Schedule",
       key: "schedule",
       render: (_, record) => (
@@ -272,6 +323,13 @@ const ContestManagement = () => {
               size="small"
             />
           </Tooltip>
+          <Tooltip title="Manage Registrations">
+            <Button
+              icon={<UserOutlined />}
+              onClick={() => handleManageRegistrations(record.id)}
+              size="small"
+            />
+          </Tooltip>
           <Tooltip title="Delete Contest">
             <Button
               icon={<DeleteOutlined />}
@@ -282,7 +340,7 @@ const ContestManagement = () => {
           </Tooltip>
         </Space>
       ),
-      width: 100,
+      width: 150,
     },
   ];
 

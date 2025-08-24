@@ -5,6 +5,74 @@
 @source "./client/index.html";
 @source "./client/src/**/*.{js,jsx,ts,tsx}";
 
+/* Custom utilities for text truncation */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+  overflow: hidden !important;
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  line-clamp: 2 !important;
+  word-break: break-word !important;
+  hyphens: auto !important;
+}
+
+.line-clamp-3 {
+  overflow: hidden !important;
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 3 !important;
+  line-clamp: 3 !important;
+  word-break: break-word !important;
+}
+
+.custom-line-clamp {
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  word-break: break-word !important;
+}
+
+/* Ensure proper text truncation */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Force line clamp for contest cards */
+.contest-title-clamp {
+  overflow: hidden !important;
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  line-clamp: 2 !important;
+  word-break: break-word !important;
+  hyphens: auto !important;
+  max-height: 3.5rem !important; /* Fallback for browsers that don't support line-clamp */
+  line-height: 1.75rem !important;
+}
+
+.contest-description-clamp {
+  overflow: hidden !important;
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  line-clamp: 2 !important;
+  word-break: break-word !important;
+  max-height: 2.5rem !important; /* Fallback for browsers that don't support line-clamp */
+  line-height: 1.25rem !important;
+}
+
 @theme {
   --dark-mode: selector(.dark);
 
@@ -88,6 +156,17 @@
     }
   }
 
+  @keyframes slide-in {
+    0% {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
   /* Animations */
   --animation-accordion-down: accordion-down 0.2s ease-out;
   --animation-accordion-up: accordion-up 0.2s ease-out;
@@ -99,4 +178,64 @@
 
 .animate-fade-out-up {
   animation: fade-out-up 0.5s ease-out forwards;
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out forwards;
+}
+
+/* Language Switcher Custom Styles */
+.language-switcher-dropdown {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Smooth animations for dropdown */
+@keyframes dropdown-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dropdown-fade-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+}
+
+.language-switcher-dropdown {
+  animation: dropdown-fade-in 0.15s ease-out;
+}
+
+/* Ensure proper z-index for dropdowns */
+.language-switcher-dropdown {
+  z-index: 9999;
+}
+
+/* Custom scrollbar for dropdown if needed */
+.language-switcher-dropdown::-webkit-scrollbar {
+  width: 4px;
+}
+
+.language-switcher-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.language-switcher-dropdown::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+.language-switcher-dropdown::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }

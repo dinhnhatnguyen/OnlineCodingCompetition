@@ -80,6 +80,12 @@ public class ContestService {
         contest.setCreatedAt(LocalDateTime.now());
         contest.setPublic(contestDTO.isPublic());
         contest.setMaxParticipants(contestDTO.getMaxParticipants());
+        contest.setChatEnabled(contestDTO.isChatEnabled());
+
+        // Generate contest code for private contests
+        if (!contestDTO.isPublic()) {
+            contest.setContestCode(generateContestCode());
+        }
 
         // Xử lý trạng thái
         Contest.ContestStatus requestedStatus = contestDTO.getStatus() != null 
@@ -139,6 +145,7 @@ public class ContestService {
         
         // Cập nhật thuộc tính public
         existingContest.setPublic(contestDTO.isPublic());
+        existingContest.setChatEnabled(contestDTO.isChatEnabled());
 
         if (contestDTO.getMaxParticipants() != null) {
             existingContest.setMaxParticipants(contestDTO.getMaxParticipants());
@@ -504,7 +511,8 @@ public class ContestService {
         dto.setStartTime(contest.getStartTime());
         dto.setEndTime(contest.getEndTime());
         dto.setPublic(contest.isPublic()); // Sửa lại: không đảo ngược giá trị
-        
+        dto.setChatEnabled(contest.isChatEnabled());
+
         // Tính số người tham gia hiện tại (đã được duyệt)
         long approvedCount = contestRegistrationRepository.countByContestIdAndStatus(
                 contest.getId(), ContestRegistration.RegistrationStatus.APPROVED);
@@ -517,14 +525,25 @@ public class ContestService {
         ContestRegistrationDTO dto = modelMapper.map(registration, ContestRegistrationDTO.class);
         dto.setContestId(registration.getContest().getId());
         dto.setUserId(registration.getUser().getId());
-        
+
         // Thêm thông tin người dùng
         User user = registration.getUser();
         if (user != null) {
             dto.setUsername(user.getUsername());
             dto.setEmail(user.getEmail());
         }
-        
+
+        // Thêm thông tin cuộc thi
+        Contest contest = registration.getContest();
+        if (contest != null) {
+            dto.setContestTitle(contest.getTitle());
+            dto.setContestDescription(contest.getDescription());
+            dto.setContestStartTime(contest.getStartTime());
+            dto.setContestEndTime(contest.getEndTime());
+            dto.setContestStatus(contest.getStatus().toString());
+            dto.setContestPublic(contest.isPublic());
+        }
+
         return dto;
     }
 
@@ -625,8 +644,8 @@ public class ContestService {
         User creator = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy user với ID: " + userId));
         
-        // Lấy danh sách cuộc thi theo người tạo
-        List<Contest> contests = contestRepository.findByCreatedBy(creator);
+        // Lấy danh sách cuộc thi theo người tạo (chỉ những cuộc thi chưa bị xóa)
+        List<Contest> contests = contestRepository.findByCreatedByAndDeletedFalse(creator);
         
         // Chuyển đổi sang DTO và trả về
         return contests.stream()
@@ -713,6 +732,110 @@ public class ContestService {
             return Contest.ContestStatus.ONGOING;
         } else {
             return Contest.ContestStatus.UPCOMING;
+        }
+    }
+
+    /**
+     * Generates a unique contest code
+     * Tạo mã cuộc thi duy nhất
+     *
+     * Format: 6-8 alphanumeric characters
+     * Định dạng: 6-8 ký tự chữ và số
+     */
+    private String generateContestCode() {
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        Random random = new Random();
+        String code;
+
+        do {
+            StringBuilder sb = new StringBuilder();
+            int length = 6 + random.nextInt(3); // 6-8 characters
+
+            for (int i = 0; i < length; i++) {
+                sb.append(characters.charAt(random.nextInt(characters.length())));
+            }
+
+            code = sb.toString();
+        } while (contestRepository.existsByContestCode(code)); // Ensure uniqueness
+
+        return code;
+    }
+
+    /**
+     * Finds contest by contest code
+     * Tìm cuộc thi theo mã cuộc thi
+     */
+    @Transactional(readOnly = true)
+    public ContestDTO getContestByCode(String contestCode) {
+        log.debug("Tìm cuộc thi theo mã: {}", contestCode);
+        Contest contest = contestRepository.findByContestCode(contestCode)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cuộc thi với mã: " + contestCode));
+        return convertToDTO(contest);
+    }
+
+    /**
+     * Registers user for contest using contest code
+     * Đăng ký người dùng vào cuộc thi bằng mã cuộc thi
+     */
+    @Transactional
+    public ContestRegistrationDTO registerUserByCode(String contestCode, Long userId) {
+        log.debug("Đăng ký user {} vào cuộc thi bằng mã: {}", userId, contestCode);
+
+        Contest contest = contestRepository.findByContestCode(contestCode)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cuộc thi với mã: " + contestCode));
+
+        return registerUser(contest.getId(), userId);
+    }
+
+    /**
+     * Gets all contest registrations for a user
+     * Lấy tất cả đăng ký cuộc thi của một người dùng
+     */
+    @Transactional(readOnly = true)
+    public List<ContestRegistrationDTO> getUserRegistrations(Long userId) {
+        log.debug("Lấy danh sách đăng ký cuộc thi của user: {}", userId);
+
+        List<ContestRegistration> registrations = contestRegistrationRepository.findByUserIdAndContestNotDeleted(userId);
+
+        return registrations.stream()
+                .map(this::convertToRegistrationDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Removes a problem from a contest with validation
+     * Xóa bài toán khỏi cuộc thi với validation
+     *
+     * @param contestId Contest ID / ID cuộc thi
+     * @param problemId Problem ID / ID bài toán
+     * @param userId User performing the action / ID người thực hiện
+     * @throws IllegalStateException if contest is ongoing
+     * @throws EntityNotFoundException if contest or problem not found
+     */
+    @Transactional
+    public void removeProblemFromContest(Long contestId, Long problemId, Long userId) {
+        log.debug("Removing problem {} from contest {} by user {}", problemId, contestId, userId);
+
+        // Kiểm tra cuộc thi tồn tại
+        Contest contest = contestRepository.findById(contestId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cuộc thi với ID: " + contestId));
+
+        // Kiểm tra bài toán tồn tại
+        Problem problem = problemRepository.findById(problemId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bài toán với ID: " + problemId));
+
+        // Kiểm tra trạng thái cuộc thi - không cho phép xóa bài toán khỏi cuộc thi đang diễn ra
+        if (contest.getStatus() == Contest.ContestStatus.ONGOING) {
+            throw new IllegalStateException("Không thể xóa bài toán khỏi cuộc thi đang diễn ra");
+        }
+
+        // Xóa bài toán khỏi cuộc thi
+        if (contest.getProblems().contains(problem)) {
+            contest.getProblems().remove(problem);
+            contestRepository.save(contest);
+            log.info("Successfully removed problem {} from contest {} by user {}", problemId, contestId, userId);
+        } else {
+            log.warn("Problem {} is not in contest {}", problemId, contestId);
         }
     }
 }

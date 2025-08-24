@@ -57,6 +57,9 @@ public class Contest {
     @Column(name = "max_participants")
     private Integer maxParticipants;
 
+    @Column(name = "contest_code", unique = true, length = 8)
+    private String contestCode;
+
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_id", nullable = false)
@@ -88,6 +91,10 @@ public class Contest {
 
     @Column(name = "deleted_by")
     private Long deletedBy;
+
+    // Chat feature control
+    @Column(name = "chat_enabled", nullable = false)
+    private boolean chatEnabled = false;
 
     public enum ContestStatus {
         DRAFT,      // Nháp

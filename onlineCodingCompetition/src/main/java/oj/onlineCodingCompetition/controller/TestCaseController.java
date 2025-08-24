@@ -9,9 +9,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import oj.onlineCodingCompetition.dto.TestCaseDTO;
+import oj.onlineCodingCompetition.dto.TestCaseAnalyticsDTO;
+import oj.onlineCodingCompetition.dto.BatchUpdateRequest;
+import oj.onlineCodingCompetition.dto.TestCaseValidationResult;
 import oj.onlineCodingCompetition.service.TestCaseService;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Controller class for managing test cases
@@ -111,6 +116,48 @@ public class TestCaseController {
         return new ResponseEntity<>(createdTestCases, HttpStatus.CREATED);
     }
 
+
+
+
+
+    /**
+     * Get test case analytics for a problem (Admin/Instructor only)
+     * Lấy phân tích test case cho một bài toán (Chỉ dành cho Admin/Giảng viên)
+     */
+    @GetMapping("/analytics/{problemId}")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
+    public ResponseEntity<TestCaseAnalyticsDTO> getTestCaseAnalytics(@PathVariable Long problemId) {
+        TestCaseAnalyticsDTO analytics = testCaseService.getTestCaseAnalytics(problemId);
+        return ResponseEntity.ok(analytics);
+    }
+
+    /**
+     * Batch update test cases (Admin/Instructor only)
+     * Cập nhật hàng loạt test case (Chỉ dành cho Admin/Giảng viên)
+     */
+    @PutMapping("/batch-update/{problemId}")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
+    public ResponseEntity<List<TestCaseDTO>> batchUpdateTestCases(
+            @PathVariable Long problemId,
+            @Valid @RequestBody BatchUpdateRequest request) {
+        List<TestCaseDTO> updatedTestCases = testCaseService.batchUpdateTestCases(problemId, request);
+        return ResponseEntity.ok(updatedTestCases);
+    }
+
+    /**
+     * Validate test case data (Admin/Instructor only)
+     * Validate dữ liệu test case (Chỉ dành cho Admin/Giảng viên)
+     */
+    @PostMapping("/validate")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
+    public ResponseEntity<TestCaseValidationResult> validateTestCases(
+            @Valid @RequestBody List<TestCaseDTO> testCases) {
+        TestCaseValidationResult validationResult = testCaseService.validateTestCases(testCases);
+        return ResponseEntity.ok(validationResult);
+    }
+
+
+
     /**
      * Updates an existing test case (Admin/Instructor only)
      * Cập nhật một test case đã tồn tại (Chỉ dành cho Admin/Giảng viên)
@@ -154,5 +201,80 @@ public class TestCaseController {
     public ResponseEntity<Void> deleteAllTestCasesByProblemId(@PathVariable Long problemId) {
         testCaseService.deleteAllTestCasesByProblemId(problemId);
         return ResponseEntity.noContent().build();
+    }
+
+    // ==================== CROSS-LANGUAGE COMPATIBILITY ENDPOINTS ====================
+
+    /**
+     * Get test cases converted for specific programming language
+     * Lấy test cases đã chuyển đổi cho ngôn ngữ lập trình cụ thể
+     *
+     * @param problemId Problem ID (ID của bài toán)
+     * @param language Programming language (Ngôn ngữ lập trình)
+     * @return List of test cases converted for the specified language (Danh sách test case đã chuyển đổi)
+     */
+    @GetMapping("/problem/{problemId}/language/{language}")
+    public ResponseEntity<List<TestCaseDTO>> getTestCasesForLanguage(
+            @PathVariable Long problemId,
+            @PathVariable String language) {
+        List<TestCaseDTO> testCases = testCaseService.getTestCasesForLanguage(problemId, language);
+        return ResponseEntity.ok(testCases);
+    }
+
+    /**
+     * Convert test case data type from one language to another
+     * Chuyển đổi kiểu dữ liệu test case từ ngôn ngữ này sang ngôn ngữ khác
+     *
+     * @param dataType Original data type (Kiểu dữ liệu gốc)
+     * @param fromLanguage Source language (Ngôn ngữ nguồn)
+     * @param toLanguage Target language (Ngôn ngữ đích)
+     * @return Converted data type (Kiểu dữ liệu đã chuyển đổi)
+     */
+    @GetMapping("/convert-type")
+    public ResponseEntity<Map<String, String>> convertDataType(
+            @RequestParam String dataType,
+            @RequestParam String fromLanguage,
+            @RequestParam String toLanguage) {
+        String convertedType = testCaseService.normalizeDataType(dataType, fromLanguage, toLanguage);
+        Map<String, String> response = Map.of(
+            "originalType", dataType,
+            "fromLanguage", fromLanguage,
+            "toLanguage", toLanguage,
+            "convertedType", convertedType
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get supported programming languages
+     * Lấy danh sách ngôn ngữ lập trình được hỗ trợ
+     *
+     * @return List of supported languages (Danh sách ngôn ngữ được hỗ trợ)
+     */
+    @GetMapping("/supported-languages")
+    public ResponseEntity<Set<String>> getSupportedLanguages() {
+        Set<String> languages = testCaseService.getSupportedLanguages();
+        return ResponseEntity.ok(languages);
+    }
+
+    /**
+     * Check data type compatibility for specific language
+     * Kiểm tra tính tương thích kiểu dữ liệu cho ngôn ngữ cụ thể
+     *
+     * @param dataType Data type to check (Kiểu dữ liệu cần kiểm tra)
+     * @param language Programming language (Ngôn ngữ lập trình)
+     * @return Compatibility result (Kết quả tương thích)
+     */
+    @GetMapping("/check-compatibility")
+    public ResponseEntity<Map<String, Object>> checkDataTypeCompatibility(
+            @RequestParam String dataType,
+            @RequestParam String language) {
+        boolean isCompatible = testCaseService.isDataTypeCompatible(dataType, language);
+        Map<String, Object> response = Map.of(
+            "dataType", dataType,
+            "language", language,
+            "isCompatible", isCompatible
+        );
+        return ResponseEntity.ok(response);
     }
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { runScratchCode } from "../api/codeApi";
+import { useUITranslation } from "../contexts/UITranslationContext";
 import CodeEditor from "./problem/CodeEditor";
 import {
   FaPlay,
@@ -75,6 +76,7 @@ process.stdin.on('end', () => {
 };
 
 const ScratchPad = () => {
+  const { t } = useUITranslation();
   const [code, setCode] = useState("");
   const [input, setInput] = useState("5 3");
   const [output, setOutput] = useState("");
@@ -112,14 +114,14 @@ const ScratchPad = () => {
       const result = await runScratchCode(code, language, input);
 
       if (result.status === "COMPILE_ERROR" || result.status === "ERROR") {
-        setError(result.errorMessage || "Có lỗi xảy ra khi chạy code");
+        setError(result.errorMessage || t('ERROR_RUN_CODE'));
       } else {
         setOutput(result.output || "");
         setRuntime(result.runtime);
         setMemory(result.memory);
       }
     } catch (error) {
-      setError(error.message || "Có lỗi xảy ra khi chạy code");
+      setError(error.message || t('ERROR_RUN_CODE'));
     } finally {
       setIsRunning(false);
     }
@@ -170,7 +172,7 @@ const ScratchPad = () => {
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center">
           <BiCodeBlock size={24} className="mr-2 text-blue-400" />
-          <h1 className="text-xl font-bold text-white">Bảng nháp code</h1>
+          <h1 className="text-xl font-bold text-white">{t('SCRATCHPAD_TITLE')}</h1>
         </div>
 
         <div className="flex items-center gap-2">
@@ -179,33 +181,33 @@ const ScratchPad = () => {
             value={fileName}
             onChange={(e) => setFileName(e.target.value)}
             className="bg-zinc-700 text-white px-3 py-1.5 rounded-l border border-zinc-600 w-28 text-sm hidden sm:block"
-            placeholder="Tên file"
+            placeholder={t('PLACEHOLDER_FILENAME')}
           />
           <select
             value={language}
             onChange={handleLanguageChange}
             className="bg-zinc-700 border border-zinc-600 rounded px-3 py-1.5 text-sm text-white"
           >
-            <option value="cpp">C++</option>
-            {/* <option value="java">Java</option> */}
-            <option value="python">Python</option>
-            {/* <option value="javascript">JavaScript</option> */}
+            <option value="cpp">{t('LANGUAGE_CPP')}</option>
+            {/* <option value="java">{t('LANGUAGE_JAVA')}</option> */}
+            <option value="python">{t('LANGUAGE_PYTHON')}</option>
+            {/* <option value="javascript">{t('LANGUAGE_JAVASCRIPT')}</option> */}
           </select>
 
           <button
             onClick={downloadCode}
             className="hidden sm:flex items-center px-3 py-1.5 rounded bg-zinc-700 hover:bg-zinc-600 text-sm text-white border border-zinc-600"
-            title="Tải code"
+            title={t('TOOLTIP_DOWNLOAD')}
           >
-            <FaFileDownload className="mr-1" /> Tải code
+            <FaFileDownload className="mr-1" /> {t('BTN_DOWNLOAD_CODE')}
           </button>
 
           <button
             onClick={clearCode}
             className="hidden sm:flex items-center px-3 py-1.5 rounded bg-zinc-700 hover:bg-zinc-600 text-sm text-white border border-zinc-600"
-            title="Xóa code"
+            title={t('TOOLTIP_CLEAR_CODE')}
           >
-            <FaTrash className="mr-1" /> Xóa code
+            <FaTrash className="mr-1" /> {t('BTN_CLEAR_CODE')}
           </button>
         </div>
       </div>
@@ -222,7 +224,7 @@ const ScratchPad = () => {
             <div className="p-3 border-b border-zinc-700 bg-zinc-900 flex items-center">
               <FaCode className="mr-2 text-blue-400" />
               <h2 className="text-sm font-semibold text-white">
-                Trình soạn thảo
+                {t('CODE_EDITOR_TITLE')}
               </h2>
             </div>
             <div className="h-full">
@@ -245,13 +247,13 @@ const ScratchPad = () => {
           {/* Input */}
           <div className="mt-4 bg-zinc-800 border border-zinc-700 rounded-lg overflow-hidden">
             <div className="p-3 border-b border-zinc-700 bg-zinc-900">
-              <span className="text-sm font-semibold text-white">Đầu vào</span>
+              <span className="text-sm font-semibold text-white">{t('INPUT_SECTION_TITLE')}</span>
             </div>
             <div className="p-0">
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Nhập dữ liệu đầu vào tại đây..."
+                placeholder={t('PLACEHOLDER_INPUT')}
                 className="w-full bg-transparent p-3 resize-none h-32 focus:outline-none text-white"
               />
             </div>
@@ -263,19 +265,19 @@ const ScratchPad = () => {
           {/* Output */}
           <div className="bg-zinc-800 border border-zinc-700 rounded-lg overflow-hidden flex-grow">
             <div className="p-3 border-b border-zinc-700 bg-zinc-900 flex justify-between">
-              <span className="text-sm font-semibold text-white">Kết quả</span>
+              <span className="text-sm font-semibold text-white">{t('OUTPUT_SECTION_TITLE')}</span>
               <div className="flex space-x-2">
                 <button
                   onClick={copyOutput}
                   className="text-zinc-400 hover:text-white"
-                  title="Sao chép"
+                  title={t('TOOLTIP_COPY')}
                 >
                   <FaCopy />
                 </button>
                 <button
                   onClick={clearOutput}
                   className="text-zinc-400 hover:text-white"
-                  title="Xóa"
+                  title={t('TOOLTIP_CLEAR_OUTPUT')}
                 >
                   <FaTrash />
                 </button>
@@ -291,16 +293,16 @@ const ScratchPad = () => {
                   <pre className="whitespace-pre-wrap mb-3 font-mono text-white">
                     {output}
                   </pre>
-                  {runtime !== null && memory !== null && (
+                  {/* {runtime !== null && memory !== null && (
                     <div className="text-xs text-zinc-400 mt-2 p-2 border border-zinc-700 rounded bg-zinc-900">
                       <span className="block">⏱️ Runtime: {runtime}ms</span>
                       <span className="block">💾 Memory: {memory}KB</span>
                     </div>
-                  )}
+                  )} */}
                 </>
               ) : (
                 <div className="text-zinc-500 italic">
-                  Kết quả sẽ hiển thị tại đây
+                  {t('OUTPUT_PLACEHOLDER')}
                 </div>
               )}
             </div>
@@ -339,11 +341,11 @@ const ScratchPad = () => {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  Đang chạy code...
+                  {t('BTN_RUNNING_CODE')}
                 </>
               ) : (
                 <>
-                  <FaPlay className="mr-2" /> Chạy code
+                  <FaPlay className="mr-2" /> {t('BTN_RUN_CODE')}
                 </>
               )}
             </button>

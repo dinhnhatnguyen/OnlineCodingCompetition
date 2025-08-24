@@ -20,6 +20,7 @@ import {
   DashboardOutlined,
   TrophyOutlined,
   QuestionCircleOutlined,
+  ExclamationCircleOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "../../contexts/AuthContext";
 import HelpDocumentation from "../../components/admin/HelpDocumentation";
@@ -82,6 +83,12 @@ function AdminLayout() {
       icon: <LaptopOutlined />,
       label: "Bài nộp",
       path: "/admin/submissions",
+    },
+    {
+      key: "reports",
+      icon: <ExclamationCircleOutlined />,
+      label: "Báo cáo",
+      path: "/admin/reports",
     },
     {
       key: "help",

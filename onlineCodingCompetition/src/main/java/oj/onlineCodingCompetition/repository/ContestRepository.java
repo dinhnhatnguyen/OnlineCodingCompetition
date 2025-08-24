@@ -43,4 +43,12 @@ public interface ContestRepository extends JpaRepository<Contest, Long> {
     // Find contests by status and not deleted
     @Query("SELECT c FROM Contest c WHERE c.status = :status AND c.deleted = false")
     List<Contest> findByStatusAndDeletedFalse(@Param("status") Contest.ContestStatus status);
+
+    // Find contest by contest code
+    @Query("SELECT c FROM Contest c WHERE c.contestCode = :contestCode AND c.deleted = false")
+    Optional<Contest> findByContestCode(@Param("contestCode") String contestCode);
+
+    // Check if contest code exists (only for non-deleted contests)
+    @Query("SELECT COUNT(c) > 0 FROM Contest c WHERE c.contestCode = :contestCode AND c.deleted = false")
+    boolean existsByContestCode(@Param("contestCode") String contestCode);
 }

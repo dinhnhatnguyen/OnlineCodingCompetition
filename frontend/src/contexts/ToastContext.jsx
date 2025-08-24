@@ -51,9 +51,16 @@ export const ToastProvider = ({ children }) => {
     [addToast]
   );
 
+  const showToast = useCallback(
+    (message, type = "info") => {
+      addToast(message, type);
+    },
+    [addToast]
+  );
+
   return (
     <ToastContext.Provider
-      value={{ showSuccess, showError, showWarning, showInfo }}
+      value={{ showSuccess, showError, showWarning, showInfo, showToast }}
     >
       {children}
       <div className="fixed top-0 right-0 z-50 p-4 space-y-4">

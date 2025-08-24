@@ -1,34 +1,34 @@
 import React from "react";
+import { useUITranslation } from "../../contexts/UITranslationContext";
 
 const ProblemSection = () => {
+  const { t } = useUITranslation();
+
   return (
     <section className="bg-black text-white py-12 px-4">
       <div className="max-w-4xl mx-auto flex items-start">
         <div className="w-1/2 pr-8">
           <h2 className="text-2xl font-bold mb-4">
-            Chuẩn bị cho các cuộc phỏng vấn kỹ thuật
+            {t('SECTION_INTERVIEW_PREP_TITLE')}
           </h2>
           <p className="mb-4">
-            Nền tảng của chúng tôi được thiết kế để giúp bạn thành công trong
-            các cuộc phỏng vấn kỹ thuật tại các công ty công nghệ hàng đầu. Với
-            các bài toán tương tự như những câu hỏi trong phỏng vấn thực tế, bạn
-            sẽ được chuẩn bị tốt để thể hiện kỹ năng thuật toán của mình.
+            {t('SECTION_INTERVIEW_PREP_DESC')}
           </p>
           <ul className="list-disc pl-5 mb-4 text-gray-400">
-            <li>Hơn 500 bài toán thuật toán trên nhiều danh mục</li>
-            <li>Hỗ trợ nhiều ngôn ngữ lập trình</li>
-            <li>Giải thích chi tiết và giải pháp tối ưu</li>
+            <li>{t('FEATURE_500_PROBLEMS')}</li>
+            <li>{t('FEATURE_MULTI_LANGUAGE')}</li>
+            <li>{t('FEATURE_DETAILED_SOLUTIONS')}</li>
           </ul>
           <a
             href="/problems"
             className="primary-btn text-white px-6 py-2 rounded-full hover:bg-pink-600"
           >
-            Xem tất cả bài tập
+            {t('BTN_VIEW_ALL_PROBLEMS')}
           </a>
         </div>
         <div className="w-1/2 bg-gray-800 p-4 rounded-lg">
           <p className="text-gray-400 mb-2">
-            Bài tập mẫu: Two Sum (Tổng hai số)
+            {t('SAMPLE_PROBLEM_LABEL')}
           </p>
           <pre className="text-sm bg-gray-900 p-4 rounded">
             {`function twoSum(nums, target) {

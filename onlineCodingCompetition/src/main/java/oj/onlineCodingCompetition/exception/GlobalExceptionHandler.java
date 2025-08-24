@@ -56,6 +56,66 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return new ResponseEntity<>(apiError, HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(ProblemDeletionException.class)
+    public ResponseEntity<Object> handleProblemDeletionException(
+            ProblemDeletionException ex, WebRequest request) {
+
+        Map<String, Object> errorDetails = new HashMap<>();
+        errorDetails.put("activeContests", ex.getActiveContests());
+        errorDetails.put("canDelete", false);
+
+        ApiError apiError = new ApiError(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT,
+                ex.getMessage(),
+                errorDetails
+        );
+
+        return new ResponseEntity<>(apiError, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(ReportNotFoundException.class)
+    public ResponseEntity<Object> handleReportNotFoundException(
+            ReportNotFoundException ex, WebRequest request) {
+
+        ApiError apiError = new ApiError(
+                LocalDateTime.now(),
+                HttpStatus.NOT_FOUND,
+                ex.getMessage(),
+                null
+        );
+
+        return new ResponseEntity<>(apiError, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(ReportAccessDeniedException.class)
+    public ResponseEntity<Object> handleReportAccessDeniedException(
+            ReportAccessDeniedException ex, WebRequest request) {
+
+        ApiError apiError = new ApiError(
+                LocalDateTime.now(),
+                HttpStatus.FORBIDDEN,
+                ex.getMessage(),
+                null
+        );
+
+        return new ResponseEntity<>(apiError, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(DuplicateReportException.class)
+    public ResponseEntity<Object> handleDuplicateReportException(
+            DuplicateReportException ex, WebRequest request) {
+
+        ApiError apiError = new ApiError(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT,
+                ex.getMessage(),
+                null
+        );
+
+        return new ResponseEntity<>(apiError, HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Object> handleAllExceptions(Exception ex, WebRequest request) {
 

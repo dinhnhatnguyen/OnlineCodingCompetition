@@ -1,12 +1,10 @@
-import axios from "axios";
+import api from "./config.js";
 
-const API_URL = "http://localhost:8080/api/auth";
-
-axios.defaults.headers.common["Content-Type"] = "application/json";
+const AUTH_ENDPOINT = "http://localhost:8080/api/auth";
 
 export const signUp = async (data) => {
   try {
-    const response = await axios.post(`${API_URL}/signup`, {
+    const response = await api.post(`${AUTH_ENDPOINT}/signup`, {
       username: data.username,
       email: data.email,
       password: data.password,
@@ -34,7 +32,7 @@ export const signUp = async (data) => {
 
 export const signIn = async (data) => {
   try {
-    const response = await axios.post(`${API_URL}/signin`, {
+    const response = await api.post(`${AUTH_ENDPOINT}/signin`, {
       username: data.username,
       password: data.password,
     });
@@ -43,9 +41,6 @@ export const signIn = async (data) => {
     const { token, ...userData } = response.data;
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(userData));
-
-    // Set the token in axios headers for future requests
-    axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
     return response.data;
   } catch (error) {

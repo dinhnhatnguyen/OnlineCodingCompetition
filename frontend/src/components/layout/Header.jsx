@@ -9,12 +9,15 @@ import {
   FaChevronDown,
 } from "react-icons/fa";
 import { useAuth } from "../../contexts/AuthContext";
+import { useUITranslation } from "../../contexts/UITranslationContext";
 import AuthModal from "../auth/AuthModal";
+import UILanguageSwitcher from "../common/UILanguageSwitcher";
 import logo from "../../assets/OCCS.png";
 import { Dropdown, Menu } from "antd";
 
 const Header = () => {
   const { user, logout, login, register } = useAuth();
+  const { t } = useUITranslation();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState("signin");
   const [message, setMessage] = useState("");
@@ -48,14 +51,14 @@ const Header = () => {
   const userMenu = (
     <Menu>
       <Menu.Item key="profile" icon={<FaUser />}>
-        <Link to="/profile">Hồ sơ cá nhân</Link>
+        <Link to="/profile">{t('NAV_PROFILE')}</Link>
       </Menu.Item>
       <Menu.Item key="change-password" icon={<FaLock />}>
-        <Link to="/change-password">Đổi mật khẩu</Link>
+        <Link to="/change-password">{t('CHANGE_PASSWORD')}</Link>
       </Menu.Item>
       <Menu.Divider />
       <Menu.Item key="logout" icon={<FaSignOutAlt />} onClick={handleLogout}>
-        Đăng xuất
+        {t('LOGOUT')}
       </Menu.Item>
     </Menu>
   );
@@ -69,35 +72,42 @@ const Header = () => {
         </Link>
         <nav className="flex space-x-6">
           <Link
+            to="/"
+            className="text-gray-400 hover:text-primary-pink transition-colors"
+          >
+            {t('NAV_HOME')}
+          </Link>
+          <Link
             to="/problems"
             className="text-gray-400 hover:text-primary-pink transition-colors"
           >
-            Bài tập
+            {t('NAV_PROBLEMS')}
           </Link>
           <Link
             to="/contests"
             className="text-gray-400 hover:text-primary-pink transition-colors"
           >
-            Cuộc thi
+            {t('NAV_CONTESTS')}
           </Link>
           <Link
             to="/scratchpad"
             className="text-gray-400 hover:text-primary-pink transition-colors"
           >
-            Bảng nháp
+            {t('NAV_SCRATCHPAD')}
           </Link>
           {isAdminOrInstructor && (
             <Link
               to="/admin"
               className="text-gray-400 hover:text-pink-400 transition-colors"
             >
-              Quản lý
+              {t('NAV_MANAGEMENT')}
             </Link>
           )}
         </nav>
       </div>
 
       <div className="flex items-center space-x-4">
+        <UILanguageSwitcher />
         {message && (
           <div
             className={`px-4 py-2 rounded ${
@@ -130,13 +140,13 @@ const Header = () => {
               className="text-gray-400 hover:text-primary-pink transition-colors"
               style={{ padding: "10px 20px" }}
             >
-              Đăng nhập
+              {t('TITLE_LOGIN')}
             </button>
             <button
               onClick={() => handleShow("signup")}
               className="primary-btn"
             >
-              Đăng ký
+              {t('TITLE_REGISTER')}
             </button>
           </>
         )}

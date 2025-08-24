@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { Row, Col, Card, Statistic, List } from "antd";
-import { CodeOutlined, TrophyOutlined, UserOutlined } from "@ant-design/icons";
+import {
+  CodeOutlined,
+  TrophyOutlined,
+  UserOutlined,
+  ExclamationCircleOutlined,
+} from "@ant-design/icons";
 import { getProblems, getMyProblems } from "../../api/problemApi";
 import { getContests, getMyContests } from "../../api/contestCrudApi";
+import { getReportsStatistics } from "../../api/reportsApi";
 import { useAuth } from "../../contexts/AuthContext";
 
 const DashboardHome = () => {
   const [problemCount, setProblemCount] = useState(0);
   const [contestCount, setContestCount] = useState(0);
+  const [reportsStats, setReportsStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [recentProblems, setRecentProblems] = useState([]);
   const [recentContests, setRecentContests] = useState([]);
@@ -41,6 +48,12 @@ const DashboardHome = () => {
           (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
         );
         setRecentContests(sortedContests.slice(0, 5));
+
+        // Fetch reports statistics if admin
+        if (isAdmin) {
+          const reportsData = await getReportsStatistics();
+          setReportsStats(reportsData);
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -53,33 +66,43 @@ const DashboardHome = () => {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+      <h1 className="text-2xl font-bold mb-6">Bảng điều khiển</h1>
 
       <Row gutter={[16, 16]}>
-        <Col xs={24} sm={8}>
+        <Col xs={24} sm={6}>
           <Card loading={loading}>
             <Statistic
-              title="Total Problems"
+              title="Tổng số bài tập"
               value={problemCount}
               prefix={<CodeOutlined />}
             />
           </Card>
         </Col>
-        <Col xs={24} sm={8}>
+        <Col xs={24} sm={6}>
           <Card loading={loading}>
             <Statistic
-              title="Total Contests"
+              title="Tổng số cuộc thi"
               value={contestCount}
               prefix={<TrophyOutlined />}
             />
           </Card>
         </Col>
-        <Col xs={24} sm={8}>
+        <Col xs={24} sm={6}>
           <Card loading={loading}>
             <Statistic
-              title="Role"
-              value={user?.role?.toUpperCase() || ""}
-              prefix={<UserOutlined />}
+              title="Tổng báo cáo"
+              value={reportsStats.total || 0}
+              prefix={<ExclamationCircleOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={6}>
+          <Card loading={loading}>
+            <Statistic
+              title="Báo cáo chờ xử lý"
+              value={reportsStats.pending || 0}
+              prefix={<ExclamationCircleOutlined />}
+              valueStyle={{ color: "#faad14" }}
             />
           </Card>
         </Col>
@@ -88,9 +111,9 @@ const DashboardHome = () => {
       <Row gutter={[16, 16]} className="mt-6">
         <Col xs={24} md={12}>
           <Card
-            title={`Problems ${isAdmin ? "" : "Created by You"}`}
+            title={`Bài tập ${isAdmin ? "" : "do bạn tạo"}`}
             loading={loading}
-            extra={<a href="/admin/problems">View All</a>}
+            extra={<a href="/admin/problems">Xem tất cả</a>}
           >
             <List
               dataSource={recentProblems}
@@ -98,19 +121,19 @@ const DashboardHome = () => {
                 <List.Item>
                   <List.Item.Meta
                     title={item.title}
-                    description={`Difficulty: ${item.difficulty}`}
+                    description={`Độ khó: ${item.difficulty}`}
                   />
                 </List.Item>
               )}
-              locale={{ emptyText: "No problems found" }}
+              locale={{ emptyText: "Không tìm thấy bài tập nào" }}
             />
           </Card>
         </Col>
         <Col xs={24} md={12}>
           <Card
-            title={`Contests ${isAdmin ? "" : "Created by You"}`}
+            title={`Cuộc thi ${isAdmin ? "" : "do bạn tạo"}`}
             loading={loading}
-            extra={<a href="/admin/contests">View All</a>}
+            extra={<a href="/admin/contests">Xem tất cả</a>}
           >
             <List
               dataSource={recentContests}
@@ -118,11 +141,11 @@ const DashboardHome = () => {
                 <List.Item>
                   <List.Item.Meta
                     title={item.title}
-                    description={`Status: ${item.status}`}
+                    description={`Trạng thái: ${item.status}`}
                   />
                 </List.Item>
               )}
-              locale={{ emptyText: "No contests found" }}
+              locale={{ emptyText: "Không tìm thấy cuộc thi nào" }}
             />
           </Card>
         </Col>

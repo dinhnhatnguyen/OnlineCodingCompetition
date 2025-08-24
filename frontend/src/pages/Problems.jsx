@@ -4,27 +4,58 @@ import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import { getProblems } from "../api/problemsApi";
 import { getSolvedProblems } from "../api/solvedProblemsApi";
+import { getAllTopics } from "../api/problemApi";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useUITranslation } from "../contexts/UITranslationContext";
+import { useAuth } from "../contexts/AuthContext";
+import { safeAuthenticatedCall } from "../utils/authUtils";
+import LanguageSwitcher from "../components/common/LanguageSwitcher";
 
 const Problems = () => {
+  const { currentLanguage } = useLanguage();
+  const { t } = useUITranslation();
+  const { user, logout } = useAuth();
   const [problems, setProblems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [solvedProblems, setSolvedProblems] = useState(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState("all");
+  const [topicFilter, setTopicFilter] = useState("all");
+  const [availableTopics, setAvailableTopics] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Lấy danh sách bài tập
-        const problemsData = await getProblems();
+        // Lấy danh sách bài tập với ngôn ngữ hiện tại
+        const problemsData = await getProblems(currentLanguage);
         setProblems(problemsData);
 
+        // Lấy danh sách topics
         try {
-          // Lấy danh sách bài đã giải
-          const solvedData = await getSolvedProblems();
-          setSolvedProblems(new Set(solvedData));
+          const topicsData = await getAllTopics();
+          setAvailableTopics(topicsData);
+        } catch (err) {
+          console.error("Error fetching topics:", err);
+          setAvailableTopics([]);
+        }
+
+        // Chỉ lấy danh sách bài đã giải nếu user đã đăng nhập
+        try {
+          const solvedData = await safeAuthenticatedCall(
+            getSolvedProblems,
+            user,
+            logout
+          );
+          if (solvedData) {
+            setSolvedProblems(new Set(solvedData));
+          } else {
+            setSolvedProblems(new Set());
+          }
         } catch (err) {
           console.error("Error fetching solved problems:", err);
+          setSolvedProblems(new Set());
         }
       } catch (error) {
         console.error("Error loading problems:", error);
@@ -34,9 +65,9 @@ const Problems = () => {
     };
 
     fetchData();
-  }, []);
+  }, [currentLanguage, user]); // Re-fetch when language or user changes
 
-  // Filter problems based on search and difficulty
+  // Filter problems based on search, difficulty, and topic
   const filteredProblems = problems.filter((problem) => {
     // Search filter
     const matchesSearch =
@@ -48,8 +79,22 @@ const Problems = () => {
       difficultyFilter === "all" ||
       problem.difficulty.toLowerCase() === difficultyFilter;
 
-    return matchesSearch && matchesDifficulty;
+    // Topic filter
+    const matchesTopic =
+      topicFilter === "all" ||
+      (problem.topics && problem.topics.includes(topicFilter));
+
+    return matchesSearch && matchesDifficulty && matchesTopic;
   });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredProblems.length / itemsPerPage);
+  const paginatedProblems = filteredProblems.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Get difficulty badge style
 
   // Get difficulty badge style
   const getDifficultyBadge = (difficulty) => {
@@ -65,12 +110,17 @@ const Problems = () => {
     }
   };
 
+  // Reset page when filter/search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, difficultyFilter, topicFilter]);
+
   if (loading)
     return (
       <div className="bg-black text-white min-h-screen flex flex-col">
         <Header />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center p-10">Loading...</div>
+          <div className="text-center p-10">{t('LOADING_TEXT')}</div>
         </div>
         <Footer />
       </div>
@@ -81,9 +131,11 @@ const Problems = () => {
       <Header />
       <main className="flex-1 max-w-7xl mx-auto w-full py-6 px-4">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Problems</h1>
+          <h1 className="text-3xl font-bold">{t('PROBLEMS_TITLE')}</h1>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 items-center">
+            {/* Language Switcher for page */}
+            <LanguageSwitcher variant="compact" />
             <div className="relative">
               <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                 <svg
@@ -101,7 +153,7 @@ const Problems = () => {
               </div>
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder={t('PLACEHOLDER_SEARCH')}
                 className="bg-zinc-900 text-white pl-10 pr-3 py-2 rounded w-72 focus:outline-none border border-zinc-700"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -113,10 +165,23 @@ const Problems = () => {
               onChange={(e) => setDifficultyFilter(e.target.value)}
               className="bg-zinc-900 text-white px-4 py-2 rounded border border-zinc-700 focus:outline-none appearance-none"
             >
-              <option value="all">All Difficulties</option>
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
+              <option value="all">{t('FILTER_ALL_DIFFICULTIES')}</option>
+              <option value="easy">{t('DIFFICULTY_EASY')}</option>
+              <option value="medium">{t('DIFFICULTY_MEDIUM')}</option>
+              <option value="hard">{t('DIFFICULTY_HARD')}</option>
+            </select>
+
+            <select
+              value={topicFilter}
+              onChange={(e) => setTopicFilter(e.target.value)}
+              className="bg-zinc-900 text-white px-4 py-2 rounded border border-zinc-700 focus:outline-none appearance-none"
+            >
+              <option value="all">{t('FILTER_ALL_TOPICS')}</option>
+              {availableTopics.map((topic) => (
+                <option key={topic} value={topic}>
+                  {topic}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -125,15 +190,15 @@ const Problems = () => {
           <table className="w-full">
             <thead>
               <tr className="border-b border-zinc-800 text-gray-400 text-left text-sm uppercase">
-                <th className="py-3 px-6">Status</th>
-                <th className="py-3 px-6">Title</th>
-                <th className="py-3 px-6">Difficulty</th>
-                <th className="py-3 px-6">Topics</th>
-                <th className="py-3 px-6 text-right">Success Rate</th>
+                <th className="py-3 px-6">{t('TABLE_STATUS')}</th>
+                <th className="py-3 px-6">{t('TABLE_PROBLEM_TITLE')}</th>
+                <th className="py-3 px-6">{t('PROBLEM_DIFFICULTY')}</th>
+                <th className="py-3 px-6">{t('TABLE_TOPICS')}</th>
+                <th className="py-3 px-6 text-right">{t('TABLE_SUCCESS_RATE')}</th>
               </tr>
             </thead>
             <tbody>
-              {filteredProblems.map((problem) => (
+              {paginatedProblems.map((problem) => (
                 <tr
                   key={problem.id}
                   className="border-b border-zinc-800 hover:bg-zinc-800/50"
@@ -197,10 +262,10 @@ const Problems = () => {
                   </td>
                 </tr>
               ))}
-              {filteredProblems.length === 0 && (
+              {paginatedProblems.length === 0 && (
                 <tr>
                   <td colSpan="5" className="py-6 text-center text-gray-500">
-                    No problems match your search
+                    {t('NO_RESULTS_FOUND')}
                   </td>
                 </tr>
               )}
@@ -210,19 +275,42 @@ const Problems = () => {
 
         <div className="flex justify-between items-center mt-4 text-sm text-gray-400">
           <div>
-            Showing 1 to {filteredProblems.length} of {problems.length} results
+            {t('PAGINATION_SHOWING')}{" "}
+            {filteredProblems.length === 0
+              ? 0
+              : (currentPage - 1) * itemsPerPage + 1}{" "}
+            {t('PAGINATION_TO')}{" "}
+            {Math.min(currentPage * itemsPerPage, filteredProblems.length)}{" "}
+            {t('PAGINATION_OF')} {filteredProblems.length} {t('PAGINATION_RESULTS')}
           </div>
           <div className="flex gap-2">
             <button
-              className="px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700"
-              disabled
+              className="px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50"
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
             >
               &lt;
             </button>
-            <button className="px-3 py-1 rounded bg-pink-600 hover:bg-pink-700 text-white">
-              1
-            </button>
-            <button className="px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700">
+            {Array.from({ length: totalPages }, (_, idx) => (
+              <button
+                key={idx + 1}
+                className={`px-3 py-1 rounded ${
+                  currentPage === idx + 1
+                    ? "bg-pink-600 text-white"
+                    : "bg-zinc-800 hover:bg-zinc-700"
+                }`}
+                onClick={() => setCurrentPage(idx + 1)}
+              >
+                {idx + 1}
+              </button>
+            ))}
+            <button
+              className="px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50"
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
+              disabled={currentPage === totalPages || totalPages === 0}
+            >
               &gt;
             </button>
           </div>

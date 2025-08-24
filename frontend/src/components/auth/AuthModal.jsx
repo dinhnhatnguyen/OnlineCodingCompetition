@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { FaEye, FaEyeSlash, FaSun, FaMoon } from "react-icons/fa";
 import { Link } from "react-router-dom";
+import { useUITranslation } from "../../contexts/UITranslationContext";
 
 const AuthModal = ({
   mode = "signin",
@@ -10,6 +11,7 @@ const AuthModal = ({
   setMode,
   showMessage,
 }) => {
+  const { t } = useUITranslation();
   const [form, setForm] = useState({
     username: "",
     email: "",
@@ -36,7 +38,7 @@ const AuthModal = ({
     try {
       if (mode === "signup") {
         if (form.password !== form.confirmPassword) {
-          setError("Passwords do not match");
+          setError(t('ERROR_PASSWORD_MISMATCH'));
           setLoading(false);
           return;
         }
@@ -50,20 +52,20 @@ const AuthModal = ({
 
         if (response && response.message) {
           if (response.message == "User registered successfully!") {
-            showMessage("Sign up successful! Redirecting...", "success");
+            showMessage(t('MSG_SIGNUP_SUCCESS'), "success");
             onClose();
           } else {
             setError(response.message);
           }
         } else {
-          setError("Unexpected response from server");
+          setError(t('ERROR_UNEXPECTED_RESPONSE'));
         }
       } else {
         await onSuccess({
           username: form.username,
           password: form.password,
         });
-        showMessage("Sign in successful!", "success");
+        showMessage(t('MSG_LOGIN_SUCCESS'), "success");
         onClose();
       }
     } catch (err) {
@@ -86,11 +88,11 @@ const AuthModal = ({
           &times;
         </button>
         <h2 className="text-2xl font-bold mb-4 text-center">
-          {mode === "signin" ? "Sign In" : "Sign Up"}
+          {mode === "signin" ? t('TITLE_LOGIN') : t('TITLE_REGISTER')}
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block mb-1">Username</label>
+            <label className="block mb-1">{t('LABEL_USERNAME')}</label>
             <input
               name="username"
               value={form.username}
@@ -101,7 +103,7 @@ const AuthModal = ({
           </div>
           {mode === "signup" && (
             <div>
-              <label className="block mb-1">Email</label>
+              <label className="block mb-1">{t('LABEL_EMAIL')}</label>
               <input
                 name="email"
                 type="email"
@@ -113,7 +115,7 @@ const AuthModal = ({
             </div>
           )}
           <div>
-            <label className="block mb-1">Password</label>
+            <label className="block mb-1">{t('LABEL_PASSWORD')}</label>
             <div className="relative">
               <input
                 name="password"
@@ -138,14 +140,14 @@ const AuthModal = ({
                   className="text-primary-pink hover:underline text-sm"
                   onClick={onClose}
                 >
-                  Quên mật khẩu?
+                  {t('FORGOT_PASSWORD')}
                 </Link>
               </div>
             )}
           </div>
           {mode === "signup" && (
             <div>
-              <label className="block mb-1">Confirm Password</label>
+              <label className="block mb-1">{t('LABEL_CONFIRM_PASSWORD')}</label>
               <div className="relative">
                 <input
                   name="confirmPassword"
@@ -173,13 +175,17 @@ const AuthModal = ({
             className="w-full primary-btn mt-2"
             disabled={loading}
           >
-            {loading ? "Loading..." : mode === "signin" ? "Sign In" : "Sign Up"}
+            {loading
+              ? t('BTN_PROCESSING')
+              : mode === "signin"
+              ? t('BTN_SIGNIN')
+              : t('BTN_SIGNUP')}
           </button>
         </form>
         <div className="text-center mt-4 text-gray-400">
           {mode === "signin" ? (
             <>
-              Don&apos;t have an account?{" "}
+              {t('AUTH_NO_ACCOUNT')}{" "}
               <button
                 className="text-primary-pink hover:underline"
                 onClick={() => {
@@ -187,12 +193,12 @@ const AuthModal = ({
                   setError("");
                 }}
               >
-                Sign up
+                {t('BTN_SIGNUP')}
               </button>
             </>
           ) : (
             <>
-              Already have an account?{" "}
+              {t('AUTH_HAVE_ACCOUNT')}{" "}
               <button
                 className="text-primary-pink hover:underline"
                 onClick={() => {
@@ -200,7 +206,7 @@ const AuthModal = ({
                   setError("");
                 }}
               >
-                Sign in
+                {t('BTN_SIGNIN')}
               </button>
             </>
           )}

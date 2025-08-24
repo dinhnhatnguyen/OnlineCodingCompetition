@@ -2,9 +2,11 @@ package oj.onlineCodingCompetition.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import oj.onlineCodingCompetition.dto.ContestDTO;
 import oj.onlineCodingCompetition.entity.Contest;
 import oj.onlineCodingCompetition.repository.ContestRepository;
 import org.springframework.data.domain.Page;
@@ -16,11 +18,14 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import oj.onlineCodingCompetition.dto.ProblemDTO;
+import oj.onlineCodingCompetition.dto.ProblemTranslationDTO;
 import oj.onlineCodingCompetition.entity.Problem;
+import oj.onlineCodingCompetition.entity.ProblemTranslation;
 import oj.onlineCodingCompetition.entity.TestCase;
 import oj.onlineCodingCompetition.security.entity.User;
 import oj.onlineCodingCompetition.security.repository.UserRepository;
 import oj.onlineCodingCompetition.service.ProblemService;
+import oj.onlineCodingCompetition.service.TranslationService;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -48,6 +53,7 @@ public class ProblemController {
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
     private final ContestRepository contestRepository;
+    private final TranslationService translationService;
 
     /**
      * Retrieves all problems
@@ -56,9 +62,37 @@ public class ProblemController {
      * @return List of all problems (Danh sách tất cả các bài toán)
      */
     @GetMapping
-    public ResponseEntity<List<ProblemDTO>> getAllProblems() {
-        log.debug("REST request to get all problems");
-        return ResponseEntity.ok(problemService.getAllProblems());
+    public ResponseEntity<List<ProblemDTO>> getAllProblems(
+            @RequestParam(defaultValue = "en") String language) {
+        log.debug("REST request to get all problems in language: {}", language);
+
+        List<ProblemDTO> problems = problemService.getAllProblems();
+
+        // If requesting English, return original
+        if ("en".equalsIgnoreCase(language)) {
+            return ResponseEntity.ok(problems);
+        }
+
+        // Apply translations to all problems
+        problems.forEach(problemDTO -> {
+            try {
+                Optional<ProblemTranslation> translationOpt =
+                    translationService.getOrCreateTranslation(problemDTO.getId(), language);
+
+                if (translationOpt.isPresent()) {
+                    ProblemTranslation translation = translationOpt.get();
+                    problemDTO.setTitle(translation.getTitle());
+                    problemDTO.setDescription(translation.getDescription());
+                    problemDTO.setConstraints(translation.getConstraints());
+                }
+            } catch (Exception e) {
+                log.warn("Failed to get translation for problem {} in language {}: {}",
+                    problemDTO.getId(), language, e.getMessage());
+                // Keep original content if translation fails
+            }
+        });
+
+        return ResponseEntity.ok(problems);
     }
 
     /**
@@ -85,6 +119,51 @@ public class ProblemController {
     public ResponseEntity<ProblemDTO> getProblemById(@PathVariable Long id) {
         log.debug("REST request to get problem by ID: {}", id);
         return ResponseEntity.ok(problemService.getProblemById(id));
+    }
+
+    /**
+     * Retrieves a specific problem by its ID with translation support
+     * Lấy thông tin bài toán theo ID với hỗ trợ dịch thuật
+     *
+     * @param id Problem ID (ID của bài toán)
+     * @param language Target language (Ngôn ngữ đích) - default: "en"
+     * @return Problem information in specified language (Thông tin bài toán theo ngôn ngữ chỉ định)
+     */
+    @GetMapping("/{id}/translate")
+    public ResponseEntity<ProblemDTO> getProblemByIdWithTranslation(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "en") String language) {
+        log.debug("REST request to get problem by ID: {} in language: {}", id, language);
+
+        // Get original problem
+        ProblemDTO problemDTO = problemService.getProblemById(id);
+
+        // If requesting English or translation service fails, return original
+        if ("en".equalsIgnoreCase(language)) {
+            return ResponseEntity.ok(problemDTO);
+        }
+
+        try {
+            // Get or create translation
+            Optional<ProblemTranslation> translationOpt = translationService.getOrCreateTranslation(id, language);
+
+            if (translationOpt.isPresent()) {
+                ProblemTranslation translation = translationOpt.get();
+                // Apply translation to DTO
+                problemDTO.setTitle(translation.getTitle());
+                problemDTO.setDescription(translation.getDescription());
+                problemDTO.setConstraints(translation.getConstraints());
+
+                log.debug("Successfully applied translation for problem {} in language {}", id, language);
+            } else {
+                log.warn("Translation not available for problem {} in language {}, returning original", id, language);
+            }
+        } catch (Exception e) {
+            log.error("Error getting translation for problem {} in language {}: {}", id, language, e.getMessage());
+            // Return original problem if translation fails
+        }
+
+        return ResponseEntity.ok(problemDTO);
     }
 
     /**
@@ -336,6 +415,29 @@ public class ProblemController {
     }
 
     /**
+     * Gets all contests that contain a specific problem
+     * Lấy tất cả cuộc thi chứa bài toán cụ thể
+     *
+     * @param id Problem ID (ID của bài toán)
+     * @return List of contests containing the problem (Danh sách cuộc thi chứa bài toán)
+     */
+    @GetMapping("/{id}/contests")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
+    public ResponseEntity<List<ContestDTO>> getContestsContainingProblem(@PathVariable Long id) {
+        log.debug("REST request to get contests containing problem with ID: {}", id);
+        try {
+            List<ContestDTO> contests = problemService.getContestsContainingProblem(id);
+            return ResponseEntity.ok(contests);
+        } catch (EntityNotFoundException e) {
+            log.error("Problem not found with ID: {}", id);
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Error getting contests for problem with ID: {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
      * Deletes a problem (Admin/Instructor only)
      * Xóa một bài toán (Chỉ dành cho Admin/Giảng viên)
      *
@@ -487,6 +589,141 @@ public class ProblemController {
             log.error("Error updating problem with test cases: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(null);
+        }
+    }
+
+    // ==================== TRANSLATION MANAGEMENT ENDPOINTS ====================
+
+    /**
+     * Get available translation languages
+     * Lấy danh sách ngôn ngữ dịch có sẵn
+     */
+    @GetMapping("/translations/languages")
+    public ResponseEntity<List<String>> getAvailableLanguages() {
+        log.debug("REST request to get available translation languages");
+        List<String> languages = translationService.getAvailableLanguages();
+        // Always include English as base language
+        if (!languages.contains("en")) {
+            languages.add(0, "en");
+        }
+        return ResponseEntity.ok(languages);
+    }
+
+    /**
+     * Get translation for a specific problem and language
+     * Lấy bản dịch cho bài toán và ngôn ngữ cụ thể
+     */
+    @GetMapping("/{id}/translations/{language}")
+    public ResponseEntity<ProblemTranslationDTO> getTranslation(
+            @PathVariable Long id,
+            @PathVariable String language) {
+        log.debug("REST request to get translation for problem {} in language {}", id, language);
+
+        Optional<ProblemTranslation> translationOpt = translationService.getTranslation(id, language);
+        if (translationOpt.isPresent()) {
+            ProblemTranslation translation = translationOpt.get();
+            ProblemTranslationDTO dto = new ProblemTranslationDTO();
+            dto.setId(translation.getId());
+            dto.setProblemId(translation.getProblem().getId());
+            dto.setLanguage(translation.getLanguage());
+            dto.setTitle(translation.getTitle());
+            dto.setDescription(translation.getDescription());
+            dto.setConstraints(translation.getConstraints());
+            dto.setCreatedAt(translation.getCreatedAt());
+            dto.setUpdatedAt(translation.getUpdatedAt());
+
+            return ResponseEntity.ok(dto);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Force create/update translation for a problem (Admin only)
+     * Tạo/cập nhật bản dịch cho bài toán (Chỉ dành cho Admin)
+     */
+    @PostMapping("/{id}/translations/{language}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ProblemTranslationDTO> createOrUpdateTranslation(
+            @PathVariable Long id,
+            @PathVariable String language) {
+        log.debug("REST request to create/update translation for problem {} in language {}", id, language);
+
+        try {
+            Optional<ProblemTranslation> translationOpt = translationService.getOrCreateTranslation(id, language);
+            if (translationOpt.isPresent()) {
+                ProblemTranslation translation = translationOpt.get();
+                ProblemTranslationDTO dto = new ProblemTranslationDTO();
+                dto.setId(translation.getId());
+                dto.setProblemId(translation.getProblem().getId());
+                dto.setLanguage(translation.getLanguage());
+                dto.setTitle(translation.getTitle());
+                dto.setDescription(translation.getDescription());
+                dto.setConstraints(translation.getConstraints());
+                dto.setCreatedAt(translation.getCreatedAt());
+                dto.setUpdatedAt(translation.getUpdatedAt());
+
+                return ResponseEntity.ok(dto);
+            } else {
+                return ResponseEntity.badRequest().build();
+            }
+        } catch (Exception e) {
+            log.error("Error creating translation for problem {} in language {}: {}", id, language, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Delete translation for a problem (Admin only)
+     * Xóa bản dịch cho bài toán (Chỉ dành cho Admin)
+     */
+    @DeleteMapping("/{id}/translations/{language}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteTranslation(
+            @PathVariable Long id,
+            @PathVariable String language) {
+        log.debug("REST request to delete translation for problem {} in language {}", id, language);
+
+        try {
+            translationService.deleteTranslation(id, language);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            log.error("Error deleting translation for problem {} in language {}: {}", id, language, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Batch translate problems to a specific language (Admin only)
+     * Dịch hàng loạt bài toán sang ngôn ngữ cụ thể (Chỉ dành cho Admin)
+     */
+    @PostMapping("/translations/batch")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> batchTranslateProblems(
+            @RequestParam String language,
+            @RequestParam(required = false) List<Long> problemIds) {
+        log.debug("REST request to batch translate problems to language: {}", language);
+
+        try {
+            List<Long> targetProblemIds = problemIds;
+            if (targetProblemIds == null || targetProblemIds.isEmpty()) {
+                // Get all problem IDs if none specified
+                targetProblemIds = problemService.getAllProblems().stream()
+                    .map(ProblemDTO::getId)
+                    .collect(Collectors.toList());
+            }
+
+            translationService.batchTranslateProblems(language, targetProblemIds);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Batch translation completed");
+            response.put("language", language);
+            response.put("problemCount", targetProblemIds.size());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error in batch translation to language {}: {}", language, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 }

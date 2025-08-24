@@ -1,15 +1,27 @@
 import axios from "axios";
+import { API_BASE_URL } from "../config/constants";
 
-const API_URL = "http://localhost:8080/api/submissions";
+const API_URL = `${API_BASE_URL}/submissions`;
 
 // Gửi code nộp bài
 export const submitCode = async (data) => {
   try {
+    // Lấy token từ localStorage
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw new Error("Bạn cần đăng nhập để nộp bài");
+    }
+
     const response = await axios.post(API_URL, {
       problemId: data.problemId,
       language: data.language,
       sourceCode: data.sourceCode,
       contestId: data.contestId || null,
+    }, {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
     });
     return response.data;
   } catch (error) {
@@ -31,7 +43,12 @@ export const submitCode = async (data) => {
 // Lấy lịch sử nộp bài của user
 export const getUserSubmissions = async () => {
   try {
-    const response = await axios.get(`${API_URL}/user`);
+    const token = localStorage.getItem("token");
+    const response = await axios.get(`${API_URL}/user`, {
+      headers: {
+        "Authorization": token ? `Bearer ${token}` : "",
+      },
+    });
     return response.data;
   } catch (error) {
     if (error.response) {
@@ -46,7 +63,12 @@ export const getUserSubmissions = async () => {
 // Lấy submission theo ID
 export const getSubmissionById = async (id) => {
   try {
-    const response = await axios.get(`${API_URL}/${id}`);
+    const token = localStorage.getItem("token");
+    const response = await axios.get(`${API_URL}/${id}`, {
+      headers: {
+        "Authorization": token ? `Bearer ${token}` : "",
+      },
+    });
     return response.data;
   } catch (error) {
     if (error.response) {
@@ -61,7 +83,12 @@ export const getSubmissionById = async (id) => {
 // Lấy submissions theo problem ID
 export const getSubmissionsByProblem = async (problemId) => {
   try {
-    const response = await axios.get(`${API_URL}/problem/${problemId}`);
+    const token = localStorage.getItem("token");
+    const response = await axios.get(`${API_URL}/problem/${problemId}`, {
+      headers: {
+        "Authorization": token ? `Bearer ${token}` : "",
+      },
+    });
     return response.data;
   } catch (error) {
     if (error.response) {
@@ -76,7 +103,12 @@ export const getSubmissionsByProblem = async (problemId) => {
 // Lấy submissions trong contest
 export const getContestSubmissions = async (contestId) => {
   try {
-    const response = await axios.get(`${API_URL}/contest/${contestId}`);
+    const token = localStorage.getItem("token");
+    const response = await axios.get(`${API_URL}/contest/${contestId}`, {
+      headers: {
+        "Authorization": token ? `Bearer ${token}` : "",
+      },
+    });
     return response.data;
   } catch (error) {
     if (error.response) {
@@ -92,8 +124,14 @@ export const getContestSubmissions = async (contestId) => {
 // Lấy leaderboard của contest
 export const getContestLeaderboard = async (contestId) => {
   try {
+    const token = localStorage.getItem("token");
     const response = await axios.get(
-      `http://localhost:8080/api/contests/${contestId}/leaderboard`
+      `${API_BASE_URL}/contests/${contestId}/leaderboard`,
+      {
+        headers: {
+          "Authorization": token ? `Bearer ${token}` : "",
+        },
+      }
     );
     return response.data;
   } catch (error) {

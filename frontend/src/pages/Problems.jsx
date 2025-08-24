@@ -6,12 +6,14 @@ import { getProblems } from "../api/problemsApi";
 import { getSolvedProblems } from "../api/solvedProblemsApi";
 import { getAllTopics } from "../api/problemApi";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useUITranslation } from "../contexts/UITranslationContext";
 import { useAuth } from "../contexts/AuthContext";
 import { safeAuthenticatedCall } from "../utils/authUtils";
 import LanguageSwitcher from "../components/common/LanguageSwitcher";
 
 const Problems = () => {
   const { currentLanguage } = useLanguage();
+  const { t } = useUITranslation();
   const { user, logout } = useAuth();
   const [problems, setProblems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -92,51 +94,7 @@ const Problems = () => {
     currentPage * itemsPerPage
   );
 
-  // Translations
-  const translations = {
-    vi: {
-      title: "Bài tập",
-      search: "Tìm kiếm...",
-      allDifficulties: "Tất cả độ khó",
-      easy: "Dễ",
-      medium: "Trung bình",
-      hard: "Khó",
-      allTopics: "Tất cả chủ đề",
-      status: "Trạng thái",
-      problemTitle: "Tiêu đề",
-      difficulty: "Độ khó",
-      topics: "Chủ đề",
-      successRate: "Tỷ lệ thành công",
-      noResults: "Không tìm thấy bài tập nào phù hợp",
-      showing: "Hiển thị",
-      to: "đến",
-      of: "trong tổng số",
-      results: "kết quả",
-      loading: "Đang tải...",
-    },
-    en: {
-      title: "Problems",
-      search: "Search...",
-      allDifficulties: "All Difficulties",
-      easy: "Easy",
-      medium: "Medium",
-      hard: "Hard",
-      allTopics: "All Topics",
-      status: "Status",
-      problemTitle: "Title",
-      difficulty: "Difficulty",
-      topics: "Topics",
-      successRate: "Success Rate",
-      noResults: "No problems found matching your criteria",
-      showing: "Showing",
-      to: "to",
-      of: "of",
-      results: "results",
-      loading: "Loading...",
-    },
-  };
-
-  const t = translations[currentLanguage] || translations.en;
+  // Get difficulty badge style
 
   // Get difficulty badge style
   const getDifficultyBadge = (difficulty) => {
@@ -162,7 +120,7 @@ const Problems = () => {
       <div className="bg-black text-white min-h-screen flex flex-col">
         <Header />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center p-10">{t.loading}</div>
+          <div className="text-center p-10">{t('LOADING_TEXT')}</div>
         </div>
         <Footer />
       </div>
@@ -173,7 +131,7 @@ const Problems = () => {
       <Header />
       <main className="flex-1 max-w-7xl mx-auto w-full py-6 px-4">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">{t.title}</h1>
+          <h1 className="text-3xl font-bold">{t('PROBLEMS_TITLE')}</h1>
 
           <div className="flex gap-3 items-center">
             {/* Language Switcher for page */}
@@ -195,7 +153,7 @@ const Problems = () => {
               </div>
               <input
                 type="text"
-                placeholder={t.search}
+                placeholder={t('PLACEHOLDER_SEARCH')}
                 className="bg-zinc-900 text-white pl-10 pr-3 py-2 rounded w-72 focus:outline-none border border-zinc-700"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -207,10 +165,10 @@ const Problems = () => {
               onChange={(e) => setDifficultyFilter(e.target.value)}
               className="bg-zinc-900 text-white px-4 py-2 rounded border border-zinc-700 focus:outline-none appearance-none"
             >
-              <option value="all">{t.allDifficulties}</option>
-              <option value="easy">{t.easy}</option>
-              <option value="medium">{t.medium}</option>
-              <option value="hard">{t.hard}</option>
+              <option value="all">{t('FILTER_ALL_DIFFICULTIES')}</option>
+              <option value="easy">{t('DIFFICULTY_EASY')}</option>
+              <option value="medium">{t('DIFFICULTY_MEDIUM')}</option>
+              <option value="hard">{t('DIFFICULTY_HARD')}</option>
             </select>
 
             <select
@@ -218,7 +176,7 @@ const Problems = () => {
               onChange={(e) => setTopicFilter(e.target.value)}
               className="bg-zinc-900 text-white px-4 py-2 rounded border border-zinc-700 focus:outline-none appearance-none"
             >
-              <option value="all">{t.allTopics}</option>
+              <option value="all">{t('FILTER_ALL_TOPICS')}</option>
               {availableTopics.map((topic) => (
                 <option key={topic} value={topic}>
                   {topic}
@@ -232,11 +190,11 @@ const Problems = () => {
           <table className="w-full">
             <thead>
               <tr className="border-b border-zinc-800 text-gray-400 text-left text-sm uppercase">
-                <th className="py-3 px-6">{t.status}</th>
-                <th className="py-3 px-6">{t.problemTitle}</th>
-                <th className="py-3 px-6">{t.difficulty}</th>
-                <th className="py-3 px-6">{t.topics}</th>
-                <th className="py-3 px-6 text-right">{t.successRate}</th>
+                <th className="py-3 px-6">{t('TABLE_STATUS')}</th>
+                <th className="py-3 px-6">{t('TABLE_PROBLEM_TITLE')}</th>
+                <th className="py-3 px-6">{t('PROBLEM_DIFFICULTY')}</th>
+                <th className="py-3 px-6">{t('TABLE_TOPICS')}</th>
+                <th className="py-3 px-6 text-right">{t('TABLE_SUCCESS_RATE')}</th>
               </tr>
             </thead>
             <tbody>
@@ -307,7 +265,7 @@ const Problems = () => {
               {paginatedProblems.length === 0 && (
                 <tr>
                   <td colSpan="5" className="py-6 text-center text-gray-500">
-                    {t.noResults}
+                    {t('NO_RESULTS_FOUND')}
                   </td>
                 </tr>
               )}
@@ -317,13 +275,13 @@ const Problems = () => {
 
         <div className="flex justify-between items-center mt-4 text-sm text-gray-400">
           <div>
-            {t.showing}{" "}
+            {t('PAGINATION_SHOWING')}{" "}
             {filteredProblems.length === 0
               ? 0
               : (currentPage - 1) * itemsPerPage + 1}{" "}
-            {t.to}{" "}
+            {t('PAGINATION_TO')}{" "}
             {Math.min(currentPage * itemsPerPage, filteredProblems.length)}{" "}
-            {t.of} {filteredProblems.length} {t.results}
+            {t('PAGINATION_OF')} {filteredProblems.length} {t('PAGINATION_RESULTS')}
           </div>
           <div className="flex gap-2">
             <button

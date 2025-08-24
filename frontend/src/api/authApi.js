@@ -1,6 +1,6 @@
-import api from './config.js';
+import api from "./config.js";
 
-const AUTH_ENDPOINT = '/auth';
+const AUTH_ENDPOINT = "http://localhost:8080/api/auth";
 
 export const signUp = async (data) => {
   try {

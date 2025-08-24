@@ -5,10 +5,12 @@ import ContestCard from "./ContestCard";
 import MyContestCard from "./MyContestCard";
 import { getContests, getMyContests } from "../../api/contestApi";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useUITranslation } from "../../contexts/UITranslationContext";
 import { useAuth } from "../../contexts/AuthContext";
 
 export default function ContestsList() {
   const { currentLanguage } = useLanguage();
+  const { t } = useUITranslation();
   const { user, token } = useAuth();
   const [contests, setContests] = useState([]);
   const [myContests, setMyContests] = useState([]);
@@ -21,69 +23,7 @@ export default function ContestsList() {
   const [activeTab, setActiveTab] = useState("public"); // "public" or "my"
   const pageSize = 6;
 
-  const translations = {
-    vi: {
-      title: "Danh Sách Cuộc Thi",
-      publicContests: "Cuộc Thi Công Khai",
-      myContests: "Cuộc Thi Của Tôi",
-      joinContest: "Tham Gia Cuộc Thi",
-      joinByCode: "Nhập Mã Cuộc Thi",
-      searchPlaceholder: "Tìm kiếm cuộc thi...",
-      allStatus: "Tất cả trạng thái",
-      upcoming: "Sắp diễn ra",
-      ongoing: "Đang diễn ra",
-      completed: "Đã kết thúc",
-      noContests: "Không tìm thấy cuộc thi nào",
-      noContestsDesc:
-        "Không có cuộc thi nào phù hợp với tiêu chí tìm kiếm. Hãy thử từ khóa khác.",
-      noContestsDefault:
-        "Hiện tại chưa có cuộc thi công khai nào. Hãy quay lại sau!",
-      noMyContests: "Bạn chưa tham gia cuộc thi nào",
-      noMyContestsDesc:
-        "Hãy tham gia cuộc thi công khai hoặc sử dụng mã cuộc thi để tham gia cuộc thi riêng tư.",
-      loginToViewMyContests: "Đăng nhập để xem cuộc thi của bạn",
-      showing: "Hiển thị",
-      to: "đến",
-      of: "trong tổng số",
-      results: "kết quả",
-      participationStatus: "Trạng thái tham gia",
-      approved: "Đã phê duyệt",
-      pending: "Chờ phê duyệt",
-      rejected: "Bị từ chối",
-    },
-    en: {
-      title: "Contest List",
-      publicContests: "Public Contests",
-      myContests: "My Contests",
-      joinContest: "Join Contest",
-      joinByCode: "Enter Contest Code",
-      searchPlaceholder: "Search contests...",
-      allStatus: "All Status",
-      upcoming: "Upcoming",
-      ongoing: "Ongoing",
-      completed: "Completed",
-      noContests: "No contests found",
-      noContestsDesc:
-        "No contests match your search criteria. Try different keywords.",
-      noContestsDefault:
-        "No public contests available at the moment. Please check back later!",
-      noMyContests: "You haven't joined any contests yet",
-      noMyContestsDesc:
-        "Join public contests or use a contest code to participate in private contests.",
-      loginToViewMyContests: "Login to view your contests",
-      showing: "Showing",
-      to: "to",
-      of: "of",
-      results: "results",
-      participationStatus: "Participation Status",
-      approved: "Approved",
-      pending: "Pending",
-      rejected: "Rejected",
-    },
-  };
-
-  const t = translations[currentLanguage] || translations.en;
-
+  
   useEffect(() => {
     fetchPublicContests();
   }, []);
@@ -181,7 +121,7 @@ export default function ContestsList() {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center text-white py-10">
-          {currentLanguage === "vi" ? "Đang tải..." : "Loading..."}
+          {t('LOADING_TEXT')}
         </div>
       </div>
     );
@@ -201,11 +141,9 @@ export default function ContestsList() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
           <div className="flex flex-col gap-2">
-            <h1 className="text-3xl font-bold text-white">{t.title}</h1>
+            <h1 className="text-3xl font-bold text-white">{t('CONTESTS_TITLE')}</h1>
             <p className="text-gray-400">
-              {currentLanguage === "vi"
-                ? "Khám phá và tham gia các cuộc thi lập trình"
-                : "Discover and join programming contests"}
+              {t('CONTESTS_SUBTITLE')}
             </p>
           </div>
           <Link
@@ -213,7 +151,7 @@ export default function ContestsList() {
             className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-pink-600 to-purple-600 text-white rounded-lg hover:from-pink-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
           >
             <Plus className="w-5 h-5 mr-2" />
-            {t.joinContest}
+            {t('BTN_JOIN_CONTEST')}
           </Link>
         </div>
 
@@ -228,7 +166,7 @@ export default function ContestsList() {
             }`}
           >
             <Globe className="w-5 h-5 mr-2" />
-            {t.publicContests}
+            {t('PUBLIC_CONTESTS')}
           </button>
           <button
             onClick={() => setActiveTab("my")}
@@ -239,7 +177,7 @@ export default function ContestsList() {
             }`}
           >
             <Users className="w-5 h-5 mr-2" />
-            {t.myContests}
+            {t('MY_CONTESTS')}
           </button>
         </div>
 
@@ -248,7 +186,7 @@ export default function ContestsList() {
           <div className="relative flex-1 max-w-md">
             <input
               type="text"
-              placeholder={t.searchPlaceholder}
+              placeholder={t('PLACEHOLDER_SEARCH')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-zinc-900 text-white pl-12 pr-4 py-3 rounded-lg border border-zinc-700 focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 transition-all duration-200"

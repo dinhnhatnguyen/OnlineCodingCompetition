@@ -54,11 +54,11 @@ const Header = () => {
         <Link to="/profile">{t('NAV_PROFILE')}</Link>
       </Menu.Item>
       <Menu.Item key="change-password" icon={<FaLock />}>
-        <Link to="/change-password">Đổi mật khẩu</Link>
+        <Link to="/change-password">{t('CHANGE_PASSWORD')}</Link>
       </Menu.Item>
       <Menu.Divider />
       <Menu.Item key="logout" icon={<FaSignOutAlt />} onClick={handleLogout}>
-        Đăng xuất
+        {t('LOGOUT')}
       </Menu.Item>
     </Menu>
   );
@@ -93,14 +93,14 @@ const Header = () => {
             to="/scratchpad"
             className="text-gray-400 hover:text-primary-pink transition-colors"
           >
-            Bảng nháp
+            {t('NAV_SCRATCHPAD')}
           </Link>
           {isAdminOrInstructor && (
             <Link
               to="/admin"
               className="text-gray-400 hover:text-pink-400 transition-colors"
             >
-              Quản lý
+              {t('NAV_MANAGEMENT')}
             </Link>
           )}
         </nav>

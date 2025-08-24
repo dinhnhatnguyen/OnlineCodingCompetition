@@ -1,4 +1,5 @@
 import React from "react";
+import { useUITranslation } from "../contexts/UITranslationContext";
 import HeroSection from "../components/home/HeroSection";
 import FeatureCard from "../components/home/FeatureCard";
 import ProblemSection from "../components/home/ProblemSection";
@@ -7,24 +8,23 @@ import Footer from "../components/layout/Footer";
 import Header from "../components/layout/Header";
 
 const Home = () => {
+  const { t } = useUITranslation();
+
   const features = [
     {
       icon: "lightbulb",
-      title: "Bài tập chọn lọc",
-      description:
-        "Luyện tập với bộ sưu tập đa dạng các bài toán thuật toán, từ mức độ dễ đến khó.",
+      title: t('FEATURE_CURATED_PROBLEMS'),
+      description: t('FEATURE_CURATED_PROBLEMS_DESC'),
     },
     {
       icon: "clock",
-      title: "Cuộc thi hàng tuần",
-      description:
-        "Kiểm tra kỹ năng của bạn trong các cuộc thi lập trình hàng tuần và cạnh tranh với những lập trình viên khác trên toàn cầu.",
+      title: t('FEATURE_WEEKLY_CONTESTS'),
+      description: t('FEATURE_WEEKLY_CONTESTS_DESC'),
     },
     {
       icon: "check",
-      title: "Phản hồi thời gian thực",
-      description:
-        "Nhận phản hồi ngay lập tức về giải pháp của bạn với các test case chi tiết và các chỉ số hiệu suất.",
+      title: t('FEATURE_REAL_TIME_FEEDBACK'),
+      description: t('FEATURE_REAL_TIME_FEEDBACK_DESC'),
     },
   ];
 

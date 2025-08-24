@@ -4,6 +4,7 @@ import { BrowserRouter as Router } from "react-router-dom";
 import App from "./App";
 import { AuthProvider } from "./contexts/AuthContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
+import { UITranslationProvider } from "./contexts/UITranslationContext";
 import { ToastProvider } from "./contexts/ToastContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import "./index.css";
@@ -18,16 +19,18 @@ if (token) {
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <LanguageProvider>
-      <ToastProvider>
-        <NotificationProvider>
-          <Router>
-            <AuthProvider>
-              <App />
-            </AuthProvider>
-          </Router>
-        </NotificationProvider>
-      </ToastProvider>
-    </LanguageProvider>
+    <UITranslationProvider>
+      <LanguageProvider>
+        <ToastProvider>
+          <NotificationProvider>
+            <Router>
+              <AuthProvider>
+                <App />
+              </AuthProvider>
+            </Router>
+          </NotificationProvider>
+        </ToastProvider>
+      </LanguageProvider>
+    </UITranslationProvider>
   </React.StrictMode>
 );

@@ -1,21 +1,23 @@
 import React from "react";
+import { useUITranslation } from "../../contexts/UITranslationContext";
 
 const HeroSection = () => {
+  const { t } = useUITranslation();
+
   return (
     <section className="bg-black text-white text-center py-20 px-4">
       <h1 className="text-5xl font-bold mb-4">
-        Làm chủ thuật toán, chinh phục các cuộc phỏng vấn lập trình
+        {t('HERO_TITLE')}
       </h1>
       <p className="text-lg mb-6">
-        Nâng cao kỹ năng giải quyết vấn đề với bộ sưu tập thử thách thuật toán
-        của chúng tôi. Thực hành, thi đấu và học hỏi cùng chúng tôi.
+        {t('HERO_SUBTITLE')}
       </p>
       <div className="space-x-4">
         <a href="/problems" className="primary-btn px-6 py-3">
-          Bắt đầu luyện tập
+          {t('BTN_START_PRACTICE')}
         </a>
         <a href="/contests" className="text-white hover:text-primary-pink">
-          Xem các cuộc thi
+          {t('BTN_VIEW_CONTESTS')}
         </a>
       </div>
     </section>

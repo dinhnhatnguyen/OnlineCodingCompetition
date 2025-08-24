@@ -1,17 +1,20 @@
 import React from "react";
 import { Helmet } from "react-helmet";
+import { useUITranslation } from "../contexts/UITranslationContext";
 import ContestsList from "../components/contest/ContestsList";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 
 export default function ContestsPage() {
+  const { t } = useUITranslation();
+
   return (
     <div className="bg-black min-h-screen w-full flex flex-col justify-between">
       <Helmet>
-        <title>Cuộc thi - OCCS</title>
+        <title>{t('NAV_CONTESTS')} - OCCS</title>
         <meta
           name="description"
-          content="Tham gia các cuộc thi lập trình để kiểm tra kỹ năng và cạnh tranh với các lập trình viên khác. Tham gia cuộc thi sắp tới hoặc xem kết quả cuộc thi đã qua."
+          content={t('DISCOVER_CONTESTS')}
         />
       </Helmet>
       <Header />

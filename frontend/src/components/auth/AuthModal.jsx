@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { FaEye, FaEyeSlash, FaSun, FaMoon } from "react-icons/fa";
 import { Link } from "react-router-dom";
+import { useUITranslation } from "../../contexts/UITranslationContext";
 
 const AuthModal = ({
   mode = "signin",
@@ -10,6 +11,7 @@ const AuthModal = ({
   setMode,
   showMessage,
 }) => {
+  const { t } = useUITranslation();
   const [form, setForm] = useState({
     username: "",
     email: "",
@@ -36,7 +38,7 @@ const AuthModal = ({
     try {
       if (mode === "signup") {
         if (form.password !== form.confirmPassword) {
-          setError("Mật khẩu không khớp");
+          setError(t('ERROR_PASSWORD_MISMATCH'));
           setLoading(false);
           return;
         }
@@ -50,20 +52,20 @@ const AuthModal = ({
 
         if (response && response.message) {
           if (response.message == "User registered successfully!") {
-            showMessage("Đăng ký thành công! Đang chuyển hướng...", "success");
+            showMessage(t('MSG_SIGNUP_SUCCESS'), "success");
             onClose();
           } else {
             setError(response.message);
           }
         } else {
-          setError("Phản hồi không mong đợi từ máy chủ");
+          setError(t('ERROR_UNEXPECTED_RESPONSE'));
         }
       } else {
         await onSuccess({
           username: form.username,
           password: form.password,
         });
-        showMessage("Đăng nhập thành công!", "success");
+        showMessage(t('MSG_LOGIN_SUCCESS'), "success");
         onClose();
       }
     } catch (err) {
@@ -86,11 +88,11 @@ const AuthModal = ({
           &times;
         </button>
         <h2 className="text-2xl font-bold mb-4 text-center">
-          {mode === "signin" ? "Đăng nhập" : "Đăng ký"}
+          {mode === "signin" ? t('TITLE_LOGIN') : t('TITLE_REGISTER')}
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block mb-1">Tên đăng nhập</label>
+            <label className="block mb-1">{t('LABEL_USERNAME')}</label>
             <input
               name="username"
               value={form.username}
@@ -101,7 +103,7 @@ const AuthModal = ({
           </div>
           {mode === "signup" && (
             <div>
-              <label className="block mb-1">Email</label>
+              <label className="block mb-1">{t('LABEL_EMAIL')}</label>
               <input
                 name="email"
                 type="email"
@@ -113,7 +115,7 @@ const AuthModal = ({
             </div>
           )}
           <div>
-            <label className="block mb-1">Mật khẩu</label>
+            <label className="block mb-1">{t('LABEL_PASSWORD')}</label>
             <div className="relative">
               <input
                 name="password"
@@ -138,14 +140,14 @@ const AuthModal = ({
                   className="text-primary-pink hover:underline text-sm"
                   onClick={onClose}
                 >
-                  Quên mật khẩu?
+                  {t('FORGOT_PASSWORD')}
                 </Link>
               </div>
             )}
           </div>
           {mode === "signup" && (
             <div>
-              <label className="block mb-1">Xác nhận mật khẩu</label>
+              <label className="block mb-1">{t('LABEL_CONFIRM_PASSWORD')}</label>
               <div className="relative">
                 <input
                   name="confirmPassword"
@@ -174,16 +176,16 @@ const AuthModal = ({
             disabled={loading}
           >
             {loading
-              ? "Đang xử lý..."
+              ? t('BTN_PROCESSING')
               : mode === "signin"
-              ? "Đăng nhập"
-              : "Đăng ký"}
+              ? t('BTN_SIGNIN')
+              : t('BTN_SIGNUP')}
           </button>
         </form>
         <div className="text-center mt-4 text-gray-400">
           {mode === "signin" ? (
             <>
-              Chưa có tài khoản?{" "}
+              {t('AUTH_NO_ACCOUNT')}{" "}
               <button
                 className="text-primary-pink hover:underline"
                 onClick={() => {
@@ -191,12 +193,12 @@ const AuthModal = ({
                   setError("");
                 }}
               >
-                Đăng ký
+                {t('BTN_SIGNUP')}
               </button>
             </>
           ) : (
             <>
-              Đã có tài khoản?{" "}
+              {t('AUTH_HAVE_ACCOUNT')}{" "}
               <button
                 className="text-primary-pink hover:underline"
                 onClick={() => {
@@ -204,7 +206,7 @@ const AuthModal = ({
                   setError("");
                 }}
               >
-                Đăng nhập
+                {t('BTN_SIGNIN')}
               </button>
             </>
           )}

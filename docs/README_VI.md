@@ -13,51 +13,51 @@
 [![Python](https://img.shields.io/badge/Python-3.9+-yellow.svg)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/Docker-Enabled-blue.svg)](https://www.docker.com/)
 
-## Project Overview
+## Giới thiệu dự án
 
-**Online Coding Competition System (OCCS)** is a comprehensive online programming competition platform designed to organize coding contests, manage programming problems, and evaluate users' coding skills. The system provides a secure environment for code execution with multiple programming languages and integrates AI for automatic test case generation and personalized problem recommendations.
+**Online Coding Competition System (OCCS)** là một nền tảng thi lập trình trực tuyến toàn diện, được thiết kế để tổ chức các cuộc thi lập trình, quản lý bài tập và đánh giá kỹ năng coding của người dùng. Hệ thống cung cấp môi trường an toàn để thực thi code với nhiều ngôn ngữ lập trình khác nhau, tích hợp AI để tự động tạo test case và gợi ý bài tập phù hợp.
 
-### Objectives
+### Mục tiêu
 
-- Create a professional and user-friendly programming competition platform
-- Support programming education through diverse problem sets
-- Provide efficient contest management tools for instructors/admins
-- Integrate AI to enhance learning experience
+- Tạo ra một nền tảng thi lập trình chuyên nghiệp và dễ sử dụng
+- Hỗ trợ giáo dục lập trình thông qua hệ thống bài tập đa dạng
+- Cung cấp công cụ quản lý cuộc thi hiệu quả cho giảng viên/admin
+- Tích hợp AI để nâng cao trải nghiệm học tập
 
-### Significance
+### Ý nghĩa
 
-The project contributes to the digitization of programming education, facilitating the organization of online coding competitions in a professional and efficient manner.
+Dự án góp phần vào việc số hóa giáo dục lập trình, tạo điều kiện cho việc tổ chức các cuộc thi coding online một cách chuyên nghiệp và hiệu quả.
 
-## Key Features
+## Tính năng chính
 
-### For Users
+### Dành cho người dùng
 
-- **Authentication & Authorization**: Registration, login with JWT, profile management
-- **Problem Solving**: Code editor with Monaco Editor integration and syntax highlighting
-- **Code Execution**: Support for multiple languages (Java, Python, C++, JavaScript...)
-- **Contest Participation**: Register and participate in real-time contests
-- **Progress Tracking**: View submission history and detailed results
-- **AI Recommendations**: Personalized problem recommendation system
-- **Interaction**: Comment and report problem issues
-- **Multi-language**: Vietnamese/English interface support
+- **Xác thực & Phân quyền**: Đăng ký, đăng nhập với JWT, quản lý profile
+- **Giải bài tập**: Code editor tích hợp Monaco Editor với syntax highlighting
+- **Thực thi code**: Hỗ trợ nhiều ngôn ngữ (Java, Python, C++, JavaScript...)
+- **Tham gia cuộc thi**: Đăng ký và tham gia các contest theo thời gian thực
+- **Theo dõi tiến độ**: Xem lịch sử submission, kết quả chi tiết
+- **Gợi ý AI**: Hệ thống recommendation bài tập phù hợp với trình độ
+- **Tương tác**: Comment, báo cáo lỗi bài tập
+- **Đa ngôn ngữ**: Hỗ trợ giao diện tiếng Việt/Anh
 
-### For Admin/Instructors
+### Dành cho Admin/Giảng viên
 
-- **Problem Management**: Create, edit, delete problems with WYSIWYG editor
-- **Test Case Management**: Auto-generate test cases with AI or add manually
-- **Contest Management**: Create contests, set schedules, manage participants
-- **User Management**: View user lists, assign permissions, statistics
-- **Reports & Analytics**: Dashboard with important metrics
-- **System Configuration**: Manage programming languages, scoring settings
+- **Quản lý bài tập**: Tạo, chỉnh sửa, xóa bài tập với editor WYSIWYG
+- **Quản lý test case**: Tự động tạo test case bằng AI hoặc thêm thủ công
+- **Quản lý cuộc thi**: Tạo contest, thiết lập thời gian, quản lý thí sinh
+- **Quản lý người dùng**: Xem danh sách, phân quyền, thống kê
+- **Báo cáo & Thống kê**: Dashboard với các metrics quan trọng
+- **Cấu hình hệ thống**: Quản lý ngôn ngữ lập trình, cài đặt chấm điểm
 
-### Security & Performance
+### Bảo mật & Hiệu suất
 
-- **Secure Sandbox**: Code execution in isolated Docker containers
-- **Performance Optimization**: Caching, connection pooling, resource limits
-- **Security**: Input validation, SQL injection prevention, rate limiting
+- **Sandbox an toàn**: Thực thi code trong Docker containers cô lập
+- **Tối ưu hiệu suất**: Caching, connection pooling, resource limits
+- **Bảo mật**: Input validation, SQL injection prevention, rate limiting
 - **Monitoring**: Health checks, logging, error tracking
 
-## Technology Stack & Architecture
+## Công nghệ & Kiến trúc
 
 ### Backend Technologies
 
@@ -101,19 +101,19 @@ The project contributes to the digitization of programming education, facilitati
 
 ![System Architecture](System_architech.png)
 
-_System architecture includes Frontend (React), Backend API (Spring Boot), AI Service (FastAPI), and Database (PostgreSQL) deployed on Docker containers._
+_Kiến trúc hệ thống bao gồm Frontend (React), Backend API (Spring Boot), AI Service (FastAPI), và Database (PostgreSQL) được triển khai trên Docker containers._
 
-## Installation & Setup Guide
+## Hướng dẫn cài đặt & chạy
 
-### System Requirements
+### Yêu cầu hệ thống
 
-- **Docker** and **Docker Compose** (latest version)
-- **Java 17+** (for local development)
-- **Node.js 18+** (for local development)
-- **Python 3.9+** (for local development)
+- **Docker** và **Docker Compose** (phiên bản mới nhất)
+- **Java 17+** (nếu chạy local)
+- **Node.js 18+** (nếu chạy local)
+- **Python 3.9+** (nếu chạy local)
 - **Git**
 
-### Docker Installation (Recommended)
+### Cài đặt với Docker (Khuyến nghị)
 
 #### 1. Clone repository
 
@@ -122,52 +122,52 @@ git clone <repository-url>
 cd OnlineCodingCompetition
 ```
 
-#### 2. Configure environment variables
+#### 2. Cấu hình environment variables
 
 ```bash
-# Copy and edit .env file
+# Copy và chỉnh sửa file .env
 cp .env.example .env
 nano .env
 
-# Configure recommendation system
+# Cấu hình cho recommendation system
 cp RecommendationSystem/.env.example RecommendationSystem/.env
 nano RecommendationSystem/.env
 ```
 
-#### 3. Build and run the entire system
+#### 3. Build và chạy toàn bộ hệ thống
 
 ```bash
-# Build all services
+# Build tất cả services
 docker-compose -f deploy/docker-compose.prod.yml build
 
-# Run the system
+# Chạy hệ thống
 docker-compose -f deploy/docker-compose.prod.yml up -d
 
-# Check services status
+# Kiểm tra trạng thái services
 docker-compose -f deploy/docker-compose.prod.yml ps
 ```
 
-#### 4. Initialize database (first time)
+#### 4. Khởi tạo database (lần đầu)
 
 ```bash
 # Import database schema
 docker-compose -f deploy/docker-compose.prod.yml exec postgres psql -U occs_user -d occs_db -f /docker-entrypoint-initdb.d/init.sql
 ```
 
-### Local Development Setup
+### Cài đặt Development (Local)
 
 #### Backend (Spring Boot)
 
 ```bash
 cd onlineCodingCompetition
 
-# Install dependencies
+# Cài đặt dependencies
 ./mvnw clean install
 
-# Run application
+# Chạy application
 ./mvnw spring-boot:run
 
-# Or with specific profile
+# Hoặc với profile cụ thể
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
@@ -176,13 +176,13 @@ cd onlineCodingCompetition
 ```bash
 cd frontend
 
-# Install dependencies
+# Cài đặt dependencies
 npm install
 
-# Run development server
+# Chạy development server
 npm run dev
 
-# Build for production
+# Build cho production
 npm run build
 ```
 
@@ -191,19 +191,19 @@ npm run build
 ```bash
 cd RecommendationSystem
 
-# Create virtual environment
+# Tạo virtual environment
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
-# or venv\Scripts\activate  # Windows
+# hoặc venv\Scripts\activate  # Windows
 
-# Install dependencies
+# Cài đặt dependencies
 pip install -r requirements.txt
 
-# Run FastAPI server
+# Chạy FastAPI server
 uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
 ```
 
-### Advanced Configuration
+### Cấu hình nâng cao
 
 #### Database Configuration
 
@@ -218,7 +218,7 @@ spring.datasource.url=jdbc:h2:mem:testdb
 #### Docker Configuration
 
 ```bash
-# Customize resource limits in docker-compose.yml
+# Tùy chỉnh resource limits trong docker-compose.yml
 services:
   backend:
     deploy:
@@ -228,7 +228,7 @@ services:
           cpus: '0.8'
 ```
 
-## Project Structure
+## Cấu trúc thư mục
 
 ```
 OnlineCodingCompetition/
@@ -271,8 +271,7 @@ OnlineCodingCompetition/
 │   └── DEPLOYMENT.md            # Deployment guide
 │
 ├── docs/                         # Documentation
-│   ├── README.md                # Vietnamese version
-│   ├── README_EN.md             # English version (this file)
+│   ├── README.md                # This file
 │   └── System_architech.png     # System architecture diagram
 │
 ├── .env                          # Environment variables
@@ -281,32 +280,32 @@ OnlineCodingCompetition/
 └── docker-compose.yml            # Development setup
 ```
 
-### Main Directory Roles:
+### Vai trò các thư mục chính:
 
-- **`frontend/`**: React application with modern user interface
-- **`onlineCodingCompetition/`**: Backend API handling business logic
-- **`RecommendationSystem/`**: AI service for recommendations and automation
-- **`deploy/`**: Scripts and configs for production deployment
-- **`docs/`**: Project documentation and guides
+- **`frontend/`**: Ứng dụng React với giao diện người dùng hiện đại
+- **`onlineCodingCompetition/`**: API backend xử lý logic nghiệp vụ
+- **`RecommendationSystem/`**: Dịch vụ AI cho gợi ý và tự động hóa
+- **`deploy/`**: Scripts và configs cho triển khai production
+- **`docs/`**: Tài liệu dự án và hướng dẫn sử dụng
 
 ## Demo
 
 ### Screenshots & Videos
 
-_[Placeholder - Add screenshots of main features]_
+_[Placeholder - Thêm screenshots của các tính năng chính]_
 
-- Admin dashboard with overview statistics
-- Problem solving interface with code editor
-- Contest management page
-- AI recommendation system
+- Dashboard admin với thống kê tổng quan
+- Giao diện giải bài tập với code editor
+- Trang quản lý cuộc thi
+- Hệ thống recommendation AI
 
 ### Live Demo
 
-_[Placeholder - Link to online demo if available]_
+_[Placeholder - Link đến demo trực tuyến nếu có]_
 
 ```bash
-# To run local demo after installation:
-# 1. Access main application
+# Để chạy demo local sau khi cài đặt:
+# 1. Truy cập ứng dụng chính
 open http://localhost
 
 # 2. API Documentation (Swagger)
@@ -319,59 +318,59 @@ open http://localhost:3000/docs
 ### Test Data
 
 ```bash
-# Import sample data for testing
+# Import sample data để test
 docker-compose -f deploy/docker-compose.prod.yml exec backend java -jar app.jar --import-sample-data
 
-# Or use existing script
+# Hoặc sử dụng script có sẵn
 ./deploy/import-sample-data.sh
 ```
 
-## Roadmap / Future Development
+## Roadmap / Phát triển thêm
 
-### Short-term (1-3 months)
+### Ngắn hạn (1-3 tháng)
 
-- [ ] **Performance Optimization**: Redis caching, database query optimization
-- [ ] **Language Expansion**: Add support for Rust, Go, Kotlin
-- [ ] **Mobile Responsive**: Improve interface on mobile devices
-- [ ] **Real-time Features**: WebSocket for live contest updates
-- [ ] **Advanced Analytics**: Detailed performance statistics
+- [ ] **Tối ưu hiệu suất**: Caching Redis, tối ưu database queries
+- [ ] **Mở rộng ngôn ngữ**: Thêm hỗ trợ Rust, Go, Kotlin
+- [ ] **Mobile responsive**: Cải thiện giao diện trên thiết bị di động
+- [ ] **Real-time features**: WebSocket cho live contest updates
+- [ ] **Advanced analytics**: Thống kê chi tiết về performance
 
-### Medium-term (3-6 months)
+### Trung hạn (3-6 tháng)
 
-- [ ] **Microservices Architecture**: Split into independent services
-- [ ] **Advanced AI Features**:
+- [ ] **Microservices architecture**: Tách thành các services độc lập
+- [ ] **Advanced AI features**:
   - Plagiarism detection
   - Code quality analysis
   - Intelligent hints system
-- [ ] **Collaborative Features**: Team contests, pair programming
-- [ ] **Advanced Security**: Rate limiting, DDoS protection
-- [ ] **Multi-tenant Support**: Support for multiple organizations
+- [ ] **Collaborative features**: Team contests, pair programming
+- [ ] **Advanced security**: Rate limiting, DDoS protection
+- [ ] **Multi-tenant support**: Hỗ trợ nhiều tổ chức
 
-### Long-term (6+ months)
+### Dài hạn (6+ tháng)
 
-- [ ] **Cloud-native Deployment**: Kubernetes, auto-scaling
-- [ ] **Advanced ML Models**: Personalized learning paths
-- [ ] **Integration Ecosystem**: LMS integration, GitHub sync
-- [ ] **Mobile Applications**: Native iOS/Android apps
-- [ ] **Enterprise Features**: SSO, advanced reporting, audit logs
+- [ ] **Cloud-native deployment**: Kubernetes, auto-scaling
+- [ ] **Advanced ML models**: Personalized learning paths
+- [ ] **Integration ecosystem**: LMS integration, GitHub sync
+- [ ] **Mobile applications**: Native iOS/Android apps
+- [ ] **Enterprise features**: SSO, advanced reporting, audit logs
 
-### Expansion Ideas
+### Ý tưởng mở rộng
 
 - **Gamification**: Badges, leaderboards, achievements
-- **Learning Paths**: Structured curriculum with AI guidance
-- **Community Features**: Forums, peer review, mentoring
-- **Advanced Analytics**: ML-powered insights for educators
-- **Global Competitions**: Multi-region contests with ranking
+- **Learning paths**: Structured curriculum với AI guidance
+- **Community features**: Forums, peer review, mentoring
+- **Advanced analytics**: ML-powered insights cho educators
+- **Global competitions**: Multi-region contests với ranking
 
-## Contributing
+## Đóng góp
 
-### How to Contribute
+### Cách đóng góp
 
 1. Fork repository
-2. Create feature branch (`git checkout -b feature/AmazingFeature`)
+2. Tạo feature branch (`git checkout -b feature/AmazingFeature`)
 3. Commit changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to branch (`git push origin feature/AmazingFeature`)
-5. Create Pull Request
+5. Tạo Pull Request
 
 ### Coding Standards
 
@@ -382,18 +381,18 @@ docker-compose -f deploy/docker-compose.prod.yml exec backend java -jar app.jar 
 
 ### Bug Reports
 
-Use GitHub Issues with template:
+Sử dụng GitHub Issues với template:
 
-- **Bug description**: Detailed error description
-- **Steps to reproduce**: Reproduction steps
-- **Expected vs Actual**: Expected vs actual results
+- **Bug description**: Mô tả chi tiết lỗi
+- **Steps to reproduce**: Các bước tái hiện
+- **Expected vs Actual**: Kết quả mong đợi vs thực tế
 - **Environment**: OS, browser, version info
 
-## Contact Information
+## Thông tin liên hệ
 
 ### Development Team
 
-- **Project Lead**: [Your Name]
+- **Project Lead**: [Tên của bạn]
   - Email: [your-email@example.com]
   - GitHub: [your-github-username]
   - LinkedIn: [your-linkedin-profile]
@@ -407,7 +406,7 @@ Use GitHub Issues with template:
 
 ### Support
 
-- **Wiki**: See detailed documentation
+- **Wiki**: Xem documentation chi tiết
 - **Discord/Slack**: [community-chat-link]
 - **Email Support**: [support-email]
 
@@ -428,8 +427,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <div align="center">
 
-**⭐ If this project is helpful, please give us a star! ⭐**
+**⭐ Nếu dự án này hữu ích, hãy cho chúng tôi một star! ⭐**
 
-Made with ❤️ by [Your Team Name]
+Made by OCCS Team
 
 </div>

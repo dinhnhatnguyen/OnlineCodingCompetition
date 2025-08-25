@@ -3,7 +3,7 @@
 <div align="center">
 
 **Language / Ngôn ngữ:**
-[🇺🇸 English](README_EN.md) | [🇻🇳 Tiếng Việt](README.md)
+[🇺🇸 English](README.md) | [🇻🇳 Tiếng Việt](README_VI.md)
 
 </div>
 

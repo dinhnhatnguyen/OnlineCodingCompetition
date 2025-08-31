@@ -12,6 +12,7 @@ import oj.onlineCodingCompetition.repository.ProblemRepository;
 import oj.onlineCodingCompetition.repository.TestCaseRepository;
 import oj.onlineCodingCompetition.worker.WorkerService;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -40,6 +41,10 @@ public class RunService {
     private final TestCaseRepository testCaseRepository;
     private final TestCaseService testCaseService;
     private final ObjectMapper objectMapper;
+    
+    // Shared volume name for backend <-> runner file exchange (mounted at /app/temp in backend, /app/code in runners)
+    @Value("${docker.shared-volume:occs_temp}")
+    private String sharedVolumeName;
     
     /**
      * Maps programming languages to Docker images
@@ -184,9 +189,13 @@ public class RunService {
      */
     public ScratchResultDTO runScratchCode(ScratchCodeDTO scratchCodeDTO) {
         try {
-            // Create a temporary directory for compilation and execution
-            String tempDirPath = System.getProperty("java.io.tmpdir") + "/scratch_" + UUID.randomUUID();
-            Path tempDir = Files.createDirectory(Paths.get(tempDirPath));
+            // Write scratch files into shared named volume mounted in backend at /app/temp
+            // Runner will mount the same volume at /app/code
+            String baseTempDirPath = "/app/temp"; // inside backend container (shared named volume)
+            // Create an isolated subdirectory to avoid cross-run interference
+            String subDirName = "scratch_" + UUID.randomUUID().toString().replace("-", "");
+            Path tempDir = Paths.get(baseTempDirPath, subDirName);
+            Files.createDirectories(tempDir);
             
             try {
                 // Save source code to file
@@ -199,13 +208,13 @@ public class RunService {
                     filename = "Main";
                 }
                 
-                File sourceFile = new File(tempDirPath, filename + extension);
+                File sourceFile = new File(tempDir.toString(), filename + extension);
                 try (BufferedWriter writer = new BufferedWriter(new FileWriter(sourceFile))) {
                     writer.write(scratchCodeDTO.getCode());
                 }
                 
                 // Save input to file
-                File inputFile = new File(tempDirPath, "input.txt");
+                File inputFile = new File(tempDir.toString(), "input.txt");
                 try (BufferedWriter writer = new BufferedWriter(new FileWriter(inputFile))) {
                     writer.write(scratchCodeDTO.getInput());
                 }
@@ -215,12 +224,11 @@ public class RunService {
                 String containerName = "scratch_" + UUID.randomUUID().toString().replace("-", "");
                 String imageToUse = LANGUAGE_IMAGE_MAP.getOrDefault(language, "java-runner");
                 
-                // Use -v to mount the source file and input file
+                // Mount the shared named volume at /app/code in the runner. EntryPoint will compile from /app/code
                 pb = new ProcessBuilder(
-                        "docker", "run", "--name", containerName, "-m", "1024m", "--cpus=1", 
-                        "-v", sourceFile.getAbsolutePath() + ":/app/code/" + filename + extension, 
-                        "-v", inputFile.getAbsolutePath() + ":/app/input.txt",
-                        imageToUse, "scratch"  // Add "scratch" mode flag to indicate direct execution
+                        "docker", "run", "--name", containerName, "-m", "1024m", "--cpus=1",
+                        "-v", sharedVolumeName + ":/app/code",
+                        imageToUse, "scratch", subDirName
                 );
                 
                 pb.redirectErrorStream(true);
@@ -284,7 +292,7 @@ public class RunService {
                 return result;
                 
             } finally {
-                // Clean up temp directory
+                // Clean up the per-run temp directory
                 try {
                     Files.walk(tempDir)
                             .sorted(Comparator.reverseOrder())

@@ -23,15 +23,19 @@ else
   CODE_FILE=$1
   INPUT_FILE=$2
 
-  cd /app/code
+  # Di chuyển vào thư mục chứa mã nguồn (thư mục submission-...)
+  SUBDIR=$(dirname "$CODE_FILE")
+  cd "$SUBDIR"
 
-  # Biên dịch file mã nguồn
-  javac -d . "$CODE_FILE"
+  # Xác định tên main class từ tên file
   MAIN_CLASS=$(basename "$CODE_FILE" .java)
+
+  # Biên dịch tất cả các file .java trong cùng thư mục để đảm bảo Solution.java được biên dịch
+  javac -d . *.java
 
   # Chạy mã nguồn Java với giới hạn bộ nhớ và stack
   if [ -n "$INPUT_FILE" ] && [ -f "$INPUT_FILE" ]; then
-    # Run with input file
+    # Run with input file (sử dụng đường dẫn tuyệt đối hoặc tương đối đều được)
     java -Xmx128m -Xss8m "$MAIN_CLASS" < "$INPUT_FILE" > output.txt 2> error.txt
   else
     # Run without input file

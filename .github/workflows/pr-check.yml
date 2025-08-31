@@ -1,0 +1,144 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  # Code Quality Checks
+  code-quality:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Java 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    # Backend Quality Checks
+    - name: Backend Code Quality
+      run: |
+        cd onlineCodingCompetition
+        ./mvnw clean compile
+        ./mvnw checkstyle:check
+        ./mvnw spotbugs:check
+
+    # Frontend Quality Checks
+    - name: Frontend Code Quality
+      run: |
+        cd frontend
+        npm ci
+        npm run lint
+        npm run type-check || true
+
+    # Python Quality Checks
+    - name: AI Service Code Quality
+      run: |
+        cd RecommendationSystem
+        pip install -r requirements.txt
+        pip install flake8 black isort mypy
+        flake8 app/
+        black --check app/
+        isort --check-only app/
+
+    # Security Checks
+    - name: Run Security Audit
+      run: |
+        # Frontend security audit
+        cd frontend && npm audit --audit-level moderate
+        
+        # Python security audit
+        cd ../RecommendationSystem
+        pip install safety
+        safety check
+
+  # Build Test
+  build-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Test Frontend Build
+      uses: docker/build-push-action@v5
+      with:
+        context: ./frontend
+        file: ./frontend/Dockerfile
+        push: false
+        tags: test-frontend:latest
+
+    - name: Test Backend Build
+      uses: docker/build-push-action@v5
+      with:
+        context: ./onlineCodingCompetition
+        file: ./onlineCodingCompetition/Dockerfile
+        push: false
+        tags: test-backend:latest
+
+    - name: Test AI Service Build
+      uses: docker/build-push-action@v5
+      with:
+        context: ./RecommendationSystem
+        file: ./RecommendationSystem/Dockerfile
+        push: false
+        tags: test-ai:latest
+
+  # Integration Tests
+  integration-test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_USER: testuser
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Java 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Run Integration Tests
+      run: |
+        cd onlineCodingCompetition
+        ./mvnw clean test -Dspring.profiles.active=test
+      env:
+        SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/testdb
+        SPRING_DATASOURCE_USERNAME: testuser
+        SPRING_DATASOURCE_PASSWORD: testpass

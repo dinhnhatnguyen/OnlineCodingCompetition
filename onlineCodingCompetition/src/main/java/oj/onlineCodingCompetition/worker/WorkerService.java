@@ -62,6 +62,11 @@ public class WorkerService {
 
     @Value("${aws.sqs.queue-url}")
     private String queueUrl;
+    
+    // Tên volume dùng chung để chia sẻ thư mục /app/temp giữa backend và runner containers
+    // Cho phép cấu hình qua env/property: docker.shared-volume, mặc định "occs_temp"
+    @Value("${docker.shared-volume:occs_temp}")
+    private String sharedVolumeName;
 
     /**
      * Maps programming languages to their Docker images
@@ -330,7 +335,7 @@ public class WorkerService {
         log.info("Input data: {}", testCase.getInputData());
         log.info("Expected output: {}", testCase.getExpectedOutputData());
 
-        String tempDir = "/tmp/submission-" + UUID.randomUUID().toString();
+        String tempDir = "/app/temp/submission-" + UUID.randomUUID().toString();
         try {
             Files.createDirectories(Paths.get(tempDir));
             log.info("Created temp directory: {}", tempDir);
@@ -357,70 +362,86 @@ public class WorkerService {
             if (language.equals("python")) {
                 String solutionFilePath = tempDir + "/solution" + extension;
                 
-                // Thêm các import cần thiết vào đầu file
-                StringBuilder pythonCode = new StringBuilder();
-                pythonCode.append("from typing import List, Optional, Dict, Set, Tuple\n");
-                pythonCode.append("\n");
-                
-                // Thêm code của người dùng
-                String sourceCode = submission.getSourceCode();
-                if (!sourceCode.endsWith("\n")) {
-                    sourceCode += "\n";
+                try {
+                    // Thêm các import cần thiết vào đầu file
+                    StringBuilder pythonCode = new StringBuilder();
+                    pythonCode.append("from typing import List, Optional, Dict, Set, Tuple\n");
+                    pythonCode.append("\n");
+                    
+                    // Thêm code của người dùng
+                    String sourceCode = submission.getSourceCode();
+                    if (!sourceCode.endsWith("\n")) {
+                        sourceCode += "\n";
+                    }
+                    pythonCode.append(sourceCode);
+                    
+                    // Ghi file với encoding UTF-8
+                    Files.write(Paths.get(solutionFilePath), 
+                              pythonCode.toString().getBytes("UTF-8"));
+                    
+                    log.info("Written solution code to: {}", solutionFilePath);
+                    log.info("File exists: {}, size: {} bytes", Files.exists(Paths.get(solutionFilePath)), Files.size(Paths.get(solutionFilePath)));
+                } catch (Exception e) {
+                    log.error("Failed to write solution file: {}", e.getMessage(), e);
+                    throw e;
                 }
-                pythonCode.append(sourceCode);
-                
-                // Ghi file với encoding UTF-8
-                Files.write(Paths.get(solutionFilePath), 
-                          pythonCode.toString().getBytes("UTF-8"));
-                
-                log.info("Written solution code to: {}", solutionFilePath);
-                log.debug("Solution code content:\n{}", pythonCode.toString());
             } else if (language.equals("java")) {
                 String solutionFilePath = tempDir + "/Solution" + extension;
                 
-                // Thêm các import phổ biến vào đầu file Solution.java
-                StringBuilder javaCode = new StringBuilder();
-                javaCode.append("import java.util.*;\n");  // Collections, List, Set, Map, etc.
-                javaCode.append("import java.util.stream.*;\n");  // Stream API
-                javaCode.append("import java.math.*;\n");  // BigInteger, BigDecimal
-                javaCode.append("import java.text.*;\n");  // Formatting
-                javaCode.append("import java.time.*;\n");  // Date/Time API
-                javaCode.append("import java.util.function.*;\n");  // Functional interfaces
-                javaCode.append("import java.util.regex.*;\n");  // Regular expressions
-                // Import các class phổ biến một cách rõ ràng
-                javaCode.append("import java.util.HashMap;\n");
-                javaCode.append("import java.util.ArrayList;\n");
-                javaCode.append("import java.util.List;\n");
-                javaCode.append("import java.util.Map;\n");
-                javaCode.append("import java.util.Set;\n");
-                javaCode.append("import java.util.Queue;\n");
-                javaCode.append("import java.util.LinkedList;\n");
-                javaCode.append("import java.util.PriorityQueue;\n");
-                javaCode.append("import java.util.Stack;\n");
-                javaCode.append("import java.util.TreeMap;\n");
-                javaCode.append("import java.util.TreeSet;\n");
-                javaCode.append("import java.util.HashSet;\n");
-                javaCode.append("import java.util.Deque;\n");
-                javaCode.append("import java.util.ArrayDeque;\n");
-                javaCode.append("\n");
-                
-                // Thêm code của người dùng
-                String sourceCode = submission.getSourceCode();
-                if (!sourceCode.endsWith("\n")) {
-                    sourceCode += "\n";
+                try {
+                    // Thêm các import phổ biến vào đầu file Solution.java
+                    StringBuilder javaCode = new StringBuilder();
+                    javaCode.append("import java.util.*;\n");  // Collections, List, Set, Map, etc.
+                    javaCode.append("import java.util.stream.*;\n");  // Stream API
+                    javaCode.append("import java.math.*;\n");  // BigInteger, BigDecimal
+                    javaCode.append("import java.text.*;\n");  // Formatting
+                    javaCode.append("import java.time.*;\n");  // Date/Time API
+                    javaCode.append("import java.util.function.*;\n");  // Functional interfaces
+                    javaCode.append("import java.util.regex.*;\n");  // Regular expressions
+                    // Import các class phổ biến một cách rõ ràng
+                    javaCode.append("import java.util.HashMap;\n");
+                    javaCode.append("import java.util.ArrayList;\n");
+                    javaCode.append("import java.util.List;\n");
+                    javaCode.append("import java.util.Map;\n");
+                    javaCode.append("import java.util.Set;\n");
+                    javaCode.append("import java.util.Queue;\n");
+                    javaCode.append("import java.util.LinkedList;\n");
+                    javaCode.append("import java.util.PriorityQueue;\n");
+                    javaCode.append("import java.util.Stack;\n");
+                    javaCode.append("import java.util.TreeMap;\n");
+                    javaCode.append("import java.util.TreeSet;\n");
+                    javaCode.append("import java.util.HashSet;\n");
+                    javaCode.append("import java.util.Deque;\n");
+                    javaCode.append("import java.util.ArrayDeque;\n");
+                    javaCode.append("\n");
+                    
+                    // Thêm code của người dùng
+                    String sourceCode = submission.getSourceCode();
+                    if (!sourceCode.endsWith("\n")) {
+                        sourceCode += "\n";
+                    }
+                    javaCode.append(sourceCode);
+                    
+                    // Ghi file với encoding UTF-8
+                    Files.write(Paths.get(solutionFilePath), 
+                              javaCode.toString().getBytes("UTF-8"));
+                    
+                    log.info("Written solution code to: {}", solutionFilePath);
+                    log.info("File exists: {}, size: {} bytes", Files.exists(Paths.get(solutionFilePath)), Files.size(Paths.get(solutionFilePath)));
+                } catch (Exception e) {
+                    log.error("Failed to write solution file: {}", e.getMessage(), e);
+                    throw e;
                 }
-                javaCode.append(sourceCode);
-                
-                // Ghi file với encoding UTF-8
-                Files.write(Paths.get(solutionFilePath), 
-                          javaCode.toString().getBytes("UTF-8"));
-                
-                log.info("Written solution code to: {}", solutionFilePath);
-                log.debug("Solution code content:\n{}", javaCode.toString());
             } else {
                 String solutionFilePath = tempDir + "/Solution" + extension;
-                Files.writeString(Paths.get(solutionFilePath), submission.getSourceCode());
-                log.info("Written solution code to: {}", solutionFilePath);
+                try {
+                    Files.writeString(Paths.get(solutionFilePath), submission.getSourceCode());
+                    log.info("Written solution code to: {}", solutionFilePath);
+                    log.info("File exists: {}, size: {} bytes", Files.exists(Paths.get(solutionFilePath)), Files.size(Paths.get(solutionFilePath)));
+                } catch (Exception e) {
+                    log.error("Failed to write solution file: {}", e.getMessage(), e);
+                    throw e;
+                }
             }
 
             List<TestCaseService.TestCaseInput> inputs = testCaseService.parseInputData(testCase.getInputData());
@@ -430,15 +451,45 @@ public class WorkerService {
                 inputContent.append(input.getInput()).append("\n");
                 log.info("Test input: {} (type: {})", input.getInput(), input.getDataType());
             }
-            Files.writeString(Paths.get(inputFilePath), inputContent.toString());
-            log.info("Written input to file: {}", inputFilePath);
-            log.info("Input content: {}", inputContent.toString());
+            
+            try {
+                Files.writeString(Paths.get(inputFilePath), inputContent.toString());
+                log.info("Written input to file: {}", inputFilePath);
+                log.info("Input file exists: {}, size: {} bytes", Files.exists(Paths.get(inputFilePath)), Files.size(Paths.get(inputFilePath)));
+                log.debug("Input content: {}", inputContent.toString());
+            } catch (Exception e) {
+                log.error("Failed to write input file: {}", e.getMessage(), e);
+                throw e;
+            }
 
             String mainProgramPath = tempDir + "/Main" + extension;
             String mainProgramCode = generateMainProgram(language, functionSignature, inputs);
-            Files.writeString(Paths.get(mainProgramPath), mainProgramCode);
-            log.info("Generated main program file: {}", mainProgramPath);
-            log.info("Main program code: \n{}", mainProgramCode);
+            
+            try {
+                log.info("About to write main program to: {}", mainProgramPath);
+                log.info("Main program code length: {} characters", mainProgramCode.length());
+                
+                Path mainPath = Paths.get(mainProgramPath);
+                log.info("Parent directory: {}", mainPath.getParent());
+                log.info("Parent directory exists: {}", Files.exists(mainPath.getParent()));
+                
+                Files.writeString(mainPath, mainProgramCode);
+                log.info("Successfully wrote main program file");
+                
+                // Verify file was written
+                boolean exists = Files.exists(mainPath);
+                long size = exists ? Files.size(mainPath) : 0;
+                log.info("Main file exists: {}, size: {} bytes", exists, size);
+                
+                if (!exists) {
+                    throw new RuntimeException("File was not created: " + mainProgramPath);
+                }
+                
+                log.debug("Main program code: \n{}", mainProgramCode);
+            } catch (Exception e) {
+                log.error("Failed to write main program file: {}", e.getMessage(), e);
+                throw e;
+            }
 
             ExecutionResult executionResult = runInContainer(language, mainProgramPath, inputFilePath);
             log.info("Execution result - exit code: {}", executionResult.getExitCode());
@@ -446,6 +497,17 @@ public class WorkerService {
             log.info("Execution result - error: '{}'", executionResult.getError());
             log.info("Execution result - runtime: {}ms", executionResult.getRuntimeMs());
             log.info("Execution result - memory: {}KB", executionResult.getMemoryUsedKb());
+            
+            // Clean up temp directory after Docker execution
+            try {
+                Files.walk(Paths.get(tempDir))
+                        .sorted(Comparator.reverseOrder())
+                        .map(Path::toFile)
+                        .forEach(File::delete);
+                log.debug("Cleaned up temp directory: {}", tempDir);
+            } catch (Exception e) {
+                log.warn("Failed to clean up temp directory: {}", tempDir, e);
+            }
 
             // Thiết lập kết quả thực thi
             if (executionResult.getRuntimeMs() > 0) {
@@ -516,15 +578,16 @@ public class WorkerService {
             result.setStatus(TestCaseResult.TestCaseStatus.SYSTEM_ERROR);
             result.setErrorMessage(e.getMessage());
             result.setScore(0.0);
-        } finally {
+            
+            // Clean up temp directory on exception
             try {
                 Files.walk(Paths.get(tempDir))
                         .sorted(Comparator.reverseOrder())
                         .map(Path::toFile)
                         .forEach(File::delete);
-                log.debug("Cleaned up temp directory: {}", tempDir);
-            } catch (Exception e) {
-                log.warn("Failed to clean up temp directory: {}", tempDir, e);
+                log.debug("Cleaned up temp directory after exception: {}", tempDir);
+            } catch (Exception cleanupException) {
+                log.warn("Failed to clean up temp directory after exception: {}", tempDir, cleanupException);
             }
         }
 
@@ -846,22 +909,34 @@ public class WorkerService {
 
         try {
             String containerName = "submission-" + UUID.randomUUID().toString();
+            // Mount shared named volume vào cả /app/temp và /app/code để entrypoint có thể cd /app/code
+            // và javac tìm thấy các file nguồn cùng thư mục.
+            String codePathInContainer = codeFilePath.replace("/app/temp/", "/app/code/");
+            String inputPathInContainer = inputFilePath.replace("/app/temp/", "/app/code/");
             String dockerCommand = String.format(
                     "docker run --rm --name %s " +
                             "--memory=256m " +
                             "--cpus=1 " +
                             "--ulimit nofile=1024:1024 " +
                             "--network none " +
-                            "-v %s:/app/code " +
-                            "%s /app/code/Main%s /app/code/input.txt",
-                    containerName, Paths.get(codeFilePath).getParent().toAbsolutePath(), imageName, LANGUAGE_EXTENSION_MAP.get(language)
+                            "--user root " +
+                            "-v %s:/app/temp:rw " +
+                            "-v %s:/app/code:rw " +
+                            "%s %s %s",
+                    containerName,
+                    sharedVolumeName,
+                    sharedVolumeName,
+                    imageName,
+                    codePathInContainer,
+                    inputPathInContainer
             );
             log.info("Executing Docker command: {}", dockerCommand);
 
             // Log more Docker details
             log.debug("Container name: {}", containerName);
-            log.debug("Mount path: {}", Paths.get(codeFilePath).getParent().toAbsolutePath());
-            log.debug("Container path: /app/code/Main{}", LANGUAGE_EXTENSION_MAP.get(language));
+            log.debug("Shared volume name: {}", sharedVolumeName);
+            log.debug("Code path inside container: {}", codePathInContainer);
+            log.debug("Input path inside container: {}", inputPathInContainer);
             
             // Check if the main file exists
             File mainFile = new File(codeFilePath);

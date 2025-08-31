@@ -1,0 +1,74 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: occs-postgres
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - occs-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Spring Boot Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: occs-backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      # Spring profiles
+      - SPRING_PROFILES_ACTIVE=prod
+
+      # Database configuration - connect to PostgreSQL container
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${DB_NAME}
+      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
+
+      # Docker configuration for code execution
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      # Mount Docker socket for code execution
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Shared volume for code execution files
+      - occs_temp:/app/temp
+      # Host temp directory for additional workspace
+      - /tmp:/tmp
+    depends_on:
+      - postgres
+    networks:
+      - occs-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+volumes:
+  postgres_data:
+  occs_temp:
+    driver: local
+
+networks:
+  occs-network:
+    driver: bridge

@@ -25,13 +25,16 @@ else
   CODE_FILE=$1
   INPUT_FILE=$2
 
-  cd /app/code
+  # Move into the submission directory containing the code file
+  SUBDIR=$(dirname "$CODE_FILE")
+  BASENAME=$(basename "$CODE_FILE")
+  cd "$SUBDIR"
 
   # Run Python code
   if [ -n "$INPUT_FILE" ] && [ -f "$INPUT_FILE" ]; then
-    python3 -u $CODE_FILE < $INPUT_FILE
+    python3 -u "$BASENAME" < "$INPUT_FILE"
   else
-    python3 -u $CODE_FILE
+    python3 -u "$BASENAME"
   fi
 
   EXIT_CODE=$?

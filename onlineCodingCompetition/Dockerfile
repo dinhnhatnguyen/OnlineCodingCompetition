@@ -25,8 +25,8 @@ FROM eclipse-temurin:22-jre-alpine
 
 WORKDIR /app
 
-# Install wget for health check và ca-certificates
-RUN apk add --no-cache wget ca-certificates
+# Install wget for health check, ca-certificates và Docker CLI
+RUN apk add --no-cache wget ca-certificates docker-cli
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S appgroup && \
@@ -42,8 +42,8 @@ RUN mkdir -p /tmp/code && \
 # Change ownership
 RUN chown appuser:appgroup app.jar
 
-# Switch to non-root user
-USER appuser
+# Keep root user for Docker access
+# USER appuser
 
 EXPOSE 8080
 

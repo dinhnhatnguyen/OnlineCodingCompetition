@@ -3,7 +3,13 @@
 <div align="center">
 
 **Language / Ngôn ngữ:**
-[🇺🇸 English](README.md) | [🇻🇳 Tiếng Việt](README_VI.md)
+[🇺🇸 English](README_EN.md) | [🇻🇳 Tiếng Việt](README.md)
+
+</div>
+
+<div align="center">
+
+**Demo:** (https://occs.tahnhnid.id.vn/)
 
 </div>
 
@@ -393,29 +399,12 @@ Use GitHub Issues with template:
 
 ### Development Team
 
-- **Project Lead**: [Your Name]
-  - Email: [your-email@example.com]
-  - GitHub: [your-github-username]
-  - LinkedIn: [your-linkedin-profile]
-
-### Links
-
-- **Website**: [project-website-url]
-- **Documentation**: [docs-url]
-- **Issues**: [github-issues-url]
-- **Discussions**: [github-discussions-url]
-
-### Support
-
-- **Wiki**: See detailed documentation
-- **Discord/Slack**: [community-chat-link]
-- **Email Support**: [support-email]
+- **Project Lead**: [Nguyen Dinh Nhat]
+  - Email: [nhatnguyen188203@gmail.com]
+  - GitHub: [https://github.com/dinhnhatnguyen]
+  - LinkedIn: [www.linkedin.com/in/nguyen-dinh-nhat]
 
 ---
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
@@ -430,6 +419,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **⭐ If this project is helpful, please give us a star! ⭐**
 
-Made with ❤️ by [Your Team Name]
+Made with ❤️ by OCCS
 
 </div>
